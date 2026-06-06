@@ -1,0 +1,103 @@
+{% extends 'minisite/base.html' %}
+{% block title %}Contact — {{ dealer.website_name or dealer.name }}{% endblock %}
+{% block content %}
+<div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:60px 24px;text-align:center">
+  <h1 style="font-size:38px;font-weight:800">Contact Us</h1>
+  <p style="color:#94a3b8;margin-top:8px">We're here to help you find the right car</p>
+</div>
+
+<div class="ms-page">
+  <div class="breadcrumb">
+    <a href="{{ url_for('minisite.home', website_name=website_name) }}">Home</a>
+    <span>/</span> Contact
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:12px">
+    <!-- FORM -->
+    <div style="background:#fff;border-radius:16px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,.07)">
+      <h2 style="font-size:22px;font-weight:800;margin-bottom:24px">Send a Message</h2>
+      <form method="POST">
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">Your Name *</label>
+          <input name="name" required style="width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none" placeholder="Full Name" />
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">Phone Number *</label>
+          <input name="phone" type="tel" required style="width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none" placeholder="10-digit mobile" />
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">Email (optional)</label>
+          <input name="email" type="email" style="width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none" placeholder="you@example.com" />
+        </div>
+        <div style="margin-bottom:20px">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">Message</label>
+          <textarea name="message" rows="4" style="width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;font-family:inherit;resize:vertical" placeholder="How can we help you?"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;font-size:15px">
+          <i class="fas fa-paper-plane"></i> Send Message
+        </button>
+      </form>
+    </div>
+
+    <!-- INFO -->
+    <div>
+      <div style="background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.07);margin-bottom:20px">
+        <h3 style="font-size:18px;font-weight:700;margin-bottom:20px">Get In Touch</h3>
+        {% if dealer.phone %}
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <div style="width:48px;height:48px;background:#eff6ff;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#1a73e8;font-size:18px;flex-shrink:0"><i class="fas fa-phone"></i></div>
+          <div>
+            <div style="font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Call Us</div>
+            <a href="tel:{{ dealer.phone }}" style="font-size:16px;font-weight:700;color:#0f172a">{{ dealer.phone }}</a>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if dealer.whatsapp_number %}
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <div style="width:48px;height:48px;background:#dcfce7;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#16a34a;font-size:18px;flex-shrink:0"><i class="fab fa-whatsapp"></i></div>
+          <div>
+            <div style="font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px">WhatsApp</div>
+            <a href="https://wa.me/91{{ dealer.whatsapp_number | replace('+91','') | replace(' ','') }}" target="_blank" style="font-size:16px;font-weight:700;color:#16a34a">{{ dealer.whatsapp_number }}</a>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if dealer.email %}
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <div style="width:48px;height:48px;background:#eff6ff;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#1a73e8;font-size:18px;flex-shrink:0"><i class="fas fa-envelope"></i></div>
+          <div>
+            <div style="font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Email</div>
+            <a href="mailto:{{ dealer.email }}" style="font-size:16px;font-weight:700;color:#0f172a">{{ dealer.email }}</a>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if dealer.address %}
+        <div style="display:flex;align-items:start;gap:14px;margin-bottom:18px">
+          <div style="width:48px;height:48px;background:#fef3c7;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#d97706;font-size:18px;flex-shrink:0"><i class="fas fa-map-marker-alt"></i></div>
+          <div>
+            <div style="font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Address</div>
+            <div style="font-size:15px;font-weight:600;color:#0f172a">{{ dealer.address }}</div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if dealer.business_hours %}
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:48px;height:48px;background:#eff6ff;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#1a73e8;font-size:18px;flex-shrink:0"><i class="fas fa-clock"></i></div>
+          <div>
+            <div style="font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Business Hours</div>
+            <div style="font-size:15px;font-weight:600;color:#0f172a">{{ dealer.business_hours }}</div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if dealer.google_maps_url %}
+      <iframe src="{{ dealer.google_maps_url }}" width="100%" height="260" style="border:none;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1)" allowfullscreen loading="lazy"></iframe>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

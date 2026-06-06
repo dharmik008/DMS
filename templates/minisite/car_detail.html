@@ -1,0 +1,268 @@
+{% extends 'minisite/base.html' %}
+{% block title %}{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} — {{ dealer.website_name or dealer.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .detail-layout{display:grid;grid-template-columns:1fr 380px;gap:32px;align-items:start}
+  .gallery-main{border-radius:16px;overflow:hidden;height:420px;background:#f1f5f9;position:relative}
+  .gallery-main img{width:100%;height:100%;object-fit:cover}
+  .gallery-thumbs{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .thumb{width:80px;height:60px;border-radius:8px;overflow:hidden;cursor:pointer;border:3px solid transparent;transition:border .18s}
+  .thumb.active{border-color:#1a73e8}
+  .thumb img{width:100%;height:100%;object-fit:cover}
+  .detail-card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 24px rgba(0,0,0,.08);position:sticky;top:90px}
+  .detail-price{font-size:32px;font-weight:800;color:#1a73e8;margin-bottom:4px}
+  .detail-neg{display:inline-block;background:#d1fae5;color:#065f46;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:16px}
+  .detail-actions{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+  .spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+  .spec-item{background:#f8fafc;border-radius:10px;padding:14px;border:1px solid #e2e8f0}
+  .spec-label{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+  .spec-value{font-size:15px;font-weight:700;color:#0f172a;margin-top:4px}
+  .section-card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 16px rgba(0,0,0,.06);margin-top:24px}
+  .section-card h3{font-size:18px;font-weight:700;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e2e8f0}
+  .inquiry-form input,.inquiry-form textarea{width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:10px;outline:none;font-family:inherit}
+  .inquiry-form input:focus,.inquiry-form textarea:focus{border-color:#1a73e8}
+  .inquiry-form button{width:100%;padding:13px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer}
+  .similar-section{margin-top:60px}
+  .no-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e3a5f,#1a73e8)}
+  @media(max-width:900px){.detail-layout{grid-template-columns:1fr}.detail-card{position:static}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ms-page">
+  <div class="breadcrumb">
+    <a href="{{ url_for('minisite.home', website_name=website_name) }}">Home</a>
+    <span>/</span>
+    <a href="{{ url_for('minisite.inventory', website_name=website_name) }}">Inventory</a>
+    <span>/</span> {{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}
+  </div>
+
+  <div class="detail-layout">
+    <!-- LEFT: GALLERY + SPECS -->
+    <div>
+      <!-- Gallery -->
+      <div class="gallery-main" id="mainImg">
+        {% set all_imgs = vehicle.all_image_urls if vehicle.all_image_urls else ([vehicle.display_image_url] if vehicle.display_image_url else []) %}
+        {% if all_imgs %}
+          <img src="{{ all_imgs[0] }}" id="mainImgEl" alt="{{ vehicle.make }} {{ vehicle.model }}" />
+        {% else %}
+          <div class="no-img-placeholder"><i class="fas fa-car" style="font-size:80px;color:rgba(255,255,255,.3)"></i></div>
+        {% endif %}
+      </div>
+      {% if all_imgs | length > 1 %}
+      <div class="gallery-thumbs">
+        {% for img in all_imgs %}
+        <div class="thumb {{ 'active' if loop.first }}" onclick="switchImg('{{ img }}', this)">
+          <img src="{{ img }}" alt="thumb" />
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Specs -->
+      <div class="section-card">
+        <h3><i class="fas fa-list-ul" style="color:#1a73e8;margin-right:8px"></i>Full Specifications</h3>
+        <div class="spec-grid">
+          <div class="spec-item">
+            <div class="spec-label">Make</div>
+            <div class="spec-value">{{ vehicle.make }}</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Model</div>
+            <div class="spec-value">{{ vehicle.model }}</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Year</div>
+            <div class="spec-value">{{ vehicle.year }}</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Variant</div>
+            <div class="spec-value">{{ vehicle.variant or '—' }}</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Fuel Type</div>
+            <div class="spec-value">{{ vehicle.fuel_type }}</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Transmission</div>
+            <div class="spec-value">{{ vehicle.transmission }}</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Mileage</div>
+            <div class="spec-value">{{ '{:,}'.format(vehicle.mileage) }} km</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Engine</div>
+            <div class="spec-value">{{ vehicle.engine_cc ~ ' cc' if vehicle.engine_cc else '—' }}</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Color</div>
+            <div class="spec-value">{{ vehicle.color or '—' }}</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Condition</div>
+            <div class="spec-value" style="text-transform:capitalize">{{ vehicle.condition or '—' }}</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">RC Available</div>
+            <div class="spec-value">{{ 'Yes' if vehicle.rc_available else 'No' }}</div>
+          </div>
+          {% if vehicle.insurance_till %}
+          <div class="spec-item">
+            <div class="spec-label">Insurance Valid Till</div>
+            <div class="spec-value">{{ vehicle.insurance_till }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if vehicle.description %}
+      <div class="section-card">
+        <h3><i class="fas fa-info-circle" style="color:#1a73e8;margin-right:8px"></i>Description</h3>
+        <p style="color:#64748b;line-height:1.8;font-size:15px">{{ vehicle.description }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- RIGHT: PRICE CARD + INQUIRY -->
+    <div>
+      <div class="detail-card">
+        <div style="font-size:14px;color:#64748b;margin-bottom:6px">{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}</div>
+        <div style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:8px">{{ vehicle.variant or '' }}</div>
+        <div class="detail-price">₹{{ '{:,.0f}'.format(vehicle.price) }}</div>
+        {% if vehicle.negotiable %}<span class="detail-neg"><i class="fas fa-check"></i> Negotiable</span>{% endif %}
+
+        <div style="border-top:1px solid #e2e8f0;padding-top:16px;margin-top:4px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:#64748b;margin-bottom:16px">
+            <span><i class="fas fa-tachometer-alt" style="color:#1a73e8"></i> {{ '{:,}'.format(vehicle.mileage) }} km</span>
+            <span><i class="fas fa-gas-pump" style="color:#1a73e8"></i> {{ vehicle.fuel_type }}</span>
+            <span><i class="fas fa-cog" style="color:#1a73e8"></i> {{ vehicle.transmission }}</span>
+          </div>
+
+          <div class="detail-actions">
+            {% if dealer.phone %}
+            <a href="tel:{{ dealer.phone }}" class="btn btn-primary" style="justify-content:center;font-size:15px;padding:14px">
+              <i class="fas fa-phone"></i> Call {{ dealer.phone }}
+            </a>
+            {% endif %}
+            {% if dealer.whatsapp_number %}
+            {% set wa_msg = "Hi! I'm interested in the " ~ vehicle.year ~ " " ~ vehicle.make ~ " " ~ vehicle.model ~ " listed at ₹" ~ '{:,.0f}'.format(vehicle.price) ~ ". Is it still available?" %}
+            <a href="https://wa.me/91{{ dealer.whatsapp_number | replace('+91','') | replace(' ','') }}?text={{ wa_msg | urlencode }}" target="_blank" class="btn btn-whatsapp" style="justify-content:center;font-size:15px;padding:14px">
+              <i class="fab fa-whatsapp"></i> WhatsApp
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Inquiry Form -->
+      <div class="section-card">
+        <h3><i class="fas fa-envelope" style="color:#1a73e8;margin-right:8px"></i>Send Enquiry</h3>
+        <form class="inquiry-form" id="inquiryForm">
+          <input type="hidden" name="vehicle_id" value="{{ vehicle.id }}" />
+          <input type="text" name="name" placeholder="Your Name *" required />
+          <input type="tel" name="phone" placeholder="Phone Number *" required />
+          <input type="email" name="email" placeholder="Email (optional)" />
+          <textarea name="message" rows="3" placeholder="Your message...">I'm interested in the {{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}. Please contact me.</textarea>
+          <button type="submit"><i class="fas fa-paper-plane"></i> Send Enquiry</button>
+        </form>
+        <div id="inquiryMsg" style="display:none;margin-top:12px;padding:12px;background:#d1fae5;color:#065f46;border-radius:8px;font-size:14px;font-weight:600"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIMILAR CARS -->
+  {% if similar %}
+  <div class="similar-section">
+    <div class="section-header" style="text-align:left">
+      <h2 style="font-size:22px">Similar Cars</h2>
+    </div>
+    <div class="car-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
+      {% for car in similar %}
+      <a href="{{ url_for('minisite.car_detail', website_name=website_name, car_id=car.id) }}" class="car-card">
+        <div class="car-card-img">
+          {% if car.display_image_url %}
+            <img src="{{ car.display_image_url }}" alt="{{ car.make }}" loading="lazy"
+                 onerror="this.onerror=null;this.src='/static/images/defaults/default_car.jpg'" />
+          {% else %}
+            <div class="no-img-placeholder" style="height:100%"><i class="fas fa-car" style="font-size:48px;color:rgba(255,255,255,.3)"></i></div>
+          {% endif %}
+        </div>
+        <div class="car-card-body">
+          <div class="car-card-name">{{ car.year }} {{ car.make }} {{ car.model }}</div>
+          <div class="car-card-meta">
+            <span class="car-meta-pill"><i class="fas fa-tachometer-alt"></i> {{ '{:,}'.format(car.mileage) }} km</span>
+            <span class="car-meta-pill"><i class="fas fa-gas-pump"></i> {{ car.fuel_type }}</span>
+          </div>
+          <div class="car-card-price">₹{{ '{:,.0f}'.format(car.price) }}</div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Gallery image list (all_image_urls already has full /static/ paths)
+const msAllImgs = [
+  {% for img in all_imgs %}"{{ img }}"{% if not loop.last %},{% endif %}{% endfor %}
+];
+let msCurrent = 0;
+
+function switchImg(src, thumb) {
+  document.getElementById('mainImgEl').src = src;
+  document.querySelectorAll('.thumb').forEach((t, i) => {
+    t.classList.toggle('active', t === thumb);
+    if (t === thumb) msCurrent = i;
+  });
+}
+
+// Mobile swipe support
+let msTouchX = 0;
+const msGallery = document.querySelector('.gallery-main');
+if (msGallery) {
+  msGallery.addEventListener('touchstart', e => { msTouchX = e.touches[0].clientX; }, {passive:true});
+  msGallery.addEventListener('touchend', e => {
+    const diff = msTouchX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40 && msAllImgs.length > 1) {
+      msCurrent = (msCurrent + (diff > 0 ? 1 : -1) + msAllImgs.length) % msAllImgs.length;
+      const thumbs = document.querySelectorAll('.thumb');
+      switchImg(msAllImgs[msCurrent], thumbs[msCurrent] || thumbs[0]);
+    }
+  }, {passive:true});
+}
+
+document.getElementById('inquiryForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = form.querySelector('button');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const res = await fetch('{{ url_for("minisite.submit_inquiry", website_name=website_name) }}', {
+      method: 'POST',
+      body: new FormData(form)
+    });
+    const data = await res.json();
+    const msg = document.getElementById('inquiryMsg');
+    if (data.success) {
+      msg.textContent = '✅ Enquiry sent! We will contact you shortly.';
+      msg.style.display = 'block';
+      form.reset();
+    } else {
+      msg.textContent = '❌ ' + (data.error || 'Failed. Try again.');
+      msg.style.background = '#fee2e2'; msg.style.color = '#991b1b';
+      msg.style.display = 'block';
+    }
+  } catch(err) {
+    alert('Network error. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Enquiry';
+  }
+});
+</script>
+{% endblock %}

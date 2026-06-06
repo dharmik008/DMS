@@ -1,0 +1,160 @@
+{% extends 'minisite/base.html' %}
+{% block title %}Inventory — {{ dealer.website_name or dealer.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .inv-hero{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:52px 24px;text-align:center}
+  .inv-hero h1{font-size:36px;font-weight:800}
+  .inv-hero p{color:#94a3b8;margin-top:8px}
+  .inv-layout{display:grid;grid-template-columns:260px 1fr;gap:32px;align-items:start}
+  .filter-panel{background:#fff;border-radius:16px;padding:24px;box-shadow:0 2px 16px rgba(0,0,0,.06);position:sticky;top:90px}
+  .filter-panel h3{font-size:16px;font-weight:700;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #e2e8f0}
+  .filter-group{margin-bottom:20px}
+  .filter-group label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:8px}
+  .filter-group select,.filter-group input{width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;background:#f8fafc;color:#0f172a}
+  .filter-group select:focus,.filter-group input:focus{border-color:#1a73e8}
+  .price-row{display:flex;gap:8px}
+  .price-row input{flex:1}
+  .filter-apply{width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:background .18s;margin-top:4px}
+  .filter-apply:hover{background:#0f5cc7}
+  .filter-reset{width:100%;padding:10px;background:transparent;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;margin-top:8px}
+  .inv-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+  .inv-count{font-size:14px;color:#64748b}
+  .sort-select{padding:9px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;background:#fff;cursor:pointer}
+  @media(max-width:900px){.inv-layout{grid-template-columns:1fr}.filter-panel{position:static}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="inv-hero">
+  <h1><i class="fas fa-car-side"></i> Browse Inventory</h1>
+  <p>{{ vehicles | length }} cars available from {{ dealer.website_name or dealer.name }}</p>
+</div>
+
+<div class="ms-page">
+  <div class="breadcrumb">
+    <a href="{{ url_for('minisite.home', website_name=website_name) }}">Home</a>
+    <span>/</span> Inventory
+  </div>
+
+  <div class="inv-layout">
+    <!-- FILTERS -->
+    <aside class="filter-panel">
+      <h3><i class="fas fa-sliders-h" style="color:#1a73e8;margin-right:8px"></i>Filters</h3>
+      <form method="GET" action="{{ url_for('minisite.inventory', website_name=website_name) }}">
+        <div class="filter-group">
+          <label>Brand</label>
+          <select name="brand">
+            <option value="">All Brands</option>
+            {% for b in brands %}
+            <option value="{{ b }}" {{ 'selected' if filters.brand == b }}>{{ b }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Fuel Type</label>
+          <select name="fuel">
+            <option value="">All Fuel Types</option>
+            {% for f in ['Petrol','Diesel','Electric','CNG','Hybrid'] %}
+            <option value="{{ f }}" {{ 'selected' if filters.fuel == f }}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Transmission</label>
+          <select name="transmission">
+            <option value="">All</option>
+            <option value="Manual" {{ 'selected' if filters.transmission == 'Manual' }}>Manual</option>
+            <option value="Automatic" {{ 'selected' if filters.transmission == 'Automatic' }}>Automatic</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Budget (₹)</label>
+          <div class="price-row">
+            <input type="number" name="min_price" placeholder="Min" value="{{ filters.min_price or '' }}" />
+            <input type="number" name="max_price" placeholder="Max" value="{{ filters.max_price or '' }}" />
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>Sort By</label>
+          <select name="sort">
+            <option value="newest" {{ 'selected' if filters.sort == 'newest' }}>Newest First</option>
+            <option value="price_asc" {{ 'selected' if filters.sort == 'price_asc' }}>Price: Low → High</option>
+            <option value="price_desc" {{ 'selected' if filters.sort == 'price_desc' }}>Price: High → Low</option>
+          </select>
+        </div>
+        <button type="submit" class="filter-apply"><i class="fas fa-search"></i> Apply Filters</button>
+        <a href="{{ url_for('minisite.inventory', website_name=website_name) }}"><button type="button" class="filter-reset">Reset</button></a>
+      </form>
+    </aside>
+
+    <!-- RESULTS -->
+    <div>
+      <div class="inv-top">
+        <div class="inv-count">
+          Showing <strong>{{ vehicles | length }}</strong> of <strong>{{ pagination.total }}</strong> cars
+        </div>
+      </div>
+
+      <div class="car-grid">
+        {% for car in vehicles %}
+        <a href="{{ url_for('minisite.car_detail', website_name=website_name, car_id=car.id) }}" class="car-card">
+          <div class="car-card-img">
+            {% if car.display_image_url %}
+              <img src="{{ car.display_image_url }}" alt="{{ car.make }} {{ car.model }}" loading="lazy"
+                   onerror="this.onerror=null;this.src='/static/images/defaults/default_car.jpg'" />
+            {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e3a5f,#1a73e8)">
+                <i class="fas fa-car" style="font-size:60px;color:rgba(255,255,255,.3)"></i>
+              </div>
+            {% endif %}
+            {% if car.featured %}<div class="car-card-badge"><i class="fas fa-star"></i> Featured</div>{% endif %}
+          </div>
+          <div class="car-card-body">
+            <div class="car-card-name">{{ car.year }} {{ car.make }} {{ car.model }}</div>
+            <div class="car-card-sub">{{ car.variant or '' }}</div>
+            <div class="car-card-meta">
+              <span class="car-meta-pill"><i class="fas fa-tachometer-alt"></i> {{ '{:,}'.format(car.mileage) }} km</span>
+              <span class="car-meta-pill"><i class="fas fa-gas-pump"></i> {{ car.fuel_type }}</span>
+              <span class="car-meta-pill"><i class="fas fa-cog"></i> {{ car.transmission }}</span>
+            </div>
+            <div class="car-card-price">₹{{ '{:,.0f}'.format(car.price) }}
+              {% if car.negotiable %}<small> Negotiable</small>{% endif %}
+            </div>
+          </div>
+          <div class="car-card-footer">
+            <span style="font-size:13px;color:#64748b"><i class="fas fa-map-marker-alt"></i> {{ dealer.city or 'India' }}</span>
+            <span style="font-size:13px;font-weight:600;color:#1a73e8">View Details →</span>
+          </div>
+        </a>
+        {% else %}
+        <div style="grid-column:1/-1;text-align:center;padding:80px 0;color:#64748b">
+          <i class="fas fa-car" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:16px"></i>
+          No cars match your filters. <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" style="color:#1a73e8">Clear filters</a>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- PAGINATION -->
+      {% if pagination.pages > 1 %}
+      <div class="pagination">
+        {% if pagination.has_prev %}
+          <a href="?page={{ pagination.prev_num }}&brand={{ filters.brand }}&fuel={{ filters.fuel }}&sort={{ filters.sort }}">&laquo;</a>
+        {% endif %}
+        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if p %}
+            <a href="?page={{ p }}&brand={{ filters.brand }}&fuel={{ filters.fuel }}&sort={{ filters.sort }}"
+               class="{{ 'current' if p == pagination.page else '' }}">{{ p }}</a>
+          {% else %}
+            <span>…</span>
+          {% endif %}
+        {% endfor %}
+        {% if pagination.has_next %}
+          <a href="?page={{ pagination.next_num }}&brand={{ filters.brand }}&fuel={{ filters.fuel }}&sort={{ filters.sort }}">&raquo;</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

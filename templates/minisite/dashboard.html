@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — {{ dealer.website_name or dealer.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --primary:#1a73e8;--primary-dark:#0f5cc7;--accent:#f59e0b;
+      --success:#10b981;--warning:#f59e0b;--danger:#ef4444;--info:#6366f1;
+      --dark:#0f172a;--dark2:#1e293b;--muted:#64748b;
+      --border:#e2e8f0;--bg:#f1f5f9;--white:#ffffff;
+      --sidebar-w:260px;--radius:12px;
+      --shadow:0 4px 20px rgba(0,0,0,.07);
+    }
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--dark);display:flex;min-height:100vh}
+    a{text-decoration:none;color:inherit}
+    img{max-width:100%;display:block}
+
+    /* ── Sidebar ── */
+    .sidebar{
+      width:var(--sidebar-w);min-height:100vh;background:var(--dark);
+      display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:50;
+      transition:transform .25s;
+    }
+    .sidebar-brand{
+      padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.08);
+      display:flex;align-items:center;gap:12px;
+    }
+    .brand-logo{width:40px;height:40px;border-radius:10px;
+      background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+      color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .brand-logo img{width:40px;height:40px;object-fit:contain;border-radius:10px}
+    .brand-name{font-size:15px;font-weight:700;color:#fff;line-height:1.25}
+    .brand-sub{font-size:11px;color:#64748b;margin-top:2px}
+
+    .sidebar-nav{flex:1;padding:16px 0;overflow-y:auto}
+    .nav-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+      color:#475569;padding:14px 20px 6px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:11px 20px;
+      font-size:14px;font-weight:500;color:#94a3b8;border-radius:0;
+      transition:all .15s;cursor:pointer;border-left:3px solid transparent}
+    .nav-item:hover{background:rgba(255,255,255,.05);color:#fff}
+    .nav-item.active{background:rgba(26,115,232,.15);color:var(--primary);border-left-color:var(--primary)}
+    .nav-item i{width:18px;text-align:center;font-size:14px}
+    .nav-badge{margin-left:auto;background:var(--danger);color:#fff;
+      font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+
+    .sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08)}
+    .sidebar-footer a{display:flex;align-items:center;gap:10px;font-size:13px;
+      color:#64748b;padding:8px 0;transition:color .15s}
+    .sidebar-footer a:hover{color:#fff}
+
+    /* ── Main area ── */
+    .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+    /* ── Topbar ── */
+    .topbar{
+      background:var(--white);border-bottom:1px solid var(--border);
+      height:64px;display:flex;align-items:center;padding:0 28px;gap:16px;
+      position:sticky;top:0;z-index:40;
+    }
+    .topbar-title{font-size:18px;font-weight:700;color:var(--dark);flex:1}
+    .topbar-actions{display:flex;gap:10px;align-items:center}
+    .topbar-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;
+      border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary-dark)}
+    .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--muted)}
+    .btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+    .hamburger{display:none;background:none;border:none;font-size:20px;cursor:pointer;color:var(--dark);padding:4px}
+
+    /* ── Content ── */
+    .content{padding:28px;flex:1}
+
+    /* ── Stat cards ── */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+    .stat-card{
+      background:var(--white);border-radius:var(--radius);padding:20px;
+      box-shadow:var(--shadow);display:flex;align-items:flex-start;gap:16px;
+      transition:transform .15s,box-shadow .15s;
+    }
+    .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.1)}
+    .stat-icon{
+      width:48px;height:48px;border-radius:12px;display:flex;
+      align-items:center;justify-content:center;font-size:20px;flex-shrink:0;
+    }
+    .stat-icon.blue{background:#eff6ff;color:var(--primary)}
+    .stat-icon.green{background:#f0fdf4;color:var(--success)}
+    .stat-icon.amber{background:#fffbeb;color:var(--warning)}
+    .stat-icon.red{background:#fef2f2;color:var(--danger)}
+    .stat-icon.purple{background:#f5f3ff;color:var(--info)}
+    .stat-icon.slate{background:#f8fafc;color:var(--muted)}
+    .stat-body{}
+    .stat-value{font-size:26px;font-weight:800;color:var(--dark);line-height:1}
+    .stat-label{font-size:13px;color:var(--muted);margin-top:4px}
+
+    /* ── Panels ── */
+    .panels-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}
+    .panel{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+    .panel-head{
+      padding:16px 20px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .panel-head h3{font-size:15px;font-weight:700;color:var(--dark)}
+    .panel-head a{font-size:12px;color:var(--primary);font-weight:600}
+    .panel-body{padding:12px 0}
+
+    /* ── Table ── */
+    .mini-table{width:100%;border-collapse:collapse}
+    .mini-table th{font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.05em;color:var(--muted);padding:8px 16px;
+      border-bottom:1px solid var(--border);text-align:left}
+    .mini-table td{padding:10px 16px;font-size:13px;vertical-align:middle;
+      border-bottom:1px solid var(--border)}
+    .mini-table tr:last-child td{border-bottom:none}
+    .mini-table tr:hover td{background:#f8fafc}
+
+    /* ── Badges ── */
+    .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;
+      font-size:11px;font-weight:700;white-space:nowrap}
+    .badge-green{background:#d1fae5;color:#065f46}
+    .badge-red{background:#fee2e2;color:#991b1b}
+    .badge-amber{background:#fef3c7;color:#92400e}
+    .badge-blue{background:#dbeafe;color:#1e40af}
+    .badge-slate{background:#f1f5f9;color:#475569}
+
+    /* ── Inventory grid ── */
+    .inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;padding:16px}
+    .inv-card{border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:all .15s}
+    .inv-card:hover{border-color:var(--primary);box-shadow:0 4px 16px rgba(26,115,232,.12)}
+    .inv-card-img{height:130px;background:#f8fafc;overflow:hidden;position:relative}
+    .inv-card-img img{width:100%;height:100%;object-fit:cover}
+    .inv-card-no-img{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+      background:#f1f5f9;color:var(--muted);font-size:13px;flex-direction:column;gap:6px}
+    .inv-card-body{padding:10px 12px}
+    .inv-card-name{font-size:13px;font-weight:700;color:var(--dark)}
+    .inv-card-sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .inv-card-price{font-size:15px;font-weight:800;color:var(--primary);margin-top:6px}
+    .inv-card-status{position:absolute;top:8px;right:8px}
+
+    /* ── Donut/bar charts (CSS only) ── */
+    .chart-row{display:flex;gap:10px;flex-wrap:wrap;padding:16px}
+    .chart-bar-item{flex:1;min-width:120px}
+    .chart-bar-label{font-size:12px;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
+    .chart-bar-track{height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+    .chart-bar-fill{height:100%;border-radius:4px;background:var(--primary);transition:width .6s}
+
+    /* ── Fuel chips ── */
+    .fuel-chips{display:flex;flex-wrap:wrap;gap:8px;padding:16px}
+    .fuel-chip{
+      display:flex;align-items:center;gap:8px;padding:8px 14px;
+      border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:600;
+      background:var(--white);
+    }
+    .fuel-chip-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+    /* ── Flash ── */
+    .flash{padding:12px 20px;font-size:13px;font-weight:500;margin-bottom:16px;border-radius:8px}
+    .flash.error{background:#fee2e2;color:#991b1b}
+    .flash.success{background:#d1fae5;color:#065f46}
+
+    /* ── Responsive ── */
+    @media(max-width:900px){
+      .panels-row{grid-template-columns:1fr}
+    }
+    @media(max-width:768px){
+      .sidebar{transform:translateX(-100%)}
+      .sidebar.open{transform:translateX(0)}
+      .main{margin-left:0}
+      .hamburger{display:block}
+      .stats-grid{grid-template-columns:1fr 1fr}
+      .inv-grid{grid-template-columns:1fr 1fr}
+      .content{padding:16px}
+    }
+    @media(max-width:480px){
+      .stats-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">
+      {% if logo_type == 'image' %}
+        <img src="{{ url_for('static', filename='images/uploads/' ~ logo_value) }}" alt="logo" />
+      {% else %}
+        {{ logo_value }}
+      {% endif %}
+    </div>
+    <div>
+      <div class="brand-name">{{ dealer.website_name or dealer.name }}</div>
+      <div class="brand-sub">Mini Site Dashboard</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-label">Overview</div>
+    <a class="nav-item active" href="{{ url_for('minisite.dashboard', website_name=website_name) }}">
+      <i class="fas fa-chart-pie"></i> Dashboard
+    </a>
+    <a class="nav-item" href="{{ url_for('minisite.inventory', website_name=website_name) }}">
+      <i class="fas fa-car"></i> Inventory
+      {% if available %}<span class="nav-badge">{{ available }}</span>{% endif %}
+    </a>
+    <a class="nav-item" href="{{ url_for('minisite.featured_deals', website_name=website_name) }}">
+      <i class="fas fa-star"></i> Featured Deals
+      {% if featured_count %}<span class="nav-badge" style="background:var(--warning)">{{ featured_count }}</span>{% endif %}
+    </a>
+
+    <div class="nav-label">Engagement</div>
+    <a class="nav-item" href="#">
+      <i class="fas fa-bell"></i> Inquiries
+      {% if open_inquiries %}<span class="nav-badge">{{ open_inquiries }}</span>{% endif %}
+    </a>
+    <a class="nav-item" href="#">
+      <i class="fas fa-user-tie"></i> Leads
+      {% if new_leads %}<span class="nav-badge">{{ new_leads }}</span>{% endif %}
+    </a>
+
+    <div class="nav-label">Public Site</div>
+    <a class="nav-item" href="{{ url_for('minisite.home', website_name=website_name) }}" target="_blank">
+      <i class="fas fa-globe"></i> View Mini Site <i class="fas fa-external-link-alt" style="margin-left:auto;font-size:10px;opacity:.5"></i>
+    </a>
+    <a class="nav-item" href="{{ url_for('minisite.about', website_name=website_name) }}" target="_blank">
+      <i class="fas fa-info-circle"></i> About Page
+    </a>
+    <a class="nav-item" href="{{ url_for('minisite.contact', website_name=website_name) }}" target="_blank">
+      <i class="fas fa-envelope"></i> Contact Page
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="{{ url_for('dealer.dashboard') }}">
+      <i class="fas fa-cog" style="width:16px"></i> Back to DMS
+    </a>
+    <a href="{{ url_for('auth.logout') }}">
+      <i class="fas fa-sign-out-alt" style="width:16px"></i> Logout
+    </a>
+  </div>
+</aside>
+
+<!-- ── Main ─────────────────────────────────────────────────────────────── -->
+<div class="main">
+  <!-- Topbar -->
+  <div class="topbar">
+    <button class="hamburger" id="hamburger" aria-label="menu">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="topbar-title">Dashboard</div>
+    <div class="topbar-actions">
+      <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" class="topbar-btn btn-outline">
+        <i class="fas fa-list"></i> Inventory
+      </a>
+      <a href="{{ url_for('minisite.home', website_name=website_name) }}" target="_blank" class="topbar-btn btn-primary">
+        <i class="fas fa-external-link-alt"></i> View Site
+      </a>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash {{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <!-- ── KPI Stats ── -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-car"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ total_vehicles }}</div>
+          <div class="stat-label">Total Vehicles</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ available }}</div>
+          <div class="stat-label">Available</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><i class="fas fa-handshake"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ sold }}</div>
+          <div class="stat-label">Sold</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon amber"><i class="fas fa-star"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ featured_count }}</div>
+          <div class="stat-label">Featured</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple"><i class="fas fa-bell"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ open_inquiries }}</div>
+          <div class="stat-label">Open Inquiries</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon slate"><i class="fas fa-user"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ new_leads }}</div>
+          <div class="stat-label">New Leads</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-trophy"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ closed_deals }}</div>
+          <div class="stat-label">Deals Closed</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-rupee-sign"></i></div>
+        <div class="stat-body">
+          <div class="stat-value" style="font-size:18px">
+            {% if total_revenue >= 10000000 %}
+              ₹{{ "%.1f"|format(total_revenue / 10000000) }}Cr
+            {% elif total_revenue >= 100000 %}
+              ₹{{ "%.1f"|format(total_revenue / 100000) }}L
+            {% else %}
+              ₹{{ "{:,.0f}".format(total_revenue) }}
+            {% endif %}
+          </div>
+          <div class="stat-label">Revenue (Delivered)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Panels Row 1: Price Bands + Fuel Breakdown ── -->
+    <div class="panels-row">
+      <div class="panel">
+        <div class="panel-head">
+          <h3><i class="fas fa-chart-bar" style="color:var(--primary);margin-right:8px"></i>Price Bands</h3>
+        </div>
+        <div class="chart-row" style="flex-direction:column;gap:12px;padding:20px">
+          {% set max_count = price_bands | map(attribute='count') | max %}
+          {% for band in price_bands %}
+          <div class="chart-bar-item">
+            <div class="chart-bar-label">
+              <span>{{ band.label }}</span>
+              <span style="font-weight:700;color:var(--dark)">{{ band.count }}</span>
+            </div>
+            <div class="chart-bar-track">
+              <div class="chart-bar-fill" style="width:{{ (band.count / (max_count if max_count > 0 else 1) * 100)|int }}%;background:var(--primary)"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3><i class="fas fa-gas-pump" style="color:var(--success);margin-right:8px"></i>Fuel Types</h3>
+        </div>
+        <div class="fuel-chips">
+          {% set fuel_colors = {'Petrol':'#3b82f6','Diesel':'#f59e0b','CNG':'#10b981','Electric':'#6366f1','Hybrid':'#ec4899'} %}
+          {% if fuel_breakdown %}
+            {% for fuel_type, cnt in fuel_breakdown %}
+            <div class="fuel-chip">
+              <div class="fuel-chip-dot" style="background:{{ fuel_colors.get(fuel_type, '#94a3b8') }}"></div>
+              <span>{{ fuel_type or 'Other' }}</span>
+              <span style="margin-left:4px;color:var(--muted);font-weight:400">{{ cnt }}</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p style="color:var(--muted);font-size:13px">No vehicles in inventory yet.</p>
+          {% endif %}
+        </div>
+
+        <!-- Availability breakdown -->
+        <div style="padding:0 16px 16px">
+          <div style="background:#f8fafc;border-radius:10px;padding:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+            <div>
+              <div style="font-size:22px;font-weight:800;color:var(--success)">{{ available }}</div>
+              <div style="font-size:11px;color:var(--muted)">Available</div>
+            </div>
+            <div>
+              <div style="font-size:22px;font-weight:800;color:var(--danger)">{{ sold }}</div>
+              <div style="font-size:11px;color:var(--muted)">Sold</div>
+            </div>
+            <div>
+              <div style="font-size:22px;font-weight:800;color:var(--warning)">{{ reserved }}</div>
+              <div style="font-size:11px;color:var(--muted)">Reserved</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Recent Inventory ── -->
+    <div class="panel" style="margin-bottom:24px">
+      <div class="panel-head">
+        <h3><i class="fas fa-car" style="color:var(--primary);margin-right:8px"></i>Recent Inventory</h3>
+        <a href="{{ url_for('minisite.inventory', website_name=website_name) }}">View all →</a>
+      </div>
+      {% if recent_vehicles %}
+      <div class="inv-grid">
+        {% for car in recent_vehicles %}
+        <a href="{{ url_for('minisite.car_detail', website_name=website_name, car_id=car.id) }}" style="color:inherit">
+          <div class="inv-card">
+            <div class="inv-card-img">
+              {% if car.display_image_url %}
+                <img src="{{ car.display_image_url }}" alt="{{ car.make }} {{ car.model }}" loading="lazy"
+                     onerror="this.onerror=null;this.src='/static/images/defaults/default_car.jpg'" />
+              {% else %}
+                <div class="inv-card-no-img">
+                  <i class="fas fa-car" style="font-size:24px;opacity:.3"></i>
+                  <span>No image</span>
+                </div>
+              {% endif %}
+              <span class="inv-card-status">
+                {% if car.status == 'available' %}
+                  <span class="badge badge-green">Available</span>
+                {% elif car.status == 'sold' %}
+                  <span class="badge badge-red">Sold</span>
+                {% else %}
+                  <span class="badge badge-amber">{{ car.status|title }}</span>
+                {% endif %}
+              </span>
+            </div>
+            <div class="inv-card-body">
+              <div class="inv-card-name">{{ car.year }} {{ car.make }} {{ car.model }}</div>
+              <div class="inv-card-sub">{{ car.fuel_type }} · {{ car.transmission }}</div>
+              <div class="inv-card-price">
+                ₹{% if car.price >= 10000000 %}{{ "%.2f"|format(car.price / 10000000) }} Cr
+                {% elif car.price >= 100000 %}{{ "%.2f"|format(car.price / 100000) }} L
+                {% else %}{{ "{:,.0f}".format(car.price) }}{% endif %}
+              </div>
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="padding:32px;text-align:center;color:var(--muted)">
+        <i class="fas fa-car" style="font-size:36px;opacity:.2;margin-bottom:12px;display:block"></i>
+        No vehicles yet. Add inventory from the DMS.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Panels Row 2: Recent Leads + Recent Inquiries ── -->
+    <div class="panels-row">
+      <div class="panel">
+        <div class="panel-head">
+          <h3><i class="fas fa-user-tie" style="color:var(--info);margin-right:8px"></i>Recent Leads</h3>
+        </div>
+        {% if recent_leads %}
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Stage</th>
+              <th>Source</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lead in recent_leads %}
+            <tr>
+              <td>
+                <div style="font-weight:600">{{ lead.customer_name }}</div>
+                <div style="font-size:11px;color:var(--muted)">{{ lead.customer_phone }}</div>
+              </td>
+              <td>
+                {% if lead.stage == 'new' %}<span class="badge badge-blue">New</span>
+                {% elif lead.stage == 'interested' %}<span class="badge badge-amber">Interested</span>
+                {% elif lead.stage == 'negotiation' %}<span class="badge badge-green">Negotiation</span>
+                {% elif lead.stage == 'closed' %}<span class="badge badge-slate">Closed</span>
+                {% else %}<span class="badge badge-slate">{{ lead.stage|title }}</span>
+                {% endif %}
+              </td>
+              <td style="color:var(--muted)">{{ lead.source|title }}</td>
+              <td style="color:var(--muted);font-size:12px">
+                {{ lead.created_at.strftime('%d %b') if lead.created_at else '—' }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">No leads yet.</div>
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3><i class="fas fa-bell" style="color:var(--warning);margin-right:8px"></i>Recent Inquiries</h3>
+        </div>
+        {% if recent_inquiries %}
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inq in recent_inquiries %}
+            <tr>
+              <td>
+                <div style="font-weight:600">{{ inq.name }}</div>
+                <div style="font-size:11px;color:var(--muted)">{{ inq.phone }}</div>
+              </td>
+              <td style="color:var(--muted)">{{ inq.inquiry_type|title }}</td>
+              <td>
+                {% if inq.status == 'pending' %}<span class="badge badge-amber">Pending</span>
+                {% elif inq.status == 'resolved' %}<span class="badge badge-green">Resolved</span>
+                {% else %}<span class="badge badge-slate">{{ inq.status|title }}</span>
+                {% endif %}
+              </td>
+              <td style="color:var(--muted);font-size:12px">
+                {{ inq.created_at.strftime('%d %b') if inq.created_at else '—' }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">No inquiries yet.</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+  // Sidebar toggle (mobile)
+  const sidebar = document.getElementById('sidebar');
+  document.getElementById('hamburger').addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+  });
+  document.addEventListener('click', e => {
+    if (!sidebar.contains(e.target) && !e.target.closest('#hamburger')) {
+      sidebar.classList.remove('open');
+    }
+  });
+</script>
+</body>
+</html>

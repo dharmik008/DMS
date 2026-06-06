@@ -1,0 +1,66 @@
+{% extends 'minisite/base.html' %}
+{% block title %}Featured Deals — {{ dealer.website_name or dealer.name }}{% endblock %}
+{% block content %}
+<div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:60px 24px;text-align:center">
+  <div style="display:inline-block;background:rgba(245,158,11,.15);color:#f59e0b;font-size:13px;font-weight:700;padding:6px 16px;border-radius:20px;margin-bottom:16px;border:1px solid rgba(245,158,11,.3)">
+    <i class="fas fa-fire"></i> HOT DEALS
+  </div>
+  <h1 style="font-size:40px;font-weight:800">Featured Cars</h1>
+  <p style="color:#94a3b8;margin-top:10px;font-size:16px">Handpicked cars — best value, fully inspected</p>
+</div>
+
+<div class="ms-page">
+  <div class="breadcrumb">
+    <a href="{{ url_for('minisite.home', website_name=website_name) }}">Home</a>
+    <span>/</span> Featured Deals
+  </div>
+
+  {% if featured %}
+  <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;margin-bottom:32px;display:flex;align-items:center;gap:12px">
+    <i class="fas fa-bolt" style="color:#d97706;font-size:20px"></i>
+    <span style="font-size:14px;font-weight:600;color:#92400e">{{ featured | length }} featured cars available — grab them before they're gone!</span>
+  </div>
+
+  <div class="car-grid">
+    {% for car in featured %}
+    <a href="{{ url_for('minisite.car_detail', website_name=website_name, car_id=car.id) }}" class="car-card">
+      <div class="car-card-img">
+        {% if car.display_image_url %}
+          <img src="{{ car.display_image_url }}" alt="{{ car.make }} {{ car.model }}" loading="lazy"
+               onerror="this.onerror=null;this.src='/static/images/defaults/default_car.jpg'" />
+        {% else %}
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e3a5f,#1a73e8)">
+            <i class="fas fa-car" style="font-size:60px;color:rgba(255,255,255,.3)"></i>
+          </div>
+        {% endif %}
+        <div class="car-card-badge"><i class="fas fa-star"></i> Featured</div>
+      </div>
+      <div class="car-card-body">
+        <div class="car-card-name">{{ car.year }} {{ car.make }} {{ car.model }}</div>
+        <div class="car-card-sub">{{ car.variant or '' }}</div>
+        <div class="car-card-meta">
+          <span class="car-meta-pill"><i class="fas fa-tachometer-alt"></i> {{ '{:,}'.format(car.mileage) }} km</span>
+          <span class="car-meta-pill"><i class="fas fa-gas-pump"></i> {{ car.fuel_type }}</span>
+          <span class="car-meta-pill"><i class="fas fa-cog"></i> {{ car.transmission }}</span>
+        </div>
+        <div class="car-card-price">₹{{ '{:,.0f}'.format(car.price) }}
+          {% if car.negotiable %}<small> Negotiable</small>{% endif %}
+        </div>
+      </div>
+      <div class="car-card-footer">
+        <span style="font-size:13px;color:#64748b"><i class="fas fa-map-marker-alt"></i> {{ dealer.city or 'India' }}</span>
+        <span style="font-size:13px;font-weight:600;color:#1a73e8">View Details →</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:80px 24px;color:#64748b">
+    <i class="fas fa-star" style="font-size:60px;color:#e2e8f0;display:block;margin-bottom:20px"></i>
+    <h3 style="font-size:20px;color:#0f172a">No featured deals right now</h3>
+    <p style="margin-top:8px">Check back soon or browse our full inventory.</p>
+    <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" class="btn btn-primary" style="margin-top:24px;padding:14px 32px">Browse All Cars</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

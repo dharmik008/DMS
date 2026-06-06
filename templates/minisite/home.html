@@ -1,0 +1,175 @@
+{% extends 'minisite/base.html' %}
+{% block title %}{{ dealer.website_name or dealer.name }} — Buy Quality Used Cars{% endblock %}
+
+{% block extra_css %}
+<style>
+  .hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1a73e8 100%);color:#fff;padding:90px 24px 80px;text-align:center;position:relative;overflow:hidden}
+  .hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+  .hero-tag{display:inline-block;background:rgba(255,255,255,.15);color:#fff;font-size:13px;font-weight:600;padding:6px 16px;border-radius:20px;margin-bottom:20px;backdrop-filter:blur(4px)}
+  .hero h1{font-family:'Poppins',sans-serif;font-size:clamp(32px,5vw,56px);font-weight:800;line-height:1.15;margin-bottom:18px;max-width:700px;margin-left:auto;margin-right:auto}
+  .hero h1 span{color:#f59e0b}
+  .hero p{font-size:18px;color:#94a3b8;max-width:550px;margin:0 auto 36px}
+  .hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .search-bar{background:#fff;border-radius:16px;padding:16px;display:flex;gap:12px;max-width:800px;margin:40px auto 0;box-shadow:0 8px 32px rgba(0,0,0,.2);flex-wrap:wrap}
+  .search-bar select,.search-bar input{flex:1;min-width:140px;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#0f172a;outline:none;background:#f8fafc}
+  .search-bar select:focus,.search-bar input:focus{border-color:#1a73e8}
+  .search-bar button{padding:12px 28px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:background .18s;white-space:nowrap}
+  .search-bar button:hover{background:#0f5cc7}
+  .stats-bar{background:#fff;border-bottom:1px solid #e2e8f0}
+  .stats-inner{max-width:1200px;margin:0 auto;padding:28px 24px;display:flex;justify-content:center;gap:60px;flex-wrap:wrap}
+  .stat-item{text-align:center}
+  .stat-num{font-size:28px;font-weight:800;color:#1a73e8}
+  .stat-lbl{font-size:13px;color:#64748b;margin-top:2px}
+  .section{padding:70px 24px}
+  .section-inner{max-width:1200px;margin:0 auto}
+  .quick-filters{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:36px}
+  .qf-btn{padding:8px 20px;border-radius:20px;border:2px solid #e2e8f0;background:#fff;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;transition:all .18s}
+  .qf-btn.active,.qf-btn:hover{background:#1a73e8;color:#fff;border-color:#1a73e8}
+  .cta-banner{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;border-radius:20px;padding:52px 40px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;margin:0 24px}
+  .cta-banner h2{font-size:26px;font-weight:800}
+  .cta-banner p{color:#94a3b8;margin-top:6px}
+  .map-section{padding:0 24px 70px}
+  .map-section iframe{width:100%;height:380px;border:none;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.1)}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-tag"><i class="fas fa-star"></i> Trusted Car Dealer</div>
+  <h1>Find Your <span>Dream Car</span> at {{ dealer.website_name or dealer.name }}</h1>
+  <p>Quality pre-owned vehicles with full transparency. Every car inspected, priced right.</p>
+  <div class="hero-btns">
+  
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <div class="stat-num">{{ featured | length }}+</div>
+      <div class="stat-lbl">Cars Available</div>
+    </div>
+    {% if dealer.years_in_business %}
+    <div class="stat-item">
+      <div class="stat-num">{{ dealer.years_in_business }}+</div>
+      <div class="stat-lbl">Years Experience</div>
+    </div>
+    {% endif %}
+    <div class="stat-item">
+      <div class="stat-num">100%</div>
+      <div class="stat-lbl">Inspected Vehicles</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">RC</div>
+      <div class="stat-lbl">Transfer Assistance</div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURED CARS -->
+<section class="section" style="background:#fff">
+  <div class="section-inner">
+    <div class="section-header">
+      <span class="section-tag">HANDPICKED FOR YOU</span>
+      <h2>Featured Cars</h2>
+      <p>Top picks from our inventory — best condition, best price</p>
+    </div>
+
+    <!-- Quick Filters -->
+    <div class="quick-filters">
+      <button class="qf-btn active" onclick="filterCards('all',this)">All</button>
+      <button class="qf-btn" onclick="filterCards('Petrol',this)">Petrol</button>
+      <button class="qf-btn" onclick="filterCards('Diesel',this)">Diesel</button>
+      <button class="qf-btn" onclick="filterCards('Electric',this)">Electric</button>
+    </div>
+
+    <div class="car-grid" id="featuredGrid">
+      {% for car in featured %}
+      <a href="{{ url_for('minisite.car_detail', website_name=website_name, car_id=car.id) }}" class="car-card" data-fuel="{{ car.fuel_type }}">
+        <div class="car-card-img">
+          {% if car.display_image_url %}
+            <img src="{{ car.display_image_url }}" alt="{{ car.make }} {{ car.model }}" loading="lazy"
+                 onerror="this.onerror=null;this.src='/static/images/defaults/default_car.jpg'" />
+          {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e3a5f,#1a73e8)">
+              <i class="fas fa-car" style="font-size:60px;color:rgba(255,255,255,.3)"></i>
+            </div>
+          {% endif %}
+          {% if car.featured %}<div class="car-card-badge"><i class="fas fa-star"></i> Featured</div>{% endif %}
+        </div>
+        <div class="car-card-body">
+          <div class="car-card-name">{{ car.year }} {{ car.make }} {{ car.model }}</div>
+          <div class="car-card-sub">{{ car.variant or '' }}</div>
+          <div class="car-card-meta">
+            <span class="car-meta-pill"><i class="fas fa-tachometer-alt"></i> {{ '{:,}'.format(car.mileage) }} km</span>
+            <span class="car-meta-pill"><i class="fas fa-gas-pump"></i> {{ car.fuel_type }}</span>
+            <span class="car-meta-pill"><i class="fas fa-cog"></i> {{ car.transmission }}</span>
+          </div>
+          <div class="car-card-price">₹{{ '{:,.0f}'.format(car.price) }}
+            {% if car.negotiable %}<small> &nbsp;Negotiable</small>{% endif %}
+          </div>
+        </div>
+        <div class="car-card-footer">
+          <span style="font-size:13px;color:#64748b"><i class="fas fa-map-marker-alt"></i> {{ dealer.city or 'India' }}</span>
+          <span style="font-size:13px;font-weight:600;color:#1a73e8">View Details →</span>
+        </div>
+      </a>
+      {% else %}
+      <p style="grid-column:1/-1;text-align:center;color:#64748b;padding:60px 0">No cars listed yet.</p>
+      {% endfor %}
+    </div>
+
+    <div style="text-align:center;margin-top:36px">
+      <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" class="btn btn-primary" style="padding:14px 36px;font-size:15px">
+        View All Cars <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BANNER -->
+<div class="cta-banner">
+  <div>
+    <h2>Looking for a Specific Car?</h2>
+    <p>Tell us what you need — we'll help you find the perfect match.</p>
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    {% if dealer.whatsapp_number %}
+    <a href="https://wa.me/91{{ dealer.whatsapp_number | replace('+91','') | replace(' ','') }}?text=Hi! I'm looking for a car and found your listing on Caryanams." target="_blank" class="btn btn-whatsapp" style="padding:14px 28px">
+      <i class="fab fa-whatsapp"></i> WhatsApp Us
+    </a>
+    {% endif %}
+    <a href="{{ url_for('minisite.contact', website_name=website_name) }}" class="btn btn-primary" style="padding:14px 28px">
+      <i class="fas fa-phone"></i> Call Now
+    </a>
+  </div>
+</div>
+
+<!-- GOOGLE MAP -->
+{% if dealer.google_maps_url %}
+<div class="map-section" style="margin-top:70px">
+  <div style="max-width:1200px;margin:0 auto">
+    <div class="section-header">
+      <span class="section-tag">FIND US</span>
+      <h2>Our Location</h2>
+      <p>{{ dealer.address or dealer.city or '' }}</p>
+    </div>
+    <iframe src="{{ dealer.google_maps_url }}" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterCards(fuel, btn) {
+  document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#featuredGrid .car-card').forEach(card => {
+    card.style.display = (fuel === 'all' || card.dataset.fuel === fuel) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

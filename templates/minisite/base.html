@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ dealer.website_name or dealer.name }}{% endblock %} — Caryanams</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--primary:#1a73e8;--primary-dark:#0f5cc7;--accent:#f59e0b;--dark:#0f172a;--dark2:#1e293b;--muted:#64748b;--border:#e2e8f0;--bg:#f8fafc;--white:#ffffff;--radius:12px;--shadow:0 4px 20px rgba(0,0,0,.08)}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--dark)}
+    a{text-decoration:none;color:inherit}
+    img{max-width:100%;display:block}
+    .ms-nav{background:var(--white);box-shadow:0 2px 12px rgba(0,0,0,.07);position:sticky;top:0;z-index:100}
+    .ms-nav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;padding:0 24px;height:68px;gap:32px}
+    .ms-logo{display:flex;align-items:center;gap:12px;font-weight:700;font-size:18px;color:var(--dark)}
+    .ms-logo img{height:44px;width:44px;object-fit:contain;border-radius:8px}
+    .ms-logo-letter{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center}
+    .ms-nav-links{display:flex;gap:4px;flex:1}
+    .ms-nav-links a{padding:8px 14px;border-radius:8px;font-size:14px;font-weight:500;color:var(--muted);transition:all .18s}
+    .ms-nav-links a:hover,.ms-nav-links a.active{background:#eff6ff;color:var(--primary)}
+    .ms-nav-cta{margin-left:auto;display:flex;gap:10px;align-items:center}
+    .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .18s}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary-dark)}
+    .btn-whatsapp{background:#25d366;color:#fff}
+    .btn-whatsapp:hover{background:#1da851}
+    .btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary)}
+    .btn-outline:hover{background:var(--primary);color:#fff}
+    .btn-danger{background:#ef4444;color:#fff}
+    .ms-hamburger{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--dark)}
+    .ms-footer{background:var(--dark);color:#94a3b8;margin-top:80px}
+    .ms-footer-inner{max-width:1200px;margin:0 auto;padding:48px 24px 24px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:40px}
+    .ms-footer h4{color:#fff;font-size:15px;font-weight:700;margin-bottom:16px}
+    .ms-footer p,.ms-footer a{font-size:14px;line-height:1.9;color:#94a3b8}
+    .ms-footer a:hover{color:#fff}
+    .ms-footer-bottom{border-top:1px solid #1e293b;text-align:center;padding:16px 24px;font-size:13px;color:#475569}
+    .ms-footer-logo{font-size:20px;font-weight:800;color:#fff;margin-bottom:8px}
+    .flash-bar{padding:14px 24px;font-size:14px;font-weight:500}
+    .flash-bar.success{background:#d1fae5;color:#065f46}
+    .flash-bar.error{background:#fee2e2;color:#991b1b}
+    .car-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px}
+    .car-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:transform .2s,box-shadow .2s}
+    .car-card:hover{transform:translateY(-4px);box-shadow:0 10px 30px rgba(0,0,0,.13)}
+    .car-card-img{position:relative;height:190px;overflow:hidden;background:#f1f5f9}
+    .car-card-img img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
+    .car-card:hover .car-card-img img{transform:scale(1.04)}
+    .car-card-badge{position:absolute;top:10px;left:10px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+    .car-card-body{padding:16px}
+    .car-card-name{font-size:16px;font-weight:700;color:var(--dark);margin-bottom:4px}
+    .car-card-sub{font-size:13px;color:var(--muted);margin-bottom:12px}
+    .car-card-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+    .car-meta-pill{display:flex;align-items:center;gap:4px;background:var(--bg);padding:4px 10px;border-radius:20px;font-size:12px;color:var(--muted)}
+    .car-card-price{font-size:20px;font-weight:800;color:var(--primary)}
+    .car-card-price small{font-size:13px;font-weight:400;color:var(--muted)}
+    .car-card-footer{border-top:1px solid var(--border);padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+    .section-header{text-align:center;margin-bottom:40px}
+    .section-header h2{font-size:30px;font-weight:800;color:var(--dark)}
+    .section-header p{color:var(--muted);font-size:16px;margin-top:8px}
+    .section-tag{display:inline-block;background:#eff6ff;color:var(--primary);font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:10px;letter-spacing:.5px}
+    .ms-page{max-width:1200px;margin:0 auto;padding:40px 24px}
+    .breadcrumb{font-size:13px;color:var(--muted);margin-bottom:24px;display:flex;gap:6px;align-items:center}
+    .breadcrumb a{color:var(--primary)}
+    .breadcrumb span{color:#cbd5e1}
+    .pagination{display:flex;justify-content:center;gap:8px;margin-top:40px}
+    .pagination a,.pagination span{padding:8px 14px;border-radius:8px;font-size:14px;border:1px solid var(--border);color:var(--muted);transition:all .18s}
+    .pagination a:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .pagination .current{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .wa-float{position:fixed;bottom:28px;right:28px;z-index:200;background:#25d366;color:#fff;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 6px 20px rgba(37,211,102,.45);transition:transform .2s}
+    .wa-float:hover{transform:scale(1.1)}
+    @media(max-width:768px){.ms-nav-links{display:none}.ms-hamburger{display:block}.ms-nav-links.open{display:flex;flex-direction:column;position:absolute;top:68px;left:0;right:0;background:#fff;padding:12px 0;box-shadow:0 8px 20px rgba(0,0,0,.1)}.ms-footer-inner{grid-template-columns:1fr}.car-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:480px){.car-grid{grid-template-columns:1fr}}
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="flash-bar {{ cat }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<nav class="ms-nav">
+  <div class="ms-nav-inner">
+    <a href="{{ url_for('minisite.home', website_name=website_name) }}" class="ms-logo">
+      {% if logo_type == 'image' %}
+        <img src="{{ url_for('static', filename='images/uploads/' ~ logo_value) }}" alt="Logo" />
+      {% else %}
+        <div class="ms-logo-letter">{{ logo_value }}</div>
+      {% endif %}
+      <span>{{ dealer.website_name or dealer.name }}</span>
+    </a>
+    <div class="ms-nav-links" id="navLinks">
+      <a href="{{ url_for('minisite.home', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.home' else '' }}">Home</a>
+      {% if current_user and current_user.role == 'dealer' and current_user.id == dealer.id %}
+      <a href="{{ url_for('minisite.dashboard', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.dashboard' else '' }}" style="background:#eff6ff;color:var(--primary)">
+        <i class="fas fa-chart-pie" style="font-size:12px"></i> Dashboard
+      </a>
+      {% endif %}
+      <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.inventory' else '' }}">Inventory</a>
+      <a href="{{ url_for('minisite.featured_deals', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.featured_deals' else '' }}">Deals</a>
+      <a href="{{ url_for('minisite.about', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.about' else '' }}">About Us</a>
+      <a href="{{ url_for('minisite.contact', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.contact' else '' }}">Contact</a>
+    </div>
+    <div class="ms-nav-cta">
+      {% if dealer.whatsapp_number %}
+      <a href="https://wa.me/91{{ dealer.whatsapp_number | replace('+91','') | replace(' ','') }}" target="_blank" class="btn btn-whatsapp">
+        <i class="fab fa-whatsapp"></i> WhatsApp
+      </a>
+      {% endif %}
+    </div>
+    <button class="ms-hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')">
+      <i class="fas fa-bars"></i>
+    </button>
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<footer class="ms-footer">
+  <div class="ms-footer-inner">
+    <div>
+      <div class="ms-footer-logo">{{ dealer.website_name or dealer.name }}</div>
+      <p>{{ dealer.company_name or '' }}</p>
+      {% if dealer.address %}<p><i class="fas fa-map-marker-alt" style="color:#64748b;margin-right:6px"></i>{{ dealer.address }}</p>{% endif %}
+      {% if dealer.city %}<p><i class="fas fa-city" style="color:#64748b;margin-right:6px"></i>{{ dealer.city }}</p>{% endif %}
+    </div>
+    <div>
+      <h4>Quick Links</h4>
+      <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" style="display:block">Browse Inventory</a>
+      <a href="{{ url_for('minisite.featured_deals', website_name=website_name) }}" style="display:block">Featured Deals</a>
+      <a href="{{ url_for('minisite.about', website_name=website_name) }}" style="display:block">About Us</a>
+      <a href="{{ url_for('minisite.contact', website_name=website_name) }}" style="display:block">Contact</a>
+    </div>
+    <div>
+      <h4>Contact Us</h4>
+      {% if dealer.phone %}<p><i class="fas fa-phone" style="margin-right:6px"></i>{{ dealer.phone }}</p>{% endif %}
+      {% if dealer.email %}<p><i class="fas fa-envelope" style="margin-right:6px"></i>{{ dealer.email }}</p>{% endif %}
+      {% if dealer.whatsapp_number %}
+      <a href="https://wa.me/91{{ dealer.whatsapp_number | replace('+91','') | replace(' ','') }}" target="_blank" class="btn btn-whatsapp" style="margin-top:12px;display:inline-flex">
+        <i class="fab fa-whatsapp"></i> Chat on WhatsApp
+      </a>
+      {% endif %}
+      {% if dealer.business_hours %}<p style="margin-top:10px"><i class="fas fa-clock" style="margin-right:6px"></i>{{ dealer.business_hours }}</p>{% endif %}
+    </div>
+  </div>
+  <div class="ms-footer-bottom">
+    &copy; {{ dealer.website_name or dealer.name }} &mdash; Powered by <strong>Caryanams</strong>
+  </div>
+</footer>
+
+{% if dealer.whatsapp_number %}
+<a href="https://wa.me/91{{ dealer.whatsapp_number | replace('+91','') | replace(' ','') }}" target="_blank" class="wa-float" title="Chat on WhatsApp">
+  <i class="fab fa-whatsapp"></i>
+</a>
+{% endif %}
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

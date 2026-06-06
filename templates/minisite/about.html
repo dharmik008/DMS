@@ -1,0 +1,108 @@
+{% extends 'minisite/base.html' %}
+{% block title %}About Us — {{ dealer.website_name or dealer.name }}{% endblock %}
+{% block content %}
+<div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:60px 24px;text-align:center">
+  <h1 style="font-size:38px;font-weight:800">About {{ dealer.website_name or dealer.name }}</h1>
+  <p style="color:#94a3b8;margin-top:10px">Trusted dealer, quality cars</p>
+</div>
+
+<div class="ms-page">
+  <div class="breadcrumb">
+    <a href="{{ url_for('minisite.home', website_name=website_name) }}">Home</a>
+    <span>/</span> About Us
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;margin-top:12px">
+    <div>
+      <!-- Logo / Avatar -->
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:28px">
+        {% if logo_type == 'image' %}
+          <img src="{{ url_for('static', filename='images/uploads/' ~ logo_value) }}" alt="Logo" style="width:80px;height:80px;object-fit:contain;border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.1)" />
+        {% else %}
+          <div style="width:80px;height:80px;border-radius:14px;background:linear-gradient(135deg,#1a73e8,#0f5cc7);color:#fff;font-size:36px;font-weight:800;display:flex;align-items:center;justify-content:center">{{ logo_value }}</div>
+        {% endif %}
+        <div>
+          <div style="font-size:22px;font-weight:800;color:#0f172a">{{ dealer.website_name or dealer.name }}</div>
+          {% if dealer.company_name %}<div style="color:#64748b;font-size:14px">{{ dealer.company_name }}</div>{% endif %}
+          {% if dealer.city %}<div style="color:#64748b;font-size:14px"><i class="fas fa-map-marker-alt" style="color:#1a73e8"></i> {{ dealer.city }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div style="background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.07)">
+        <h3 style="font-size:20px;font-weight:700;margin-bottom:16px">Our Story</h3>
+        <p style="color:#64748b;line-height:1.9;font-size:15px">
+          Welcome to {{ dealer.website_name or dealer.name }}! We are a trusted pre-owned car dealer
+          {% if dealer.city %}based in {{ dealer.city }}{% endif %}
+          {% if dealer.years_in_business %}, with over {{ dealer.years_in_business }} years of experience{% endif %}
+          in helping customers find their perfect car at the right price.
+          <br><br>
+          Every vehicle in our inventory goes through a rigorous inspection process to ensure quality and reliability.
+          We believe in complete transparency — from pricing to documentation.
+        </p>
+      </div>
+
+      <!-- Stats -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px">
+        <div style="background:#eff6ff;border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:32px;font-weight:800;color:#1a73e8">{{ total_vehicles }}+</div>
+          <div style="font-size:13px;color:#64748b;margin-top:4px">Cars Available</div>
+        </div>
+        {% if dealer.years_in_business %}
+        <div style="background:#f0fdf4;border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:32px;font-weight:800;color:#16a34a">{{ dealer.years_in_business }}+</div>
+          <div style="font-size:13px;color:#64748b;margin-top:4px">Years Experience</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right: Contact Info + Map -->
+    <div>
+      <div style="background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.07);margin-bottom:20px">
+        <h3 style="font-size:18px;font-weight:700;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #e2e8f0">
+          <i class="fas fa-address-card" style="color:#1a73e8;margin-right:8px"></i>Contact Details
+        </h3>
+        {% if dealer.phone %}
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9">
+          <div style="width:36px;height:36px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#1a73e8"><i class="fas fa-phone"></i></div>
+          <div><div style="font-size:12px;color:#94a3b8">Phone</div><a href="tel:{{ dealer.phone }}" style="font-size:15px;font-weight:600;color:#0f172a">{{ dealer.phone }}</a></div>
+        </div>
+        {% endif %}
+        {% if dealer.email %}
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9">
+          <div style="width:36px;height:36px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#1a73e8"><i class="fas fa-envelope"></i></div>
+          <div><div style="font-size:12px;color:#94a3b8">Email</div><a href="mailto:{{ dealer.email }}" style="font-size:15px;font-weight:600;color:#0f172a">{{ dealer.email }}</a></div>
+        </div>
+        {% endif %}
+        {% if dealer.address %}
+        <div style="display:flex;align-items:start;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9">
+          <div style="width:36px;height:36px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#1a73e8;flex-shrink:0"><i class="fas fa-map-marker-alt"></i></div>
+          <div><div style="font-size:12px;color:#94a3b8">Address</div><div style="font-size:15px;font-weight:600;color:#0f172a">{{ dealer.address }}</div></div>
+        </div>
+        {% endif %}
+        {% if dealer.business_hours %}
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0">
+          <div style="width:36px;height:36px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#1a73e8"><i class="fas fa-clock"></i></div>
+          <div><div style="font-size:12px;color:#94a3b8">Business Hours</div><div style="font-size:15px;font-weight:600;color:#0f172a">{{ dealer.business_hours }}</div></div>
+        </div>
+        {% endif %}
+
+        <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+          {% if dealer.whatsapp_number %}
+          <a href="https://wa.me/91{{ dealer.whatsapp_number | replace('+91','') | replace(' ','') }}" target="_blank" class="btn btn-whatsapp" style="flex:1;justify-content:center">
+            <i class="fab fa-whatsapp"></i> WhatsApp
+          </a>
+          {% endif %}
+          <a href="{{ url_for('minisite.contact', website_name=website_name) }}" class="btn btn-primary" style="flex:1;justify-content:center">
+            <i class="fas fa-envelope"></i> Contact
+          </a>
+        </div>
+      </div>
+
+      {% if dealer.google_maps_url %}
+      <iframe src="{{ dealer.google_maps_url }}" width="100%" height="260" style="border:none;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1)" allowfullscreen loading="lazy"></iframe>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
