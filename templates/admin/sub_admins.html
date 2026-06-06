@@ -1,0 +1,144 @@
+{% extends "admin/base.html" %}
+{% block title %}Sub-Admins — Caryanams Admin{% endblock %}
+{% block page_title %}Sub-Admin Management{% endblock %}
+{% set page = 'sub_admins' %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+  <div>
+    <div style="font-size:14px;color:var(--text-secondary)">Manage sub-admin accounts with role-based permissions</div>
+  </div>
+  <a href="{{ url_for('admin.add_sub_admin') }}" class="btn btn-primary">
+    <i class="fas fa-plus"></i> Add Sub-Admin
+  </a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for cat, msg in messages %}
+<div class="alert alert-{{ cat }}" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:{% if cat=='success' %}rgba(46,204,113,.1){% else %}rgba(231,76,60,.1){% endif %};border:1px solid {% if cat=='success' %}#2ecc71{% else %}#e74c3c{% endif %};color:var(--text-primary)">
+  <i class="fas fa-{% if cat=='success' %}check-circle{% else %}exclamation-circle{% endif %}"></i> {{ msg }}
+</div>
+{% endfor %}
+{% endwith %}
+
+{% if sub_admins %}
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name / Username</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Permissions</th>
+          <th>Last Login</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sa in sub_admins %}
+        <tr>
+          <td style="font-weight:700;color:var(--blue,#6366f1);font-size:12px;letter-spacing:.5px;">{{ sa.display_id or ('SA' ~ sa.id) }}</td>
+          <td>
+            <div style="font-weight:700;color:var(--navy)">{{ sa.name }}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">@{{ sa.username }}</div>
+          </td>
+          <td style="font-size:13px">{{ sa.email }}</td>
+          <td style="font-size:13px">{{ sa.phone or '—' }}</td>
+          <td>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              {% set sa_perms = sa.get_permissions() %}
+              {% if sa_perms %}
+                {% for perm in sa_perms %}
+                <span style="display:inline-block;padding:2px 8px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:50px;font-size:11px;font-weight:600;color:#a5b4fc">{{ perm }}</span>
+                {% endfor %}
+              {% else %}
+                <span style="font-size:12px;color:var(--text-secondary);font-style:italic">No permissions</span>
+              {% endif %}
+            </div>
+          </td>
+          <td style="font-size:12px;color:var(--text-secondary)">
+            {{ sa.last_login.strftime('%d %b %Y %H:%M') if sa.last_login else 'Never' }}
+          </td>
+          <td>
+            <span id="status_{{ sa.id }}" class="badge {% if sa.is_active %}badge-success{% else %}badge-danger{% endif %}">
+              {{ 'Active' if sa.is_active else 'Inactive' }}
+            </span>
+          </td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <a href="{{ url_for('admin.edit_sub_admin', sa_id=sa.id) }}"
+                 class="btn btn-sm btn-outline"
+                 style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;font-size:12px;">
+                <i class="fas fa-edit"></i> Edit
+              </a>
+              <button onclick="toggleSubAdmin({{ sa.id }})"
+                      class="btn btn-sm btn-outline"
+                      id="toggleBtn_{{ sa.id }}"
+                      style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;font-size:12px;color:{% if sa.is_active %}#d97706{% else %}#16a34a{% endif %};">
+                <i class="fas fa-{% if sa.is_active %}pause{% else %}play{% endif %}"></i>
+                <span id="toggleLabel_{{ sa.id }}">{% if sa.is_active %}Deactivate{% else %}Activate{% endif %}</span>
+              </button>
+              <button onclick="deleteSubAdmin({{ sa.id }}, '{{ sa.name }}')"
+                      class="btn btn-sm btn-outline"
+                      style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;font-size:12px;color:#e74c3c;">
+                <i class="fas fa-trash"></i> Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:48px 24px">
+  <i class="fas fa-user-shield" style="font-size:48px;color:var(--gold-accent);margin-bottom:16px;display:block"></i>
+  <div style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:8px">No Sub-Admins Yet</div>
+  <div style="color:var(--text-secondary);margin-bottom:20px">Create sub-admins to delegate specific admin tasks with controlled permissions.</div>
+  <a href="{{ url_for('admin.add_sub_admin') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Add First Sub-Admin</a>
+</div>
+{% endif %}
+
+<!-- Sub-Admin Login Link Card -->
+<div class="card mt-24" style="margin-top:24px;background:linear-gradient(135deg,var(--navy,#0f2444),#1e3a5f);color:#fff">
+  <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:4px"><i class="fas fa-link" style="color:var(--gold-accent);margin-right:8px"></i>Sub-Admin Login URL</div>
+      <div style="font-size:13px;opacity:.8">Share this link with sub-admins to let them log in separately.</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <code style="background:rgba(255,255,255,.1);padding:8px 14px;border-radius:8px;font-size:13px" id="saLoginUrl">/admin/sub-admin-login</code>
+      <button onclick="navigator.clipboard.writeText(window.location.origin+'/admin/sub-admin-login').then(()=>this.textContent='Copied!')"
+              class="btn btn-sm" style="background:var(--gold-accent);color:var(--navy);font-weight:700;border:none">Copy</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function toggleSubAdmin(id) {
+  const res = await fetch(`/admin/api/sub-admins/${id}/toggle`, {method:'POST'});
+  const d = await res.json();
+  if (d.success) {
+    const badge = document.getElementById(`status_${id}`);
+    const btn = document.getElementById(`toggleBtn_${id}`);
+    const label = document.getElementById(`toggleLabel_${id}`);
+    badge.textContent = d.is_active ? 'Active' : 'Inactive';
+    badge.className = `badge ${d.is_active ? 'badge-success' : 'badge-danger'}`;
+    btn.querySelector('i').className = `fas fa-${d.is_active ? 'pause' : 'play'}`;
+    btn.style.color = d.is_active ? '#d97706' : '#16a34a';
+    if (label) label.textContent = d.is_active ? 'Deactivate' : 'Activate';
+  }
+}
+
+async function deleteSubAdmin(id, name) {
+  if (!confirm(`Delete sub-admin "${name}"? This cannot be undone.`)) return;
+  const res = await fetch(`/admin/api/sub-admins/${id}/delete`, {method:'POST'});
+  const d = await res.json();
+  if (d.success) location.reload();
+}
+</script>
+{% endblock %}

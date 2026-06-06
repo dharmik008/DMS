@@ -1,0 +1,45 @@
+{% extends 'admin/base.html' %}
+{% block title %}Edit User — Caryanams Admin{% endblock %}
+{% block page_title %}Edit User{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Edit User: {{ user.name }}</h1></div>
+  <a href="{{ url_for('admin.all_users') }}" class="btn btn-outline btn-sm">← Back</a>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <div class="card-header"><span class="card-title">Edit User Details</span></div>
+  <div style="padding:24px;">
+    <form method="POST">
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Full Name *</label>
+        <input type="text" name="name" class="form-control" value="{{ user.name }}" required>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Email Address *</label>
+        <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Phone Number</label>
+        <input type="text" name="phone" class="form-control" value="{{ user.phone or '' }}">
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>City</label>
+        <input type="text" name="city" class="form-control" value="{{ user.city or '' }}">
+      </div>
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>Status</label>
+        <select name="is_active" class="form-control">
+          <option value="1" {% if user.is_active %}selected{% endif %}>Active</option>
+          <option value="0" {% if not user.is_active %}selected{% endif %}>Blocked</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{{ url_for('admin.all_users') }}" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

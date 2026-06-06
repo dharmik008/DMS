@@ -1,0 +1,260 @@
+{% extends 'admin/base.html' %}
+{% block title %}View Dealer — Caryanams Admin{% endblock %}
+{% block page_title %}Dealer Detail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>{{ dealer.name }}</h1>
+    <p>{{ dealer.company_name or 'Independent Dealer' }} · Joined {{ dealer.created_at.strftime('%d %b %Y') if dealer.created_at else '—' }}</p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <a href="{{ url_for('admin.all_dealers') }}" class="btn btn-outline btn-sm">← Back</a>
+    <a href="{{ url_for('admin.edit_dealer', dealer_id=dealer.id) }}" class="btn btn-outline btn-sm"><i class="fas fa-pencil-alt"></i> Edit</a>
+
+    <!-- Status Dropdown -->
+    <div style="position:relative;display:inline-block;">
+      <select id="statusSelect" onchange="setDealerStatus({{ dealer.id }}, this.value)"
+        style="padding:6px 32px 6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;cursor:pointer;appearance:auto;">
+        <option value="active"   {% if dealer.is_active %}selected{% endif %}>✅ Active</option>
+        <option value="suspended"{% if not dealer.is_active %}selected{% endif %}>🚫 Suspended</option>
+      </select>
+    </div>
+
+    <button onclick="deleteDealer({{ dealer.id }})" class="btn btn-danger btn-sm" title="Delete Dealer" aria-label="Delete Dealer">
+      <i class="fas fa-trash"></i> Delete</button>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px;">
+  <!-- Dealer Info Card -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Dealer Information</span></div>
+    <div style="padding:16px 20px;">
+      <table style="width:100%;border-collapse:collapse;">
+        {% set rows = [
+          ('ID', dealer.display_id or ('D' ~ dealer.id)),
+          ('Name', dealer.name),
+          ('Company', dealer.company_name or '—'),
+          ('Email', dealer.email),
+          ('Phone', dealer.phone or '—'),
+          ('City', dealer.city or '—'),
+          ('GST No.', dealer.gst_number or '—'),
+          ('Website Name', dealer.website_name or '—'),
+          ('WhatsApp', dealer.whatsapp_number or '—'),
+          ('Business Hours', dealer.business_hours or '—'),
+          ('Status', 'Active' if dealer.is_active else 'Suspended'),
+        ] %}
+        {% for label, val in rows %}
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:10px 0;color:var(--text-2);font-size:13px;width:140px;">{{ label }}</td>
+          <td style="padding:10px 0;font-size:13px;">
+            {% if label == 'Status' %}
+              <span class="badge {% if dealer.is_active %}badge-success{% else %}badge-danger{% endif %}">{{ val }}</span>
+            {% else %}
+              {{ val }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+
+  <!-- Stats + Subscription -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Activity Stats</span></div>
+      <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;">
+        <div class="stat-card" style="margin:0;padding:12px;">
+          <div class="stat-value">{{ leads_count }}</div>
+          <div class="stat-label">Total Leads</div>
+        </div>
+        <div class="stat-card" style="margin:0;padding:12px;">
+          <div class="stat-value">{{ deals_count }}</div>
+          <div class="stat-label">Total Deals</div>
+        </div>
+        <div class="stat-card" style="margin:0;padding:12px;">
+          <div class="stat-value">₹{{ '{:,.0f}'.format(revenue|float) }}</div>
+          <div class="stat-label">Delivered Revenue</div>
+        </div>
+        <div class="stat-card" style="margin:0;padding:12px;">
+          <div class="stat-value">{{ vehicles|length }}</div>
+          <div class="stat-label">Inventory Items</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Subscription</span></div>
+      <div style="padding:16px 20px;">
+        <div style="margin-bottom:12px;">
+          <strong style="font-size:18px;color:var(--accent);">{{ dealer.subscription_plan | title }}</strong>
+          <span class="badge {% if dealer.subscription_status == 'active' %}badge-success{% else %}badge-danger{% endif %}" style="margin-left:8px;">
+            {{ dealer.subscription_status or 'active' }}
+          </span>
+        </div>
+        <div style="font-size:13px;color:var(--text-2);margin-bottom:16px;">
+          Expires: {{ dealer.subscription_expiry.strftime('%d %b %Y') if dealer.subscription_expiry else 'No expiry set' }}
+        </div>
+        <form method="POST" action="{{ url_for('admin.update_dealer_subscription_form', dealer_id=dealer.id) }}">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:12px;color:var(--text-2);">Plan</label>
+            <select name="plan" class="form-control" style="font-size:13px;padding:8px;">
+              {% for p in ['starter','growth','pro'] %}
+              <option value="{{ p }}" {% if dealer.subscription_plan == p %}selected{% endif %}>{{ p | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:12px;color:var(--text-2);">Extend by (days)</label>
+            <input type="number" name="days" value="365" min="1" class="form-control" style="font-size:13px;padding:8px;">
+          </div>
+          <button class="btn btn-primary btn-sm" style="width:100%;">Update Subscription</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Vehicles -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <span class="card-title">Dealer Inventory ({{ vehicles|length }})</span>
+    <a href="{{ url_for('admin.add_vehicle') }}" class="btn btn-primary btn-sm">+ Add Vehicle</a>
+  </div>
+  <table class="table">
+    <thead><tr><th>ID</th><th>Vehicle</th><th>Year</th><th>Price</th><th>Approval</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for v in vehicles %}
+      <tr>
+        <td>{{ v.id }}</td>
+        <td>{{ v.make }} {{ v.model }} {{ v.variant or '' }}</td>
+        <td>{{ v.year }}</td>
+        <td>₹{{ '{:,.0f}'.format(v.price|float) }}</td>
+        <td>
+          <span class="badge {% if v.approval_status == 'approved' %}badge-success{% elif v.approval_status == 'rejected' %}badge-danger{% else %}badge-neutral{% endif %}">
+            {{ v.approval_status | title }}
+          </span>
+        </td>
+        <td><span class="badge">{{ v.status }}</span></td>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <a href="{{ url_for('admin.view_vehicle', vehicle_id=v.id) }}"
+               title="View Vehicle" aria-label="View Vehicle"
+               style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#06b6d4;color:#fff;text-decoration:none;font-size:12px;transition:opacity .15s;">
+              <i class="fas fa-eye"></i></a>
+            <a href="{{ url_for('admin.edit_vehicle', vehicle_id=v.id) }}"
+               title="Edit Vehicle" aria-label="Edit Vehicle"
+               style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#f97316;color:#fff;text-decoration:none;font-size:12px;transition:opacity .15s;">
+              <i class="fas fa-pencil-alt"></i></a>
+            <button onclick="approveVehicle({{ v.id }}, this)"
+                    title="Approve Vehicle" aria-label="Approve Vehicle"
+                    {% if v.approval_status == 'approved' %}disabled{% endif %}
+                    style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;font-size:12px;transition:opacity .15s;{% if v.approval_status == 'approved' %}opacity:.45;cursor:not-allowed;{% endif %}">
+              <i class="fas fa-check"></i></button>
+            <button onclick="rejectVehicle({{ v.id }}, this)"
+                    title="Reject Vehicle" aria-label="Reject Vehicle"
+                    {% if v.approval_status == 'rejected' %}disabled{% endif %}
+                    style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:12px;transition:opacity .15s;{% if v.approval_status == 'rejected' %}opacity:.45;cursor:not-allowed;{% endif %}">
+              <i class="fas fa-times"></i></button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center;color:var(--text-2);padding:20px;">No vehicles in inventory.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Leads -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Dealer Leads ({{ leads|length }})</span>
+    <a href="{{ url_for('admin.add_lead') }}" class="btn btn-primary btn-sm">+ Add Lead</a>
+  </div>
+  <table class="table">
+    <thead><tr><th>ID</th><th>Customer</th><th>Phone</th><th>Stage</th><th>Source</th><th>Created</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for l in leads %}
+      <tr>
+        <td>{{ l.id }}</td>
+        <td>{{ l.customer_name }}</td>
+        <td>{{ l.customer_phone }}</td>
+        <td><span class="badge">{{ l.stage }}</span></td>
+        <td>{{ l.source }}</td>
+        <td>{{ l.created_at.strftime('%d %b %Y') if l.created_at else '—' }}</td>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <a href="{{ url_for('admin.view_lead', lead_id=l.id) }}"
+               title="View Lead" aria-label="View Lead"
+               style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#06b6d4;color:#fff;text-decoration:none;font-size:12px;transition:opacity .15s;">
+              <i class="fas fa-eye"></i></a>
+            <a href="{{ url_for('admin.edit_lead', lead_id=l.id) }}"
+               title="Edit Lead" aria-label="Edit Lead"
+               style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#f97316;color:#fff;text-decoration:none;font-size:12px;transition:opacity .15s;">
+              <i class="fas fa-pencil-alt"></i></a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center;color:var(--text-2);padding:20px;">No leads yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setDealerStatus(dealerId, status) {
+  fetch('/admin/api/dealers/' + dealerId + '/set-status', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: status})
+  }).then(r => r.json()).then(d => {
+    if (d.success) {
+      const badge = document.querySelector('.badge.badge-success, .badge.badge-danger');
+      if (badge) {
+        badge.textContent = d.status;
+        badge.className = 'badge ' + (d.status === 'Active' ? 'badge-success' : 'badge-danger');
+      }
+      showToast(d.status === 'Active' ? 'Dealer activated' : 'Dealer suspended', d.status === 'Active' ? 'success' : 'error');
+    }
+  });
+}
+
+function deleteDealer(dealerId) {
+  if (!confirm('Delete this dealer? This cannot be undone.')) return;
+  fetch('/admin/api/dealers/' + dealerId + '/delete', {method: 'POST'})
+    .then(r => r.json()).then(d => {
+      if (d.success) { window.location.href = '/admin/dealers'; }
+    });
+}
+
+function approveVehicle(vehicleId, btn) {
+  if (!confirm('Approve this vehicle?')) return;
+  fetch('/admin/api/vehicles/' + vehicleId + '/approve', {method: 'POST'})
+    .then(r => r.json()).then(d => {
+      if (d.success) { location.reload(); }
+    });
+}
+
+function rejectVehicle(vehicleId, btn) {
+  if (!confirm('Reject this vehicle?')) return;
+  fetch('/admin/api/vehicles/' + vehicleId + '/reject', {method: 'POST'})
+    .then(r => r.json()).then(d => {
+      if (d.success) { location.reload(); }
+    });
+}
+
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;z-index:9999;background:' + (type==='success'?'#22c55e':'#ef4444');
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'admin/base.html' %}
+{% block title %}Sales & Deals — Caryanams Admin{% endblock %}
+{% block page_title %}Sales & Deals{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Sales & Deals</h1><p>All deal transactions across the platform · {{ deals|length }} total</p></div>
+  <div>
+    <a href="{{ url_for('admin.generate_report', type='sales', format='csv') }}" class="btn btn-outline btn-sm">⬇ Export CSV</a>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+  <div class="stat-card"><div class="stat-value">{{ deals|length }}</div><div class="stat-label">Total Deals</div></div>
+  <div class="stat-card"><div class="stat-value">₹{{ '{:,.0f}'.format(total_revenue / 100000) }}L</div><div class="stat-label">Delivered Revenue</div></div>
+  <div class="stat-card"><div class="stat-value">{{ deals|selectattr('status','equalto','delivered')|list|length }}</div><div class="stat-label">Delivered Deals</div></div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">All Deals</span>
+    <input type="text" placeholder="Search deals..." oninput="filterTable(this,'dealsTable')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+  </div>
+  <table class="table" id="dealsTable">
+    <thead><tr><th>#</th><th>Customer</th><th>Phone</th><th>Vehicle ID</th><th>Final Price</th><th>GST</th><th>Total</th><th>Mode</th><th>Status</th><th>Date</th></tr></thead>
+    <tbody>
+      {% for d in deals %}
+      <tr>
+        <td>{{ d.id }}</td>
+        <td>{{ d.customer_name }}</td>
+        <td>{{ d.customer_phone or '—' }}</td>
+        <td>{{ d.vehicle_id }}</td>
+        <td>₹{{ '{:,.0f}'.format(d.final_price) }}</td>
+        <td>₹{{ '{:,.0f}'.format(d.gst_amount or 0) }}</td>
+        <td>₹{{ '{:,.0f}'.format(d.total_amount or d.final_price) }}</td>
+        <td>{{ d.payment_mode }}</td>
+        <td><span class="badge {% if d.status == 'delivered' %}badge-success{% elif d.status == 'cancelled' %}badge-danger{% else %}badge-neutral{% endif %}">{{ d.status }}</span></td>
+        <td>{{ d.created_at.strftime('%d %b %Y') if d.created_at else '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text-2);">No deals yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterTable(inp, tableId) {
+  const q = inp.value.toLowerCase();
+  document.querySelectorAll('#' + tableId + ' tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

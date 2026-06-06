@@ -1,0 +1,81 @@
+{% extends 'admin/base.html' %}
+{% block title %}Inquiries — Caryanams Admin{% endblock %}
+{% block page_title %}Inquiries{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Inquiries</h1>
+    <p>All customer inquiries across all dealers &middot; {{ inquiries|length }} total</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">All Inquiries</span>
+    <input type="text" placeholder="Search name, vehicle, dealer..." oninput="filterTable(this,'inqTable')"
+      style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;min-width:220px;">
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="table" id="inqTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Customer Name</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Vehicle</th>
+          <th>Dealer</th>
+          <th>Type</th>
+          <th>Message</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in inquiries %}
+        <tr>
+          <td>{{ i.id }}</td>
+          <td><strong>{{ i.name }}</strong></td>
+          <td>{{ i.phone }}</td>
+          <td>{{ i.email or '—' }}</td>
+          <td style="white-space:nowrap;">
+            {% if i.vehicle_name != '—' %}
+              <span style="color:var(--primary);font-weight:600;">{{ i.vehicle_name }}</span>
+            {% else %}
+              <span style="color:var(--text-2);">—</span>
+            {% endif %}
+          </td>
+          <td style="white-space:nowrap;">
+            {% if i.dealer_name != '—' %}
+              <div style="font-weight:600;">{{ i.dealer_company if i.dealer_company else i.dealer_name }}</div>
+              {% if i.dealer_company %}<div style="font-size:11px;color:var(--text-2);">{{ i.dealer_name }}</div>{% endif %}
+            {% else %}
+              <span style="color:var(--text-2);">—</span>
+            {% endif %}
+          </td>
+          <td>{{ i.inquiry_type }}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ i.message or '' }}">{{ i.message or '—' }}</td>
+          <td>
+            <span class="badge {% if i.status == 'resolved' %}badge-success{% elif i.status == 'responded' %}badge-warning{% elif i.status == 'pending' %}badge-neutral{% endif %}">
+              {{ i.status }}
+            </span>
+          </td>
+          <td style="white-space:nowrap;">{{ i.created_at.strftime('%d %b %Y') if i.created_at else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text-2);">No inquiries yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterTable(inp, tableId) {
+  const q = inp.value.toLowerCase();
+  document.querySelectorAll('#' + tableId + ' tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,189 @@
+{% extends 'admin/base.html' %}
+{% block title %}Dashboard — Caryanams Admin{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Overview</h1>
+    <p>Welcome back, Super Admin · Live data from Caryanams DMS</p>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon b"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+    <div class="stat-value">{{ stats.total_dealers }}</div>
+    <div class="stat-label">Total Dealers</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon g"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+    <div class="stat-value">{{ stats.total_users }}</div>
+    <div class="stat-label">Registered Users</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon y"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+    <div class="stat-value">{{ stats.total_vehicles }}</div>
+    <div class="stat-label">Total Vehicles</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon g"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+    <div class="stat-value">{{ stats.available }}</div>
+    <div class="stat-label">Available Vehicles</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon r"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+    <div class="stat-value">{{ stats.sold }}</div>
+    <div class="stat-label">Sold Vehicles</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon p"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 11.69 19 19.5 19.5 0 0 1 5 13.18 19.79 19.79 0 0 1 2.08 6.18 2 2 0 0 1 4.06 4h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 11.6a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.72 16z"/></svg></div>
+    <div class="stat-value">{{ stats.total_leads }}</div>
+    <div class="stat-label">Total Leads</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon o"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+    <div class="stat-value">{{ stats.total_deals }}</div>
+    <div class="stat-label">Total Deals</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon g"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+    <div class="stat-value">₹{{ '{:,.0f}'.format(stats.monthly_revenue / 100000) }}L</div>
+    <div class="stat-label">Total Revenue</div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="charts-grid">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Revenue & Leads (6 Months)</span>
+    </div>
+    <div class="chart-container">
+      <canvas id="salesChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Dealer Sales Performance</span>
+    </div>
+    <div class="chart-container">
+      <canvas id="dealerChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Dealers + Recent Deals -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Recent Dealers</span>
+      <a href="{{ url_for('admin.all_dealers') }}" class="btn btn-outline btn-xs">View All</a>
+    </div>
+    <table class="table">
+      <thead><tr><th>Name</th><th>Plan</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for d in recent_dealers %}
+        <tr>
+          <td><a href="{{ url_for('admin.view_dealer', dealer_id=d.id) }}">{{ d.name }}</a></td>
+          <td><span class="badge">{{ d.subscription_plan }}</span></td>
+          <td>
+            {% if d.is_active %}<span class="badge badge-success">Active</span>
+            {% else %}<span class="badge badge-danger">Inactive</span>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" style="text-align:center;color:var(--text-2);">No dealers yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Recent Deals</span>
+      <a href="{{ url_for('admin.all_sales') }}" class="btn btn-outline btn-xs">View All</a>
+    </div>
+    <table class="table">
+      <thead><tr><th>Customer</th><th>Amount</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for deal in recent_deals %}
+        <tr>
+          <td>{{ deal.customer_name }}</td>
+          <td>₹{{ '{:,.0f}'.format(deal.final_price) }}</td>
+          <td><span class="badge">{{ deal.status }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" style="text-align:center;color:var(--text-2);">No deals yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Recent Admin Activity</span>
+    <a href="{{ url_for('admin.activity') }}" class="btn btn-outline btn-xs">View All</a>
+  </div>
+  <div class="activity-list">
+    {% for log in logs %}
+    <div class="activity-item">
+      <div class="activity-dot"></div>
+      <div class="activity-body">
+        <div class="activity-action">{{ log.action }}</div>
+        <div class="activity-meta">{{ log.module }} · {{ log.user }} · {{ log.ip }}</div>
+      </div>
+      <div class="activity-time">{{ log.datetime }}</div>
+    </div>
+    {% else %}
+    <div style="padding:24px;text-align:center;color:var(--text-2);">No activity logged yet.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const C = { accent:'#6366F1', green:'#2EE89A', blue:'#4499FF', orange:'#FF9944', red:'#FF5566', grid:'rgba(255,255,255,0.05)', text:'#9090A0' };
+Chart.defaults.color = C.text;
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+
+fetch('/admin/api/chart-data').then(r=>r.json()).then(d => {
+  new Chart(document.getElementById('salesChart'), {
+    type: 'line',
+    data: {
+      labels: d.months,
+      datasets: [{
+        label: 'Revenue (L)', data: d.revenue.map(v => +(v/100000).toFixed(1)),
+        borderColor: C.accent, backgroundColor: 'rgba(99,102,241,0.08)',
+        pointBackgroundColor: C.accent, pointRadius: 5, tension: 0.4, fill: true
+      },{
+        label: 'Leads', data: d.leads,
+        borderColor: C.green, backgroundColor: 'rgba(46,232,154,0.06)',
+        pointBackgroundColor: C.green, pointRadius: 4, tension: 0.4, fill: true,
+        yAxisID: 'y2'
+      }]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ boxWidth:10, usePointStyle:true }}},
+      scales:{ x:{ grid:{ color:C.grid }}, y:{ grid:{ color:C.grid }, beginAtZero:true },
+               y2:{ position:'right', grid:{ display:false }, beginAtZero:true }}}
+  });
+
+  new Chart(document.getElementById('dealerChart'), {
+    type: 'bar',
+    data: {
+      labels: d.dealers,
+      datasets:[{ label:'Deals Closed', data: d.dealer_sales,
+        backgroundColor:['rgba(99,102,241,0.7)','rgba(68,153,255,0.7)','rgba(46,232,154,0.7)','rgba(255,153,68,0.7)','rgba(255,85,102,0.7)'],
+        borderRadius: 6 }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{ grid:{color:C.grid}}, y:{ grid:{color:C.grid}, beginAtZero:true }}}
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends 'admin/base.html' %}
+{% block title %}Vehicles — Caryanams Admin{% endblock %}
+{% block page_title %}Vehicle Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Vehicles</h1>
+    <p>All vehicles across all dealers · {{ vehicles|length }} total</p>
+  </div>
+  <a href="{{ url_for('admin.add_vehicle') }}" class="btn btn-primary btn-sm">+ Add Vehicle</a>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+  <div class="stat-card"><div class="stat-value">{{ vehicles|length }}</div><div class="stat-label">Total Vehicles</div></div>
+  <div class="stat-card"><div class="stat-value">{{ approved|length }}</div><div class="stat-label">Approved</div></div>
+  <div class="stat-card"><div class="stat-value badge-neutral" style="color:#f59e0b;">{{ pending|length }}</div><div class="stat-label">Pending Review</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#ef4444;">{{ rejected|length }}</div><div class="stat-label">Rejected</div></div>
+</div>
+
+<!-- Filter tabs -->
+<div style="display:flex;gap:8px;margin-bottom:16px;">
+  <button onclick="filterApproval('all',this)" class="btn btn-primary btn-sm filter-tab active-tab">All</button>
+  <button onclick="filterApproval('pending',this)" class="btn btn-outline btn-sm filter-tab">⏳ Pending ({{ pending|length }})</button>
+  <button onclick="filterApproval('approved',this)" class="btn btn-outline btn-sm filter-tab">✅ Approved</button>
+  <button onclick="filterApproval('rejected',this)" class="btn btn-outline btn-sm filter-tab">❌ Rejected</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">All Inventory</span>
+    <input type="text" placeholder="Search vehicles..." oninput="filterTable(this,'vTable')"
+      style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+  </div>
+  <table class="table" id="vTable">
+    <thead>
+      <tr><th>ID</th><th>Image</th><th>Vehicle</th><th>Year</th><th>Fuel</th><th>Price</th><th>Approval</th><th>Status</th><th>Dealer</th><th>Added</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for v in vehicles %}
+      <tr id="vrow-{{ v.id }}" data-approval="{{ v.approval_status }}">
+        <td style="font-weight:700;color:#10b981;font-size:12px;letter-spacing:.5px;">V-{{ v.id }}</td>
+        <td>
+          {# Prefer front-typed VehicleImage for thumbnail #}
+          {% set front_img = v.extra_images_rel | selectattr('image_type','equalto','front') | first %}
+          {% set thumb_img = front_img or (v.extra_images_rel[0] if v.extra_images_rel else none) %}
+          {% if thumb_img %}
+          <img src="/static/images/uploads/{{ thumb_img.filename }}"
+               onerror=\"this.onerror=null;this.src='/static/images/defaults/default_car.jpg'\"
+               style="width:56px;height:42px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+          {% elif v.image_filename and v.image_filename not in ('None', '', 'default_car.jpg') %}
+          <img src="/static/images/uploads/{{ v.image_filename }}"
+               onerror=\"this.onerror=null;this.src='/static/images/defaults/default_car.jpg'\"
+               style="width:56px;height:42px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+          {% else %}
+          <div style="width:56px;height:42px;border-radius:6px;background:var(--bg-hover);display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid var(--border);">🚗</div>
+          {% endif %}
+        </td>
+        <td>
+          <strong>{{ v.make }} {{ v.model }}</strong><br>
+          <span style="font-size:11px;color:var(--text-2);">{{ v.variant or '' }}</span>
+        </td>
+        <td>{{ v.year }}</td>
+        <td>{{ v.fuel_type or '—' }}</td>
+        <td>₹{{ '{:,.0f}'.format(v.price|float) }}</td>
+        <td>
+          <!-- Approval dropdown -->
+          <select onchange="setVehicleApproval({{ v.id }}, this.value, this)"
+            style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:12px;">
+            <option value="pending"  {% if v.approval_status == 'pending'  %}selected{% endif %}>⏳ Pending</option>
+            <option value="approved" {% if v.approval_status == 'approved' %}selected{% endif %}>✅ Approved</option>
+            <option value="rejected" {% if v.approval_status == 'rejected' %}selected{% endif %}>❌ Rejected</option>
+          </select>
+        </td>
+        <td>
+          <span class="badge {% if v.status == 'available' %}badge-success{% elif v.status == 'sold' %}badge-danger{% else %}badge-neutral{% endif %}">
+            {{ v.status }}
+          </span>
+        </td>
+        <td>
+          {% if v.dealer %}
+            {{ v.dealer.name }}
+            <div style="font-size:11px;color:var(--text-2);">{{ v.dealer.display_id or ('D' ~ v.dealer_id) }}</div>
+          {% else %}
+            {{ 'D' ~ v.dealer_id if v.dealer_id else '—' }}
+          {% endif %}
+        </td>
+        <td>{{ v.created_at.strftime('%d %b %Y') if v.created_at else '—' }}</td>
+        <td style="white-space:nowrap;">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <a href="{{ url_for('admin.view_vehicle', vehicle_id=v.id) }}"
+               title="View Vehicle" aria-label="View Vehicle"
+               style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#06b6d4;color:#fff;text-decoration:none;font-size:13px;transition:opacity .15s;">
+              <i class="fas fa-eye"></i></a>
+            <a href="{{ url_for('admin.edit_vehicle', vehicle_id=v.id) }}"
+               title="Edit Vehicle" aria-label="Edit Vehicle"
+               style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#f97316;color:#fff;text-decoration:none;font-size:13px;transition:opacity .15s;">
+              <i class="fas fa-pencil-alt"></i></a>
+            <a href="{{ url_for('admin.vehicle_images', vehicle_id=v.id) }}"
+               title="Manage Images" aria-label="Manage Images"
+               style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#8b5cf6;color:#fff;text-decoration:none;font-size:13px;transition:opacity .15s;">
+              <i class="fas fa-images"></i></a>
+            <button onclick="deleteVehicle({{ v.id }})"
+                    title="Delete Vehicle" aria-label="Delete Vehicle"
+                    style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:13px;transition:opacity .15s;">
+              <i class="fas fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text-2);">No vehicles in database.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterTable(inp, tableId) {
+  const q = inp.value.toLowerCase();
+  document.querySelectorAll('#' + tableId + ' tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+let currentApprovalFilter = 'all';
+
+function filterApproval(type, btn) {
+  currentApprovalFilter = type;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('btn-primary'));
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.add('btn-outline'));
+  btn.classList.add('btn-primary');
+  btn.classList.remove('btn-outline');
+
+  document.querySelectorAll('#vTable tbody tr[data-approval]').forEach(row => {
+    if (type === 'all' || row.dataset.approval === type) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+function setVehicleApproval(vehicleId, status, selectEl) {
+  fetch('/admin/api/vehicles/' + vehicleId + '/set-approval', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: status})
+  }).then(r => r.json()).then(d => {
+    if (d.success) {
+      const row = document.getElementById('vrow-' + vehicleId);
+      if (row) row.dataset.approval = status;
+      showToast('Vehicle set to ' + status, 'success');
+    } else {
+      showToast('Failed to update', 'error');
+    }
+  });
+}
+
+function deleteVehicle(vehicleId) {
+  if (!confirm('Delete this vehicle? This cannot be undone.')) return;
+  fetch('/admin/api/vehicles/' + vehicleId + '/delete', {method: 'POST'})
+    .then(r => r.json()).then(d => {
+      if (d.success) {
+        const row = document.getElementById('vrow-' + vehicleId);
+        if (row) row.remove();
+        showToast('Vehicle deleted', 'success');
+      } else {
+        alert(d.message || 'Failed to delete vehicle');
+      }
+    });
+}
+
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;z-index:9999;background:' + (type==='success'?'#22c55e':'#ef4444');
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+</script>
+{% endblock %}

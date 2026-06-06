@@ -1,0 +1,121 @@
+{% extends "admin/base.html" %}
+{% block title %}Edit Sub-Admin — Caryanams{% endblock %}
+{% block page_title %}Edit Sub-Admin{% endblock %}
+{% set page = 'sub_admins' %}
+
+{% block content %}
+<div style="max-width:720px">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div style="margin-bottom:16px;padding:12px 16px;border-radius:10px;background:{% if cat=='success' %}rgba(46,204,113,.1){% else %}rgba(231,76,60,.1){% endif %};border:1px solid {% if cat=='success' %}#2ecc71{% else %}#e74c3c{% endif %}">{{ msg }}</div>
+  {% endfor %}
+  {% endwith %}
+
+  <form method="POST">
+    <div class="card mb-24">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-user-shield" style="margin-right:8px;color:var(--gold-accent)"></i>Edit: {{ sa.name }}</div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" name="name" value="{{ sa.name }}" required>
+          </div>
+          <div class="form-group">
+            <label>Username <span style="font-size:11px;color:var(--text-secondary)">(cannot change)</span></label>
+            <input type="text" value="{{ sa.username }}" disabled style="opacity:.6">
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" value="{{ sa.email }}" required>
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="text" name="phone" value="{{ sa.phone or '' }}">
+          </div>
+          <div class="form-group full">
+            <label>New Password <span style="font-size:11px;color:var(--text-secondary)">(leave blank to keep current)</span></label>
+            <input type="password" name="password" placeholder="Leave blank to keep current password">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-24">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div class="card-title"><i class="fas fa-lock" style="margin-right:8px;color:var(--gold-accent)"></i>Access Permissions</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Click cards to toggle — changes apply on next login</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="button" onclick="toggleAll(true)" class="btn btn-sm btn-outline">✓ All</button>
+          <button type="button" onclick="toggleAll(false)" class="btn btn-sm btn-outline">✕ None</button>
+        </div>
+      </div>
+      <div class="card-body">
+        {% set current_perms = sa.get_permissions() %}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+          {% for perm, label, icon in all_perms %}
+          {% set checked = perm in current_perms %}
+          <div class="perm-card {% if checked %}active{% endif %}" data-perm="{{ perm }}" onclick="togglePerm(this)" style="padding:16px 14px;border:2px solid {% if checked %}var(--gold-accent,#f5c518){% else %}var(--card-border,#2a2a2a){% endif %};background:{% if checked %}rgba(245,197,24,.07){% else %}transparent{% endif %};border-radius:12px;cursor:pointer;transition:all .18s;user-select:none">
+            <input type="checkbox" name="permissions" value="{{ perm }}" {% if checked %}checked{% endif %} style="display:none">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <div class="perm-icon" style="width:34px;height:34px;border-radius:9px;background:{% if checked %}rgba(245,197,24,.2){% else %}rgba(245,197,24,.1){% endif %};display:flex;align-items:center;justify-content:center;transition:background .18s">
+                <i class="{{ icon }}" style="color:var(--gold-accent,#f5c518);font-size:15px"></i>
+              </div>
+              <div class="perm-check" style="width:18px;height:18px;border-radius:5px;border:2px solid {% if checked %}var(--gold-accent,#f5c518){% else %}var(--card-border,#2a2a2a){% endif %};background:{% if checked %}var(--gold-accent,#f5c518){% else %}transparent{% endif %};margin-left:auto;display:flex;align-items:center;justify-content:center;transition:all .18s">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style="opacity:{% if checked %}1{% else %}0{% endif %};transition:opacity .15s"><polyline points="2,7 5,10 10,3" stroke="{% if checked %}#000{% else %}#fff{% endif %}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+            <div style="font-weight:700;font-size:14px;color:var(--text-1,#fff)">{{ label }}</div>
+            <div style="font-size:11px;color:var(--text-3,#888);margin-top:2px">Manage {{ label|lower }} module</div>
+          </div>
+          {% endfor %}
+        </div>
+        <div id="noPermWarn" style="display:{% if not current_perms %}block{% else %}none{% endif %};margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#f87171;font-size:13px">
+          ⚠ No permissions selected — this sub-admin won't be able to access any module.
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Save Changes</button>
+      <a href="{{ url_for('admin.sub_admins') }}" class="btn btn-outline btn-lg">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<style>
+.perm-card.active { border-color: var(--gold-accent, #f5c518) !important; background: rgba(245,197,24,.07); }
+.perm-card.active .perm-icon { background: rgba(245,197,24,.2); }
+.perm-card.active .perm-check { background: var(--gold-accent, #f5c518); border-color: var(--gold-accent, #f5c518); }
+.perm-card.active .perm-check svg { opacity: 1 !important; }
+.perm-card:hover:not(.active) { border-color: rgba(245,197,24,.4); }
+</style>
+
+<script>
+function togglePerm(card) {
+  card.classList.toggle('active');
+  const cb = card.querySelector('input[type=checkbox]');
+  cb.checked = card.classList.contains('active');
+  card.style.borderColor = cb.checked ? 'var(--gold-accent,#f5c518)' : 'var(--card-border,#2a2a2a)';
+  card.style.background = cb.checked ? 'rgba(245,197,24,.07)' : 'transparent';
+  checkWarn();
+}
+function toggleAll(val) {
+  document.querySelectorAll('.perm-card').forEach(card => {
+    const cb = card.querySelector('input[type=checkbox]');
+    cb.checked = val;
+    if (val) card.classList.add('active'); else card.classList.remove('active');
+    card.style.borderColor = val ? 'var(--gold-accent,#f5c518)' : 'var(--card-border,#2a2a2a)';
+    card.style.background = val ? 'rgba(245,197,24,.07)' : 'transparent';
+  });
+  checkWarn();
+}
+function checkWarn() {
+  const any = [...document.querySelectorAll('input[name="permissions"]')].some(c => c.checked);
+  document.getElementById('noPermWarn').style.display = any ? 'none' : 'block';
+}
+</script>
+{% endblock %}

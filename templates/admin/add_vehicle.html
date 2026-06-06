@@ -1,0 +1,250 @@
+{% extends 'admin/base.html' %}
+{% block title %}Add Vehicle — AutoDMS{% endblock %}
+{% block page_title %}Add Vehicle{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Add New Vehicle</h1><p>List a new vehicle on the platform</p></div>
+  <a href="{{ url_for('admin.all_vehicles') }}" class="btn btn-outline btn-sm">← Back</a>
+</div>
+
+<div class="card">
+  <!-- enctype MUST be multipart/form-data for file uploads -->
+  <form method="POST" action="{{ url_for('admin.add_vehicle') }}" enctype="multipart/form-data" id="addVehicleForm">
+
+    <!-- ── Vehicle Details ──────────────────────────────────────── -->
+    <div style="margin-bottom:20px;">
+      <div class="card-title" style="margin-bottom:4px;">Vehicle Details</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Dealer <span style="color:var(--red);">*</span></label>
+        <select class="form-control" name="dealer_id" required>
+          <option value="">Select Dealer</option>
+          {% for d in dealers %}<option value="{{ d.id }}">{{ d.display_id or ('D' ~ d.id) }} — {{ d.name }} ({{ d.company_name or d.city or "" }})</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Brand <span style="color:var(--red);">*</span></label>
+        <select class="form-control" name="brand" required>
+          <option value="">Select Brand</option>
+          <option>Maruti</option><option>Hyundai</option><option>Tata</option>
+          <option>Toyota</option><option>Honda</option><option>Kia</option>
+          <option>MG</option><option>BMW</option><option>Mercedes</option>
+          <option>Audi</option><option>Mahindra</option><option>Skoda</option>
+          <option>Volkswagen</option><option>Nissan</option><option>Renault</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Model <span style="color:var(--red);">*</span></label>
+        <input type="text" class="form-control" name="model" placeholder="e.g. Swift, Creta" required>
+      </div>
+      <div class="form-group">
+        <label>Variant</label>
+        <input type="text" class="form-control" name="variant" placeholder="e.g. VXI, SX, ZX+">
+      </div>
+      <div class="form-group">
+        <label>Year <span style="color:var(--red);">*</span></label>
+        <select class="form-control" name="year" required>
+          {% for y in range(2025,2014,-1) %}<option>{{ y }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Fuel Type <span style="color:var(--red);">*</span></label>
+        <select class="form-control" name="fuel" required>
+          <option>Petrol</option><option>Diesel</option>
+          <option>Electric</option><option>Hybrid</option><option>CNG</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Transmission</label>
+        <select class="form-control" name="transmission">
+          <option>Manual</option><option>Automatic</option><option>CVT</option>
+          <option>AMT</option><option>DCT</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Kilometers Driven</label>
+        <input type="number" class="form-control" name="km" placeholder="e.g. 25000" min="0">
+      </div>
+      <div class="form-group">
+        <label>Price (₹) <span style="color:var(--red);">*</span></label>
+        <input type="number" class="form-control" name="price" placeholder="e.g. 850000" required min="0">
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <input type="text" class="form-control" name="color" placeholder="e.g. Pearl White">
+      </div>
+      <div class="form-group">
+        <label>Owner Count</label>
+        <select class="form-control" name="ownerCount">
+          <option value="1">1st Owner</option>
+          <option value="2">2nd Owner</option>
+          <option value="3">3rd Owner</option>
+          <option value="4">4th+ Owner</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Uploaded By</label>
+        <select class="form-control" name="uploadedByRole">
+          <option value="dealer">Dealer</option>
+          <option value="user">User / Seller</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1;">
+        <label>Description</label>
+        <textarea class="form-control" name="description" placeholder="Additional details about the vehicle..."></textarea>
+      </div>
+    </div>
+
+    <!-- ── Image Upload ─────────────────────────────────────────── -->
+    <div style="margin-top:32px;margin-bottom:16px;padding-top:24px;border-top:1px solid var(--border);">
+      <div class="card-title" style="margin-bottom:4px;">Vehicle Images</div>
+      <p style="color:var(--text-3);font-size:0.82rem;">
+        Upload up to <strong style="color:var(--accent);">20 images</strong> per vehicle.
+        Supported formats: JPG, JPEG, PNG, WEBP.
+      </p>
+    </div>
+
+    <!-- Drop-zone / multi-file picker -->
+    <div class="vehicle-img-upload-zone" id="imgDropZone"
+         onclick="document.getElementById('vehicleImages').click()">
+      <div class="vehicle-img-upload-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </div>
+      <div class="vehicle-img-upload-label">Click to select images or drag &amp; drop here</div>
+      <div class="vehicle-img-upload-hint">Max 20 images · JPG, JPEG, PNG, WEBP</div>
+      <!-- The actual multi-file input — hidden, triggered by zone click -->
+      <input type="file" id="vehicleImages" name="images" accept=".jpg,.jpeg,.png,.webp"
+             multiple style="display:none;">
+    </div>
+
+    <!-- Preview grid (populated by JS) -->
+    <div class="vehicle-img-preview-grid" id="imgPreviewGrid" style="display:none;margin-top:16px;"></div>
+    <div id="imgCountInfo" style="font-size:0.8rem;color:var(--text-3);margin-top:8px;"></div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Add Vehicle</button>
+      <a href="{{ url_for('admin.all_vehicles') }}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const MAX = 20;
+  const ALLOWED = ['jpg','jpeg','png','webp'];
+  const input      = document.getElementById('vehicleImages');
+  const dropZone   = document.getElementById('imgDropZone');
+  const previewGrid= document.getElementById('imgPreviewGrid');
+  const countInfo  = document.getElementById('imgCountInfo');
+  const form       = document.getElementById('addVehicleForm');
+
+  // Allow drag-over on zone
+  ['dragover','dragleave','drop'].forEach(evt => {
+    dropZone.addEventListener(evt, function(e) {
+      e.preventDefault();
+      if (evt === 'dragover') dropZone.classList.add('dragover');
+      else dropZone.classList.remove('dragover');
+      if (evt === 'drop' && e.dataTransfer.files.length) {
+        // Merge dragged files with existing input
+        const dt = new DataTransfer();
+        // Add existing
+        if (input.files) Array.from(input.files).forEach(f => dt.items.add(f));
+        // Add new (up to MAX)
+        Array.from(e.dataTransfer.files).forEach(f => {
+          if (dt.files.length < MAX) dt.items.add(f);
+        });
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+  });
+
+  input.addEventListener('change', function() {
+    renderPreviews(Array.from(this.files));
+  });
+
+  function renderPreviews(files) {
+    previewGrid.innerHTML = '';
+    let valid = 0;
+    files.forEach((file, i) => {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const ok  = ALLOWED.includes(ext) && file.size <= 10 * 1024 * 1024;
+      const card = document.createElement('div');
+      card.className = 'img-preview-card' + (ok ? '' : ' img-preview-error');
+
+      if (ok && file.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.className = 'img-preview-thumb';
+        img.src = URL.createObjectURL(file);
+        card.appendChild(img);
+      } else {
+        const icon = document.createElement('div');
+        icon.className = 'img-preview-thumb img-preview-thumb-icon';
+        icon.textContent = ok ? '🖼️' : '❌';
+        card.appendChild(icon);
+      }
+
+      const name = document.createElement('div');
+      name.className = 'img-preview-name';
+      name.textContent = file.name.length > 18 ? file.name.substring(0,16)+'…' : file.name;
+      card.appendChild(name);
+
+      if (!ok) {
+        const err = document.createElement('div');
+        err.style.cssText = 'font-size:0.65rem;color:var(--red);text-align:center;margin-top:2px;';
+        err.textContent = ext && !ALLOWED.includes(ext) ? 'Invalid type' : 'Too large';
+        card.appendChild(err);
+      } else {
+        valid++;
+      }
+
+      // Remove button
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'img-preview-remove';
+      rm.textContent = '×';
+      rm.title = 'Remove';
+      rm.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const dt = new DataTransfer();
+        Array.from(input.files).forEach((f, j) => { if (j !== i) dt.items.add(f); });
+        input.files = dt.files;
+        renderPreviews(Array.from(input.files));
+      });
+      card.appendChild(rm);
+
+      previewGrid.appendChild(card);
+    });
+
+    previewGrid.style.display = files.length ? 'grid' : 'none';
+    if (files.length > MAX) {
+      countInfo.innerHTML = '<span style="color:var(--orange);">⚠️ ' + files.length + ' images selected — only first ' + MAX + ' will be uploaded.</span>';
+    } else if (files.length > 0) {
+      countInfo.textContent = valid + ' of ' + files.length + ' image(s) selected';
+      countInfo.style.color = 'var(--text-3)';
+    } else {
+      countInfo.textContent = '';
+    }
+  }
+
+  form.addEventListener('submit', function(e) {
+    const files = Array.from(input.files);
+    const invalid = files.filter(f => {
+      const ext = f.name.split('.').pop().toLowerCase();
+      return !ALLOWED.includes(ext);
+    });
+    if (invalid.length) {
+      showToast(invalid.length + ' invalid file type(s) will be skipped (JPG/JPEG/PNG/WEBP only).', 'warn');
+    }
+    // Enforce max on submit
+    if (files.length > MAX) {
+      showToast('Only first ' + MAX + ' images will be saved.', 'warn');
+    }
+  });
+})();
+</script>
+{% endblock %}

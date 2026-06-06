@@ -1,0 +1,173 @@
+{% extends 'admin/base.html' %}
+{% block title %}Add Dealer — AutoDMS{% endblock %}
+{% block page_title %}Add Dealer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Add New Dealer</h1>
+    <p>Register a new dealership on the platform</p>
+  </div>
+  <a href="{{ url_for('admin.all_dealers') }}" class="btn btn-outline btn-sm">← Back to Dealers</a>
+</div>
+
+<div class="card">
+  <form method="POST" action="{{ url_for('admin.add_dealer') }}" id="addDealerForm">
+    <div style="margin-bottom:24px;">
+      <div class="card-title" style="margin-bottom:4px;">Dealership Information</div>
+      <p style="color:var(--text-3);font-size:0.82rem;">Basic details about the dealership</p>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Dealer Name <span style="color:var(--red);">*</span></label>
+        <input type="text" class="form-control" name="dealer_name"
+               value="{{ form.get('dealer_name','') if form else '' }}"
+               placeholder="e.g. AutoPrime Motors" required>
+      </div>
+      <div class="form-group">
+        <label>Owner Name</label>
+        <input type="text" class="form-control" name="owner_name"
+               value="{{ form.get('owner_name','') if form else '' }}"
+               placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label>Mobile Number <span style="color:var(--red);">*</span></label>
+        <input type="tel" class="form-control" name="contact" id="contactInput"
+               value="{{ form.get('contact','') if form else '' }}"
+               placeholder="10-digit mobile number" maxlength="10" required>
+        <span class="field-hint" id="contactHint" style="font-size:0.72rem;color:var(--text-3);margin-top:3px;display:block;">Must be exactly 10 digits</span>
+      </div>
+      <div class="form-group">
+        <label>Email Address <span style="color:var(--text-3);font-size:0.75rem;">(optional)</span></label>
+        <input type="text" class="form-control" name="email" id="emailInput"
+               value="{{ form.get('email','') if form else '' }}"
+               placeholder="dealer@example.com">
+        <span class="field-hint" id="emailHint" style="font-size:0.72rem;color:var(--text-3);margin-top:3px;display:block;"></span>
+      </div>
+      <div class="form-group" style="grid-column: 1/-1;">
+        <label>Address</label>
+        <input type="text" class="form-control" name="address"
+               value="{{ form.get('address','') if form else '' }}"
+               placeholder="Full address">
+      </div>
+      <div class="form-group">
+        <label>City</label>
+        <input type="text" class="form-control" name="city"
+               value="{{ form.get('city','') if form else '' }}"
+               placeholder="e.g. Ahmedabad">
+      </div>
+      <div class="form-group">
+        <label>State</label>
+        <select class="form-control" name="state">
+          {% set sel_state = (form.get('state','Gujarat') if form else 'Gujarat') %}
+          <option {% if sel_state=='Gujarat' %}selected{% endif %}>Gujarat</option>
+          <option {% if sel_state=='Maharashtra' %}selected{% endif %}>Maharashtra</option>
+          <option {% if sel_state=='Rajasthan' %}selected{% endif %}>Rajasthan</option>
+          <option {% if sel_state=='Madhya Pradesh' %}selected{% endif %}>Madhya Pradesh</option>
+          <option {% if sel_state=='Delhi' %}selected{% endif %}>Delhi</option>
+          <option {% if sel_state=='Karnataka' %}selected{% endif %}>Karnataka</option>
+          <option {% if sel_state=='Tamil Nadu' %}selected{% endif %}>Tamil Nadu</option>
+          <option {% if sel_state=='Uttar Pradesh' %}selected{% endif %}>Uttar Pradesh</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;margin-bottom:20px;padding-top:24px;border-top:1px solid var(--border);">
+      <div class="card-title" style="margin-bottom:4px;">Business Details</div>
+      <p style="color:var(--text-3);font-size:0.82rem;">Tax and registration information (optional)</p>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>GST Number</label>
+        <input type="text" class="form-control" name="gst"
+               value="{{ form.get('gst','') if form else '' }}"
+               placeholder="24AABCU9603R1ZX" maxlength="15">
+      </div>
+      <div class="form-group">
+        <label>Business Registration No.</label>
+        <input type="text" class="form-control" name="reg_no"
+               value="{{ form.get('reg_no','') if form else '' }}"
+               placeholder="Registration number">
+      </div>
+      <div class="form-group">
+        <label>Initial Status</label>
+        <select class="form-control" name="status">
+          {% set sel_status = (form.get('status','Active') if form else 'Active') %}
+          <option value="Active"    {% if sel_status=='Active' %}selected{% endif %}>Active</option>
+          <option value="Pending"   {% if sel_status=='Pending' %}selected{% endif %}>Pending</option>
+          <option value="Suspended" {% if sel_status=='Suspended' %}selected{% endif %}>Suspended</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1;">
+        <label>Notes</label>
+        <textarea class="form-control" name="notes" placeholder="Any additional notes...">{{ form.get('notes','') if form else '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" id="submitBtn">Add Dealer</button>
+      <a href="{{ url_for('admin.all_dealers') }}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const form       = document.getElementById('addDealerForm');
+  const contactEl  = document.getElementById('contactInput');
+  const contactHint= document.getElementById('contactHint');
+  const emailEl    = document.getElementById('emailInput');
+  const emailHint  = document.getElementById('emailHint');
+
+  // Live validation: contact
+  contactEl.addEventListener('input', function() {
+    const v = this.value.replace(/\D/g,'');
+    this.value = v;
+    if (v.length > 0 && v.length !== 10) {
+      contactHint.textContent = 'Must be exactly 10 digits (' + v.length + '/10)';
+      contactHint.style.color = 'var(--orange)';
+    } else if (v.length === 10) {
+      contactHint.textContent = '✓ Valid mobile number';
+      contactHint.style.color = 'var(--green)';
+    } else {
+      contactHint.textContent = 'Must be exactly 10 digits';
+      contactHint.style.color = 'var(--text-3)';
+    }
+  });
+
+  // Live validation: email (optional — only show error if something typed)
+  emailEl.addEventListener('input', function() {
+    const v = this.value.trim();
+    if (v.length === 0) {
+      emailHint.textContent = '';
+    } else if (!v.includes('@') || !v.includes('.')) {
+      emailHint.textContent = 'Enter a valid email (e.g. name@domain.com)';
+      emailHint.style.color = 'var(--orange)';
+    } else {
+      emailHint.textContent = '✓ Valid email';
+      emailHint.style.color = 'var(--green)';
+    }
+  });
+
+  // Form submit gate
+  form.addEventListener('submit', function(e) {
+    let valid = true;
+    const contact = contactEl.value.trim();
+    const email   = emailEl.value.trim();
+
+    if (!/^\d{10}$/.test(contact)) {
+      showToast('Mobile number must be exactly 10 digits.', 'error');
+      contactEl.focus();
+      valid = false;
+    }
+    if (email && !email.includes('@')) {
+      showToast('Email format is invalid. Please correct it or leave it blank.', 'error');
+      valid = false;
+    }
+    if (!valid) e.preventDefault();
+  });
+})();
+</script>
+{% endblock %}

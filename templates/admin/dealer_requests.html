@@ -1,0 +1,125 @@
+{% extends 'admin/base.html' %}
+{% block title %}KYC Requests — Caryanams Admin{% endblock %}
+{% block page_title %}KYC Requests{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>KYC Requests</h1>
+    <p>{{ pending|length }} pending KYC verification request{{ 's' if pending|length != 1 }}</p>
+  </div>
+  <a href="{{ url_for('admin.all_dealers') }}" class="btn btn-outline btn-sm">← Back to Dealers</a>
+</div>
+
+{% if pending %}
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Dealer Name</th>
+          <th>Company</th>
+          <th>Contact</th>
+          <th>Registered</th>
+          <th>KYC Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in pending %}
+        <tr>
+          <td class="td-muted">{{ d.id }}</td>
+          <td style="font-weight:600;">{{ d.name }}</td>
+          <td class="td-muted">{{ d.company_name or '—' }}</td>
+          <td><a href="tel:{{ d.phone }}" style="color:var(--blue);text-decoration:none;">{{ d.phone or '—' }}</a></td>
+          <td class="td-muted">{{ d.created_at.strftime('%Y-%m-%d') if d.created_at else '—' }}</td>
+          <td><span class="badge badge-kyc-pending">⏳ Pending Review</span></td>
+          <td>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <a href="{{ url_for('admin.view_dealer', dealer_id=d.id) }}"
+                 title="View Dealer" aria-label="View Dealer"
+                 style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#06b6d4;color:#fff;text-decoration:none;font-size:13px;transition:opacity .15s;">
+                <i class="fas fa-eye"></i></a>
+              <button onclick="approveKyc({{ d.id }})"
+                      title="Approve KYC" aria-label="Approve KYC"
+                      style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;font-size:13px;transition:opacity .15s;">
+                <i class="fas fa-check"></i></button>
+              <button onclick="openRejectModal({{ d.id }})"
+                      title="Reject KYC" aria-label="Reject KYC"
+                      style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:13px;transition:opacity .15s;">
+                <i class="fas fa-times"></i></button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+    <h3>All Clear!</h3>
+    <p>No pending KYC requests at this time.</p>
+  </div>
+</div>
+{% endif %}
+
+{% if approved %}
+<div class="section-title" style="margin:24px 0 12px;">Approved Dealers ({{ approved|length }})</div>
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Name</th><th>Company</th><th>Plan</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for d in approved %}
+        <tr>
+          <td class="td-muted">{{ d.id }}</td>
+          <td>{{ d.name }}</td>
+          <td>{{ d.company_name or '—' }}</td>
+          <td><span class="badge">{{ d.subscription_plan }}</span></td>
+          <td><span class="badge badge-active">Active</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function approveKyc(dealerId) {
+  if (!confirm('Approve KYC for this dealer?')) return;
+  fetch(`/admin/api/dealers/${dealerId}/approve-kyc`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) { showToast('KYC approved!', 'success'); setTimeout(() => location.reload(), 800); }
+      else showToast(data.message || 'Error', 'error');
+    });
+}
+function openRejectModal(dealerId) {
+  document.getElementById('rejectDealerId').value = dealerId;
+  document.getElementById('rejectReason').value = '';
+  openModal('rejectKycModal');
+}
+function submitRejectKyc() {
+  const id = document.getElementById('rejectDealerId').value;
+  const reason = document.getElementById('rejectReason').value.trim();
+  if (!reason) { showToast('Please enter a rejection reason.', 'error'); return; }
+  fetch(`/admin/api/dealers/${id}/reject-kyc`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason })
+  }).then(r => r.json()).then(data => {
+    if (data.success) { closeModal('rejectKycModal'); showToast('KYC rejected.', 'success'); setTimeout(() => location.reload(), 800); }
+    else showToast(data.message || 'Error', 'error');
+  });
+}
+</script>
+{% endblock %}

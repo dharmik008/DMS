@@ -1,0 +1,58 @@
+{% extends 'admin/base.html' %}
+{% block title %}View User — Caryanams Admin{% endblock %}
+{% block page_title %}User Detail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>{{ user.name }}</h1>
+    <p>Registered User · Joined {{ user.created_at.strftime('%d %b %Y') if user.created_at else '—' }}</p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="{{ url_for('admin.all_users') }}" class="btn btn-outline btn-sm">← Back</a>
+    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn btn-outline btn-sm"><i class="fas fa-pencil-alt"></i> Edit</a>
+    <button onclick="deleteUser({{ user.id }})" class="btn btn-danger btn-sm" title="Delete User" aria-label="Delete User"><i class="fas fa-trash"></i> Delete</button>
+  </div>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <div class="card-header"><span class="card-title">User Information</span></div>
+  <div style="padding:16px 20px;">
+    <table style="width:100%;border-collapse:collapse;">
+      {% set rows = [
+        ('ID', user.display_id or ('U' ~ user.id)),
+        ('Name', user.name),
+        ('Email', user.email),
+        ('Phone', user.phone or '—'),
+        ('City', user.city or '—'),
+        ('Status', 'Active' if user.is_active else 'Blocked'),
+        ('Registered', user.created_at.strftime('%d %b %Y %H:%M') if user.created_at else '—'),
+      ] %}
+      {% for label, val in rows %}
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px 0;color:var(--text-2);font-size:13px;width:140px;">{{ label }}</td>
+        <td style="padding:10px 0;font-size:13px;">
+          {% if label == 'Status' %}
+            <span class="badge {% if user.is_active %}badge-success{% else %}badge-danger{% endif %}">{{ val }}</span>
+          {% else %}
+            {{ val }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function deleteUser(userId) {
+  if (!confirm('Delete this user permanently?')) return;
+  fetch('/admin/api/users/' + userId + '/delete', {method:'POST'})
+    .then(r=>r.json()).then(d=>{
+      if(d.success) window.location.href = '/admin/users';
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,276 @@
+{% extends 'admin/base.html' %}
+{% block title %}Vehicle Images — {{ vehicle.make }} {{ vehicle.model }}{% endblock %}
+{% block page_title %}Vehicle Image Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>{{ vehicle.make }} {{ vehicle.model }} {{ vehicle.variant or '' }}</h1>
+    <p>{{ vehicle.year }} · {{ vehicle.fuel_type or '—' }} · Image Management</p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="{{ url_for('admin.view_vehicle', vehicle_id=vehicle.id) }}" class="btn btn-outline btn-sm">← Back to Vehicle</a>
+    <a href="{{ url_for('admin.edit_vehicle', vehicle_id=vehicle.id) }}" class="btn btn-outline btn-sm">✏ Edit Vehicle</a>
+  </div>
+</div>
+
+<!-- Upload Zone -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <span class="card-title">Upload Vehicle Images</span>
+    <span style="font-size:12px;color:var(--text-2);">JPG, JPEG, PNG, WEBP · Max 10 MB each · Multiple files supported</span>
+  </div>
+  <div style="padding:20px;">
+    <div id="dropZone"
+         style="border:2px dashed var(--border-md);border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--bg-surface);"
+         ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--accent-dim)';"
+         ondragleave="this.style.borderColor='var(--border-md)';this.style.background='var(--bg-surface)';"
+         ondrop="handleDrop(event)"
+         onclick="document.getElementById('imageInput').click()">
+      <div style="font-size:40px;margin-bottom:12px;">🖼️</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Drag & drop images here or click to browse</div>
+      <div style="font-size:13px;color:var(--text-2);">Supports: Front View · Back View · Side View · Interior</div>
+    </div>
+    <input type="file" id="imageInput" multiple accept=".jpg,.jpeg,.png,.webp" onchange="handleFiles(this.files)" style="display:none;">
+
+    <!-- Preview Grid -->
+    <div id="previewGrid" style="display:none;margin-top:16px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Selected Images Preview:</div>
+      <div id="previewItems" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button onclick="uploadImages()" id="uploadBtn" class="btn btn-primary">⬆ Upload {{ '' }} Images</button>
+        <button onclick="clearPreview()" class="btn btn-outline">✕ Clear</button>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div id="uploadProgress" style="display:none;margin-top:16px;">
+      <div style="display:flex;align-items:center;gap:12px;font-size:13px;">
+        <div class="spinner" style="width:18px;height:18px;border:2px solid var(--border-md);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>
+        Uploading images…
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Existing Images Gallery -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Vehicle Images ({{ images|length }})</span>
+    {% if images %}
+    <span style="font-size:12px;color:var(--text-2);">Click ⭐ to set as primary · Click 🗑 to delete</span>
+    {% endif %}
+  </div>
+  <div style="padding:20px;" id="imageGallery">
+    {% if images %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;" id="imageGrid">
+      {% for img in images %}
+      <div class="img-card" id="imgCard_{{ img.id }}" style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg-surface);transition:box-shadow 0.2s;
+        {% if vehicle.image_filename == img.filename %}border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim);{% endif %}">
+        <div style="position:relative;aspect-ratio:4/3;overflow:hidden;cursor:pointer;"
+             onclick="openLightbox('/static/images/uploads/{{ img.filename }}','Image {{ loop.index }}')">
+          <img src="/static/images/uploads/{{ img.filename }}"
+               alt="Vehicle image {{ loop.index }}"
+               style="width:100%;height:100%;object-fit:cover;display:block;"
+               onerror=\"this.onerror=null;this.src='/static/images/defaults/default_car.jpg'\">
+          {% if vehicle.image_filename == img.filename %}
+          <div style="position:absolute;top:8px;left:8px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;">PRIMARY</div>
+          {% endif %}
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0);transition:background 0.2s;display:flex;align-items:center;justify-content:center;"
+               onmouseover="this.style.background='rgba(0,0,0,0.35)'"
+               onmouseout="this.style.background='rgba(0,0,0,0)'">
+            <span style="color:#fff;font-size:20px;opacity:0.9;">🔍</span>
+          </div>
+        </div>
+        <div style="padding:10px 12px;display:flex;gap:6px;align-items:center;">
+          <span style="font-size:11px;color:var(--text-2);flex:1;">img_{{ loop.index }}</span>
+          <button onclick="openMaskEditor({{ img.id }}, '/static/images/uploads/{{ img.filename }}', '{{ img.filename }}', '{{ img.image_type }}')"
+                  title="Mask Edit — Remove BG + Number Plate"
+                  style="background:linear-gradient(135deg,#ff6b35,#f7c948);border:none;cursor:pointer;font-size:13px;padding:3px 7px;border-radius:6px;color:#111;font-weight:700;">🎨</button>
+          <button onclick="setPrimary({{ img.id }}, '{{ img.filename }}')" title="Set as Primary"
+                  style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;opacity:{% if vehicle.image_filename == img.filename %}1{% else %}0.4{% endif %};"
+                  {% if vehicle.image_filename == img.filename %}disabled title="Already primary"{% endif %}>⭐</button>
+          <button onclick="deleteImage({{ img.id }})" title="Delete Image"
+                  style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;">🗑</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:48px 20px;color:var(--text-2);">
+      <div style="font-size:48px;margin-bottom:12px;">🖼️</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px;">No images uploaded yet</div>
+      <div style="font-size:13px;">Upload images using the section above</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:2000;align-items:center;justify-content:center;"
+     onclick="if(event.target===this)closeLightbox()">
+  <div style="position:relative;max-width:90vw;max-height:88vh;">
+    <button onclick="closeLightbox()" style="position:absolute;top:-44px;right:0;background:none;border:none;color:#fff;font-size:32px;cursor:pointer;">×</button>
+    <button onclick="prevImage()" style="position:absolute;left:-50px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:24px;width:40px;height:40px;border-radius:50%;cursor:pointer;">‹</button>
+    <img id="lightboxImg" src="" style="max-width:90vw;max-height:88vh;border-radius:12px;object-fit:contain;display:block;">
+    <button onclick="nextImage()" style="position:absolute;right:-50px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:24px;width:40px;height:40px;border-radius:50%;cursor:pointer;">›</button>
+    <div id="lightboxCounter" style="position:absolute;bottom:-32px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:13px;"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const VEHICLE_ID = {{ vehicle.id }};
+let selectedFiles = [];
+let lightboxUrls = [];
+let lightboxIdx = 0;
+
+// ── Drag & Drop ──────────────────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').style.borderColor = 'var(--border-md)';
+  document.getElementById('dropZone').style.background  = 'var(--bg-surface)';
+  handleFiles(e.dataTransfer.files);
+}
+
+function handleFiles(files) {
+  selectedFiles = Array.from(files).filter(f => /\.(jpg|jpeg|png|webp)$/i.test(f.name));
+  if (!selectedFiles.length) { showToast('No valid image files selected.', 'error'); return; }
+  renderPreview();
+}
+
+function renderPreview() {
+  const grid = document.getElementById('previewItems');
+  grid.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:relative;border:1px solid var(--border);border-radius:8px;overflow:hidden;aspect-ratio:4/3;';
+    const img = document.createElement('img');
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+    const reader = new FileReader();
+    reader.onload = e => { img.src = e.target.result; };
+    reader.readAsDataURL(f);
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = '×';
+    removeBtn.style.cssText = 'position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;';
+    removeBtn.onclick = () => { selectedFiles.splice(i, 1); if (selectedFiles.length) renderPreview(); else clearPreview(); };
+    div.appendChild(img); div.appendChild(removeBtn);
+    grid.appendChild(div);
+  });
+  document.getElementById('uploadBtn').textContent = `⬆ Upload ${selectedFiles.length} Image${selectedFiles.length > 1 ? 's' : ''}`;
+  document.getElementById('previewGrid').style.display = 'block';
+}
+
+function clearPreview() {
+  selectedFiles = [];
+  document.getElementById('previewGrid').style.display = 'none';
+  document.getElementById('imageInput').value = '';
+}
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+async function uploadImages() {
+  if (!selectedFiles.length) return;
+  document.getElementById('previewGrid').style.display = 'none';
+  document.getElementById('uploadProgress').style.display = 'block';
+
+  const fd = new FormData();
+  selectedFiles.forEach(f => fd.append('images', f));
+
+  try {
+    const res = await fetch(`/admin/api/vehicles/${VEHICLE_ID}/images/upload`, { method: 'POST', body: fd });
+    const data = await res.json();
+    document.getElementById('uploadProgress').style.display = 'none';
+    if (data.success) {
+      showToast(`Uploaded ${data.uploaded.length} image(s) successfully!`, 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast(data.message || 'Upload failed.', 'error');
+      document.getElementById('previewGrid').style.display = 'block';
+    }
+    if (data.errors && data.errors.length) data.errors.forEach(e => showToast(e, 'error'));
+  } catch (err) {
+    document.getElementById('uploadProgress').style.display = 'none';
+    showToast('Network error. Please try again.', 'error');
+    document.getElementById('previewGrid').style.display = 'block';
+  }
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+function deleteImage(imageId) {
+  if (!confirm('Delete this image? This cannot be undone.')) return;
+  fetch(`/admin/api/vehicles/images/${imageId}/delete`, { method: 'POST' })
+    .then(r => r.json()).then(d => {
+      if (d.success) {
+        const card = document.getElementById('imgCard_' + imageId);
+        if (card) { card.style.opacity = '0'; card.style.transform = 'scale(0.9)'; card.style.transition = 'all 0.3s'; setTimeout(() => card.remove(), 300); }
+        showToast('Image deleted.', 'success');
+      } else showToast('Failed to delete image.', 'error');
+    });
+}
+
+// ── Set Primary ───────────────────────────────────────────────────────────────
+function setPrimary(imageId, filename) {
+  fetch(`/admin/api/vehicles/images/${imageId}/set-primary`, { method: 'POST' })
+    .then(r => r.json()).then(d => {
+      if (d.success) { showToast('Primary image updated!', 'success'); setTimeout(() => location.reload(), 800); }
+    });
+}
+
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+function openLightbox(src, label) {
+  // Build gallery from all current images
+  lightboxUrls = Array.from(document.querySelectorAll('#imageGrid img')).map(i => i.src);
+  lightboxIdx  = lightboxUrls.indexOf(src);
+  if (lightboxIdx < 0) { lightboxUrls = [src]; lightboxIdx = 0; }
+  showLightboxAt(lightboxIdx);
+  document.getElementById('lightbox').style.display = 'flex';
+}
+function showLightboxAt(idx) {
+  document.getElementById('lightboxImg').src = lightboxUrls[idx];
+  document.getElementById('lightboxCounter').textContent = `${idx + 1} / ${lightboxUrls.length}`;
+}
+function prevImage() { lightboxIdx = (lightboxIdx - 1 + lightboxUrls.length) % lightboxUrls.length; showLightboxAt(lightboxIdx); }
+function nextImage() { lightboxIdx = (lightboxIdx + 1) % lightboxUrls.length; showLightboxAt(lightboxIdx); }
+function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
+
+document.addEventListener('keydown', e => {
+  if (document.getElementById('lightbox').style.display === 'flex') {
+    if (e.key === 'ArrowLeft') prevImage();
+    if (e.key === 'ArrowRight') nextImage();
+    if (e.key === 'Escape') closeLightbox();
+  }
+});
+
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;z-index:9999;background:' + (type==='success'?'#22c55e':'#ef4444');
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3500);
+}
+
+// Mask editor: after save, update the image card in-place then close modal
+function maskEditorOnSave(viId, newImageUrl) {
+  const card = document.getElementById('imgCard_' + viId);
+  if (card) {
+    const img = card.querySelector('img');
+    if (img) img.src = newImageUrl;
+  }
+  showToast('Image updated successfully!', 'success');
+
+  // ── Auto set as primary after mask edit ──────────────────────────────────
+  fetch(`/admin/api/vehicles/images/${viId}/set-primary`, { method: 'POST' })
+    .then(r => r.json())
+    .then(d => { if (d.success) showToast('Primary image auto-updated!', 'success'); })
+    .catch(() => {});
+
+  setTimeout(() => { closeMaskEditor(); }, 1000);
+}
+</script>
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.img-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+</style>
+
+{% include 'mask_editor_modal.html' %}
+{% endblock %}

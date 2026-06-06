@@ -1,0 +1,117 @@
+{% extends "admin/base.html" %}
+{% block title %}Add Sub-Admin — Caryanams{% endblock %}
+{% block page_title %}Add Sub-Admin{% endblock %}
+{% set page = 'sub_admins' %}
+
+{% block content %}
+<div style="max-width:720px">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div style="margin-bottom:16px;padding:12px 16px;border-radius:10px;background:{% if cat=='success' %}rgba(46,204,113,.1){% else %}rgba(231,76,60,.1){% endif %};border:1px solid {% if cat=='success' %}#2ecc71{% else %}#e74c3c{% endif %}">{{ msg }}</div>
+  {% endfor %}
+  {% endwith %}
+
+  <form method="POST">
+    <div class="card mb-24">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-user-shield" style="margin-right:8px;color:var(--gold-accent)"></i>Sub-Admin Details</div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" name="name" placeholder="e.g. Ramesh Patel" required>
+          </div>
+          <div class="form-group">
+            <label>Username * <span style="font-size:11px;color:var(--text-secondary)">(used to login)</span></label>
+            <input type="text" name="username" placeholder="e.g. ramesh_ops" required>
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" placeholder="ramesh@caryanams.com" required>
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="text" name="phone" placeholder="e.g. 9876543210">
+          </div>
+          <div class="form-group full">
+            <label>Password *</label>
+            <input type="password" name="password" placeholder="Minimum 6 characters" minlength="6" required>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-24">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div class="card-title"><i class="fas fa-lock" style="margin-right:8px;color:var(--gold-accent)"></i>Access Permissions</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Click cards to toggle module access</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="button" onclick="toggleAll(true)" class="btn btn-sm btn-outline">✓ All</button>
+          <button type="button" onclick="toggleAll(false)" class="btn btn-sm btn-outline">✕ None</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+          {% for perm, label, icon in all_perms %}
+          <div class="perm-card" data-perm="{{ perm }}" onclick="togglePerm(this)" style="padding:16px 14px;border:2px solid var(--card-border,#2a2a2a);border-radius:12px;cursor:pointer;transition:all .18s;user-select:none">
+            <input type="checkbox" name="permissions" value="{{ perm }}" style="display:none">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <div class="perm-icon" style="width:34px;height:34px;border-radius:9px;background:rgba(245,197,24,.1);display:flex;align-items:center;justify-content:center;transition:background .18s">
+                <i class="{{ icon }}" style="color:var(--gold-accent,#f5c518);font-size:15px"></i>
+              </div>
+              <div class="perm-check" style="width:18px;height:18px;border-radius:5px;border:2px solid var(--card-border,#2a2a2a);margin-left:auto;display:flex;align-items:center;justify-content:center;transition:all .18s">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style="opacity:0;transition:opacity .15s"><polyline points="2,7 5,10 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+            <div style="font-weight:700;font-size:14px;color:var(--text-1,#fff)">{{ label }}</div>
+            <div style="font-size:11px;color:var(--text-3,#888);margin-top:2px">Manage {{ label|lower }} module</div>
+          </div>
+          {% endfor %}
+        </div>
+        <div id="noPermWarn" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#f87171;font-size:13px">
+          ⚠ No permissions selected — this sub-admin won't be able to access any module.
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Create Sub-Admin</button>
+      <a href="{{ url_for('admin.sub_admins') }}" class="btn btn-outline btn-lg">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<style>
+.perm-card.active {
+  border-color: var(--gold-accent, #f5c518) !important;
+  background: rgba(245,197,24,.07);
+}
+.perm-card.active .perm-icon { background: rgba(245,197,24,.2); }
+.perm-card.active .perm-check { background: var(--gold-accent, #f5c518); border-color: var(--gold-accent, #f5c518); }
+.perm-card.active .perm-check svg { opacity: 1; }
+.perm-card:hover:not(.active) { border-color: rgba(245,197,24,.4); }
+</style>
+
+<script>
+function togglePerm(card) {
+  card.classList.toggle('active');
+  const cb = card.querySelector('input[type=checkbox]');
+  cb.checked = card.classList.contains('active');
+  checkWarn();
+}
+function toggleAll(val) {
+  document.querySelectorAll('.perm-card').forEach(card => {
+    if (val) card.classList.add('active'); else card.classList.remove('active');
+    card.querySelector('input[type=checkbox]').checked = val;
+  });
+  checkWarn();
+}
+function checkWarn() {
+  const any = [...document.querySelectorAll('input[name="permissions"]')].some(c => c.checked);
+  document.getElementById('noPermWarn').style.display = any ? 'none' : 'block';
+}
+</script>
+{% endblock %}

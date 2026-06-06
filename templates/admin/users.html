@@ -1,0 +1,125 @@
+{% extends 'admin/base.html' %}
+{% block title %}Users — Caryanams Admin{% endblock %}
+{% block page_title %}User Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Users</h1>
+    <p>All registered users from the main DMS</p>
+  </div>
+  <a href="{{ url_for('admin.add_user') }}" class="btn btn-primary btn-sm">+ Add User</a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">All Users ({{ users|length }})</span>
+    <input type="text" placeholder="Search users..." oninput="filterTable(this,'userTable')"
+      style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+  </div>
+  <table class="table" id="userTable">
+    <thead>
+      <tr><th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>City</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr id="user-row-{{ u.id }}">
+        <td style="font-weight:700;color:var(--blue,#6366f1);font-size:12px;letter-spacing:.5px;">{{ u.display_id or ('U' ~ u.id) }}</td>
+        <td>{{ u.name }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.phone or '—' }}</td>
+        <td>{{ u.city or '—' }}</td>
+        <td>
+          <span class="badge {% if u.is_active %}badge-success{% else %}badge-danger{% endif %}" id="status-badge-{{ u.id }}">
+            {% if u.is_active %}Active{% else %}Blocked{% endif %}
+          </span>
+        </td>
+        <td>{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
+        <td style="white-space:nowrap;">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <a href="{{ url_for('admin.view_user', user_id=u.id) }}"
+               title="View User" aria-label="View User"
+               style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#06b6d4;color:#fff;text-decoration:none;font-size:13px;transition:opacity .15s;">
+              <i class="fas fa-eye"></i></a>
+            <a href="{{ url_for('admin.edit_user', user_id=u.id) }}"
+               title="Edit User" aria-label="Edit User"
+               style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#f97316;color:#fff;text-decoration:none;font-size:13px;transition:opacity .15s;">
+              <i class="fas fa-pencil-alt"></i></a>
+            <button onclick="toggleUserStatus({{ u.id }}, this)"
+              id="toggle-btn-{{ u.id }}"
+              title="{{ 'Block User' if u.is_active else 'Unblock User' }}"
+              aria-label="{{ 'Block User' if u.is_active else 'Unblock User' }}"
+              style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:none;cursor:pointer;font-size:13px;transition:opacity .15s;background:{% if u.is_active %}#ef4444{% else %}#22c55e{% endif %};color:#fff;">
+              <i class="fas {% if u.is_active %}fa-ban{% else %}fa-circle-check{% endif %}"></i></button>
+            <button onclick="deleteUser({{ u.id }})"
+                    title="Delete User" aria-label="Delete User"
+                    style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:13px;transition:opacity .15s;">
+              <i class="fas fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-2);">No users registered yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterTable(inp, tableId) {
+  const q = inp.value.toLowerCase();
+  document.querySelectorAll('#' + tableId + ' tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function toggleUserStatus(userId, btn) {
+  if (!confirm('Toggle user status?')) return;
+  fetch('/admin/api/users/' + userId + '/toggle-status', {method: 'POST'})
+    .then(r => r.json()).then(d => {
+      if (d.success) {
+        const isBlocked = d.status === 'Blocked';
+        // Update icon, color, title and aria-label
+        const icon = btn.querySelector('i');
+        if (icon) {
+          icon.className = 'fas ' + (isBlocked ? 'fa-circle-check' : 'fa-ban');
+        }
+        btn.style.background = isBlocked ? '#22c55e' : '#ef4444';
+        const newTitle = isBlocked ? 'Unblock User' : 'Block User';
+        btn.title = newTitle;
+        btn.setAttribute('aria-label', newTitle);
+        const badge = document.getElementById('status-badge-' + userId);
+        if (badge) {
+          badge.textContent = d.status;
+          badge.className = 'badge ' + (isBlocked ? 'badge-danger' : 'badge-success');
+        }
+        showToast(d.status === 'Active' ? 'User unblocked' : 'User blocked', d.status === 'Active' ? 'success' : 'error');
+      }
+    });
+}
+
+function deleteUser(userId) {
+  if (!confirm('Delete this user permanently? This cannot be undone.')) return;
+  fetch('/admin/api/users/' + userId + '/delete', {method: 'POST'})
+    .then(r => r.json()).then(d => {
+      if (d.success) {
+        const row = document.getElementById('user-row-' + userId);
+        if (row) row.remove();
+        showToast('User deleted', 'success');
+      } else {
+        alert(d.message || 'Failed to delete user');
+      }
+    });
+}
+
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;z-index:9999;background:' + (type==='success'?'#22c55e':'#ef4444');
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+</script>
+{% endblock %}

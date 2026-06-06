@@ -1,0 +1,540 @@
+{% extends 'admin/base.html' %}
+{% block title %}Imported Leads — Caryanams Admin{% endblock %}
+{% block page_title %}Imported Leads{% endblock %}
+
+{% block content %}
+<style>
+/* ── Stats Bar ── */
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+.stat-tile{background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;flex-direction:column;gap:4px;}
+.stat-tile-val{font-size:1.7rem;font-weight:800;line-height:1;}
+.stat-tile-lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);}
+.sv-total{color:var(--accent);}
+.sv-assigned{color:#68d391;}
+.sv-unassigned{color:#fbd38d;}
+.sv-today{color:#b794f4;}
+
+/* ── Filters ── */
+.filters-row{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.filter-input,.filter-select{padding:8px 12px;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg-surface);color:var(--text-1);font-size:.8rem;outline:none;}
+.filter-input{flex:1;min-width:160px;}
+.filter-input:focus,.filter-select:focus{border-color:var(--accent);}
+
+/* ── Bulk Bar ── */
+#bulkBar{display:none;background:linear-gradient(90deg,rgba(99,179,237,.12),rgba(154,91,208,.08));
+  border:1px solid rgba(99,179,237,.35);border-radius:10px;padding:12px 16px;
+  margin-bottom:14px;align-items:center;gap:12px;flex-wrap:wrap;}
+
+/* ── Table ── */
+.leads-table{width:100%;border-collapse:collapse;}
+.leads-table th,.leads-table td{padding:11px 13px;text-align:left;border-bottom:1px solid var(--border);font-size:.82rem;vertical-align:middle;}
+.leads-table th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);background:var(--bg-surface);white-space:nowrap;cursor:pointer;}
+.leads-table th:hover{color:var(--accent);}
+.leads-table th.sorted{color:var(--accent);}
+.leads-table tr:hover td{background:rgba(99,179,237,.04);}
+.leads-table td:first-child{width:36px;}
+
+/* ── Status Badges ── */
+.status-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:.7rem;font-weight:700;white-space:nowrap;}
+.st-new{background:rgba(99,179,237,.15);color:#63b3ed;}
+.st-assigned{background:rgba(72,187,120,.15);color:#68d391;}
+.st-contacted{background:rgba(246,173,85,.15);color:#f6ad55;}
+.st-followup{background:rgba(154,91,208,.15);color:#b794f4;}
+.st-converted{background:rgba(72,187,120,.25);color:#48bb78;}
+.st-rejected{background:rgba(252,129,129,.15);color:#fc8181;}
+
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;width:min(600px,100%);max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-head h3{font-size:1rem;font-weight:700;margin:0;}
+.modal-body{padding:20px 22px;}
+.modal-close{background:none;border:none;font-size:1.3rem;color:var(--text-2);cursor:pointer;line-height:1;}
+.modal-close:hover{color:var(--text-1);}
+
+/* assign form */
+.assign-form{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
+.assign-select{flex:1;min-width:200px;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:.85rem;outline:none;}
+.assign-select:focus{border-color:var(--accent);}
+
+/* history timeline */
+.hist-timeline{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
+.hist-item{display:flex;gap:12px;align-items:flex-start;}
+.hist-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px;}
+.hist-content{flex:1;background:var(--bg-surface);border-radius:8px;padding:10px 14px;font-size:.78rem;}
+.hist-action{font-weight:700;text-transform:capitalize;color:var(--text-1);}
+.hist-meta{color:var(--text-2);margin-top:2px;}
+
+/* extra data */
+.extra-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.extra-item{background:var(--bg-surface);border-radius:7px;padding:8px 12px;}
+.extra-key{font-size:.68rem;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;}
+.extra-val{font-size:.82rem;font-weight:600;color:var(--text-1);margin-top:2px;}
+
+/* info grid in modal */
+.info-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.info-cell-2{background:var(--bg-surface);border-radius:8px;padding:10px 14px;}
+.info-cell-2 .lbl{font-size:.67rem;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.info-cell-2 .val{font-size:.85rem;font-weight:600;color:var(--text-1);}
+
+/* pagination */
+.pag{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:20px;flex-wrap:wrap;}
+.pag a,.pag span{display:inline-flex;align-items:center;justify-content:center;width:33px;height:33px;border-radius:7px;font-size:.8rem;text-decoration:none;color:var(--text-2);border:1px solid var(--border);}
+.pag a:hover{border-color:var(--accent);color:var(--accent);}
+.pag .active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.pag .disabled{opacity:.4;pointer-events:none;}
+
+/* sort indicator */
+th .sort-arrow{display:inline-block;margin-left:4px;font-size:.65rem;}
+</style>
+
+<!-- Page header -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Imported Leads</h1>
+    <p>{{ total }} lead{{ 's' if total != 1 }} · Page {{ page }} of {{ total_pages }}</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{{ url_for('admin.lead_import_page') }}" class="btn btn-primary btn-sm">
+      <i class="fas fa-file-import"></i> Import Leads
+    </a>
+    <a href="{{ url_for('admin.imported_leads_list', search=search, status=status_f, dealer_id=dealer_f, import_id=import_f, date_from=date_from, date_to=date_to, export=1) }}"
+       class="btn btn-outline btn-sm"><i class="fas fa-file-download"></i> Export CSV</a>
+  </div>
+</div>
+
+<!-- Stats Bar -->
+<div class="stats-bar">
+  <div class="stat-tile">
+    <div class="stat-tile-val sv-total">{{ stats.total }}</div>
+    <div class="stat-tile-lbl">Total Imported</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-tile-val sv-assigned">{{ stats.assigned }}</div>
+    <div class="stat-tile-lbl">Assigned</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-tile-val sv-unassigned">{{ stats.unassigned }}</div>
+    <div class="stat-tile-lbl">Unassigned</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-tile-val sv-today">{{ stats.today }}</div>
+    <div class="stat-tile-lbl">Today's Imports</div>
+  </div>
+</div>
+
+<!-- Filters -->
+<form method="GET" class="filters-row" id="filterForm">
+  <input class="filter-input" type="text" name="search" value="{{ search }}" placeholder="🔍 Name, phone, email…">
+
+  <select name="status" class="filter-select">
+    <option value="">All Status</option>
+    {% for s in ['New','Assigned','Contacted','Follow-up','Converted','Rejected'] %}
+    <option value="{{ s }}" {% if status_f==s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="dealer_id" class="filter-select">
+    <option value="">All Dealers</option>
+    <option value="unassigned" {% if dealer_f=='unassigned' %}selected{% endif %}>— Unassigned —</option>
+    {% for d in dealers %}
+    <option value="{{ d.id }}" {% if dealer_f|string==d.id|string %}selected{% endif %}>
+      {{ d.display_id or ('D'~d.id) }} — {{ d.name }}
+    </option>
+    {% endfor %}
+  </select>
+
+  <select name="import_id" class="filter-select">
+    <option value="">All Import Files</option>
+    {% for f in import_files %}
+    <option value="{{ f.id }}" {% if import_f|string==f.id|string %}selected{% endif %}>
+      {{ f.file_name[:35] }}{% if f.file_name|length > 35 %}…{% endif %}
+    </option>
+    {% endfor %}
+  </select>
+
+  <input class="filter-select" type="date" name="date_from" value="{{ date_from }}" title="From date">
+  <input class="filter-select" type="date" name="date_to"   value="{{ date_to }}"   title="To date">
+
+  <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+  {% if search or status_f or dealer_f or import_f or date_from or date_to %}
+  <a href="{{ url_for('admin.imported_leads_list') }}" class="btn btn-outline btn-sm">Clear</a>
+  {% endif %}
+</form>
+
+<!-- Bulk Action Bar -->
+<div id="bulkBar" style="display:none;background:linear-gradient(90deg,rgba(99,179,237,.12),rgba(154,91,208,.08));border:1px solid rgba(99,179,237,.35);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+  <i class="fas fa-check-square" style="color:var(--accent);"></i>
+  <span id="bulkCount" style="font-weight:700;color:var(--accent);font-size:.9rem;"></span>
+  <span style="color:var(--text-2);font-size:.82rem;">leads selected</span>
+  <div style="display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;">
+    <select id="bulkDealerSelect" class="filter-select" style="min-width:180px;">
+      <option value="">— Select Dealer —</option>
+      {% for d in dealers %}
+      <option value="{{ d.id }}">{{ d.display_id or ('D'~d.id) }} — {{ d.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary btn-sm" onclick="doBulkAssign()">
+      <i class="fas fa-user-check"></i> Assign Selected
+    </button>
+    <button class="btn btn-outline btn-sm" onclick="clearSelection()">Clear</button>
+  </div>
+</div>
+
+<!-- Main Table -->
+<div class="card" style="overflow-x:auto;">
+  <table class="leads-table" id="leadsTable">
+    <thead>
+      <tr>
+        <th><input type="checkbox" id="checkAll" onchange="toggleAll(this)" style="cursor:pointer;"></th>
+        <th>{% set ns = namespace(c='id') %}{% set arrow = '↓' if sort_dir=='desc' else '↑' %}
+          <a href="?sort=id&dir={{ 'asc' if sort_col=='id' and sort_dir=='desc' else 'desc' }}&{{ request.query_string.decode().replace('sort='+sort_col,'').replace('dir='+sort_dir,'') }}" style="text-decoration:none;color:inherit;">
+            ID {% if sort_col=='id' %}<span class="sort-arrow">{{ arrow }}</span>{% endif %}
+          </a>
+        </th>
+        <th><a href="?sort=name&dir={{ 'asc' if sort_col=='name' and sort_dir=='desc' else 'desc' }}&{{ request.query_string.decode() }}" style="text-decoration:none;color:inherit;">Name {% if sort_col=='name' %}<span class="sort-arrow">{{ arrow }}</span>{% endif %}</a></th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>Company</th>
+        <th>Source</th>
+        <th>Import File</th>
+        <th>Assigned Dealer</th>
+        <th><a href="?sort=status&dir={{ 'asc' if sort_col=='status' and sort_dir=='desc' else 'desc' }}&{{ request.query_string.decode() }}" style="text-decoration:none;color:inherit;">Status {% if sort_col=='status' %}<span class="sort-arrow">{{ arrow }}</span>{% endif %}</a></th>
+        <th><a href="?sort=created_at&dir={{ 'asc' if sort_col=='created_at' and sort_dir=='desc' else 'desc' }}&{{ request.query_string.decode() }}" style="text-decoration:none;color:inherit;">Created {% if sort_col=='created_at' %}<span class="sort-arrow">{{ arrow }}</span>{% endif %}</a></th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for lead in leads %}
+    <tr id="row-{{ lead.id }}">
+      <td><input type="checkbox" class="lead-check" value="{{ lead.id }}" onchange="updateBulkBar()"></td>
+      <td style="font-size:.75rem;color:var(--text-2);">#{{ lead.id }}</td>
+      <td>
+        <div style="font-weight:600;font-size:.85rem;">{{ lead.name }}</div>
+        {% if lead.address %}<div style="font-size:.7rem;color:var(--text-2);">📍 {{ lead.address[:30] }}{% if lead.address|length > 30 %}…{% endif %}</div>{% endif %}
+      </td>
+      <td style="font-family:monospace;font-size:.82rem;">{{ lead.phone }}</td>
+      <td style="font-size:.8rem;color:var(--text-2);">{{ lead.email or '—' }}</td>
+      <td style="font-size:.8rem;">{{ lead.company or '—' }}</td>
+      <td>
+        <span style="font-size:.72rem;padding:2px 8px;border-radius:99px;background:rgba(99,179,237,.12);color:#90cdf4;">
+          {{ lead.source or 'Import' }}
+        </span>
+      </td>
+      <td style="font-size:.75rem;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ lead.import_file.file_name if lead.import_file else '' }}">
+        {{ lead.import_file.file_name[:25] if lead.import_file else '—' }}{% if lead.import_file and lead.import_file.file_name|length > 25 %}…{% endif %}
+      </td>
+      <td>
+        {% if lead.assigned_dealer %}
+        <div style="font-size:.82rem;font-weight:600;color:#68d391;">{{ lead.assigned_dealer.name }}</div>
+        <div style="font-size:.7rem;color:var(--text-2);">{{ lead.assigned_at|fmtdate('%d %b %H:%M') if lead.assigned_at }}</div>
+        {% else %}
+        <button class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 9px;"
+                onclick="openAssignModal({{ lead.id }}, '{{ lead.name }}')">
+          <i class="fas fa-user-plus"></i> Assign
+        </button>
+        {% endif %}
+      </td>
+      <td>
+        <span class="status-badge st-{{ lead.status|lower|replace(' ','')|replace('-','') }}"
+              onclick="openStatusModal({{ lead.id }}, '{{ lead.status }}')" style="cursor:pointer;" title="Click to change">
+          {{ lead.status }}
+        </span>
+      </td>
+      <td style="font-size:.75rem;color:var(--text-2);white-space:nowrap;">{{ lead.created_at|fmtdate('%d %b %Y') if lead.created_at else '—' }}</td>
+      <td>
+        <div style="display:flex;gap:5px;">
+          <button class="btn btn-outline btn-sm" style="padding:3px 8px;font-size:.72rem;"
+                  onclick="openDetailModal({{ lead.id }})" title="View details & history">
+            <i class="fas fa-eye"></i>
+          </button>
+          <button class="btn btn-outline btn-sm" style="padding:3px 8px;font-size:.72rem;color:#fc8181;border-color:#fc8181;"
+                  onclick="deleteLead({{ lead.id }}, '{{ lead.name }}')" title="Delete">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="12" style="text-align:center;padding:48px;color:var(--text-2);">
+      <div style="font-size:2.5rem;margin-bottom:10px;">📭</div>
+      No leads found.
+      <a href="{{ url_for('admin.lead_import_page') }}" style="color:var(--accent);">Import a file</a> to get started.
+    </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="pag">
+  {% if page > 1 %}
+  <a href="?page={{ page-1 }}&sort={{ sort_col }}&dir={{ sort_dir }}&search={{ search }}&status={{ status_f }}&dealer_id={{ dealer_f }}&import_id={{ import_f }}&date_from={{ date_from }}&date_to={{ date_to }}">‹</a>
+  {% else %}<span class="disabled">‹</span>{% endif %}
+
+  {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+  {% if p == page %}<span class="active">{{ p }}</span>
+  {% else %}<a href="?page={{ p }}&sort={{ sort_col }}&dir={{ sort_dir }}&search={{ search }}&status={{ status_f }}&dealer_id={{ dealer_f }}&import_id={{ import_f }}&date_from={{ date_from }}&date_to={{ date_to }}">{{ p }}</a>
+  {% endif %}
+  {% endfor %}
+
+  {% if page < total_pages %}
+  <a href="?page={{ page+1 }}&sort={{ sort_col }}&dir={{ sort_dir }}&search={{ search }}&status={{ status_f }}&dealer_id={{ dealer_f }}&import_id={{ import_f }}&date_from={{ date_from }}&date_to={{ date_to }}">›</a>
+  {% else %}<span class="disabled">›</span>{% endif %}
+</div>
+{% endif %}
+
+
+<!-- ── ASSIGN MODAL ── -->
+<div class="modal-overlay" id="assignModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3><i class="fas fa-user-check" style="color:var(--accent);margin-right:8px;"></i> Assign Lead to Dealer</h3>
+      <button class="modal-close" onclick="closeModal('assignModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.85rem;color:var(--text-2);margin-bottom:16px;">
+        Lead: <strong id="assignLeadName" style="color:var(--text-1);"></strong>
+      </p>
+      <div class="assign-form">
+        <select id="assignDealerSelect" class="assign-select">
+          <option value="">— Select Dealer —</option>
+          {% for d in dealers %}
+          <option value="{{ d.id }}">{{ d.display_id or ('D'~d.id) }} — {{ d.name }} ({{ d.company_name or d.city or '' }})</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-primary" onclick="doAssign()">
+          <i class="fas fa-check"></i> Assign
+        </button>
+      </div>
+      <div id="assignResult" style="display:none;padding:10px 14px;border-radius:8px;font-size:.83rem;"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── STATUS MODAL ── -->
+<div class="modal-overlay" id="statusModal">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="modal-head">
+      <h3><i class="fas fa-tag" style="color:#b794f4;margin-right:8px;"></i> Update Status</h3>
+      <button class="modal-close" onclick="closeModal('statusModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;gap:8px;">
+        {% for s in ['New','Assigned','Contacted','Follow-up','Converted','Rejected'] %}
+        <button class="btn btn-outline" style="justify-content:flex-start;gap:10px;font-size:.85rem;"
+                onclick="doStatusUpdate('{{ s }}')">
+          <span class="status-badge st-{{ s|lower|replace(' ','')|replace('-','') }}" style="pointer-events:none;">{{ s }}</span>
+          {{ s }}
+        </button>
+        {% endfor %}
+      </div>
+      <div id="statusResult" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:.83rem;"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── DETAIL MODAL ── -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="detailTitle"><i class="fas fa-user" style="color:var(--accent);margin-right:8px;"></i> Lead Details</h3>
+      <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
+    </div>
+    <div class="modal-body" id="detailBody">
+      <div style="text-align:center;padding:32px;color:var(--text-2);">
+        <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Loading…
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+let currentLeadId = null;
+
+// ── Checkbox management ──────────────────────────────────────────────────────
+function toggleAll(cb) {
+  document.querySelectorAll('.lead-check').forEach(c => c.checked = cb.checked);
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const checked = [...document.querySelectorAll('.lead-check:checked')];
+  const bar = document.getElementById('bulkBar');
+  if (checked.length > 0) {
+    bar.style.display = 'flex';
+    document.getElementById('bulkCount').textContent = checked.length;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearSelection() {
+  document.querySelectorAll('.lead-check,#checkAll').forEach(c => c.checked = false);
+  document.getElementById('bulkBar').style.display = 'none';
+}
+
+// ── Modal helpers ────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ── Assign Modal ─────────────────────────────────────────────────────────────
+function openAssignModal(leadId, leadName) {
+  currentLeadId = leadId;
+  document.getElementById('assignLeadName').textContent = leadName;
+  document.getElementById('assignDealerSelect').value = '';
+  document.getElementById('assignResult').style.display = 'none';
+  openModal('assignModal');
+}
+
+async function doAssign() {
+  const dealerId = document.getElementById('assignDealerSelect').value;
+  const result   = document.getElementById('assignResult');
+  if (!dealerId) { showResult(result, 'Please select a dealer.', false); return; }
+
+  const r = await fetch(`/admin/leads/imported/${currentLeadId}/assign`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({dealer_id: parseInt(dealerId)})
+  });
+  const d = await r.json();
+  if (d.success) {
+    showResult(result, `✅ ${d.message}`, true);
+    setTimeout(() => location.reload(), 1200);
+  } else {
+    showResult(result, `❌ ${d.message}`, false);
+  }
+}
+
+// ── Bulk Assign ───────────────────────────────────────────────────────────────
+async function doBulkAssign() {
+  const checked   = [...document.querySelectorAll('.lead-check:checked')].map(c => parseInt(c.value));
+  const dealerId  = document.getElementById('bulkDealerSelect').value;
+  if (!dealerId) { alert('Please select a dealer.'); return; }
+  if (!checked.length) { alert('No leads selected.'); return; }
+  if (!confirm(`Assign ${checked.length} lead(s) to selected dealer?`)) return;
+
+  const r = await fetch('/admin/leads/imported/bulk-assign', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({lead_ids: checked, dealer_id: parseInt(dealerId)})
+  });
+  const d = await r.json();
+  if (d.success) {
+    alert(`✅ ${d.message}`);
+    location.reload();
+  } else {
+    alert(`❌ ${d.message}`);
+  }
+}
+
+// ── Status Modal ──────────────────────────────────────────────────────────────
+function openStatusModal(leadId, currentStatus) {
+  currentLeadId = leadId;
+  document.getElementById('statusResult').style.display = 'none';
+  openModal('statusModal');
+}
+
+async function doStatusUpdate(status) {
+  const result = document.getElementById('statusResult');
+  const r = await fetch(`/admin/leads/imported/${currentLeadId}/status`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status})
+  });
+  const d = await r.json();
+  if (d.success) {
+    showResult(result, `✅ ${d.message}`, true);
+    setTimeout(() => location.reload(), 900);
+  } else {
+    showResult(result, `❌ ${d.message}`, false);
+  }
+}
+
+// ── Detail Modal ──────────────────────────────────────────────────────────────
+async function openDetailModal(leadId) {
+  currentLeadId = leadId;
+  document.getElementById('detailBody').innerHTML = `
+    <div style="text-align:center;padding:32px;color:var(--text-2);">
+      <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Loading…
+    </div>`;
+  openModal('detailModal');
+
+  const r = await fetch(`/admin/leads/imported/${leadId}/history`);
+  const d = await r.json();
+  if (!d.success) { document.getElementById('detailBody').innerHTML = '<p>Error loading lead.</p>'; return; }
+
+  const l = d.lead;
+  const extra = l.extra_data || {};
+  const extraHtml = Object.keys(extra).length
+    ? `<div style="margin-bottom:16px;">
+        <div class="section-label" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:8px;">Extra Data</div>
+        <div class="extra-grid">
+          ${Object.entries(extra).map(([k,v]) => `
+            <div class="extra-item"><div class="extra-key">${k}</div><div class="extra-val">${v}</div></div>`).join('')}
+        </div>
+      </div>` : '';
+
+  const histHtml = d.history.length
+    ? `<div class="hist-timeline">
+        ${d.history.map(h => `
+          <div class="hist-item">
+            <div class="hist-dot"></div>
+            <div class="hist-content">
+              <div class="hist-action">${h.action} → ${h.dealer_name || 'Unassigned'}</div>
+              <div class="hist-meta">by ${h.assigned_by} · ${h.assigned_at}</div>
+            </div>
+          </div>`).join('')}
+       </div>`
+    : '<p style="color:var(--text-2);font-size:.82rem;">No assignment history yet.</p>';
+
+  document.getElementById('detailTitle').innerHTML = `<i class="fas fa-user" style="color:var(--accent);margin-right:8px;"></i> ${l.name}`;
+  document.getElementById('detailBody').innerHTML = `
+    <div class="info-grid-2">
+      <div class="info-cell-2"><div class="lbl">Phone</div><div class="val">${l.phone}</div></div>
+      <div class="info-cell-2"><div class="lbl">Email</div><div class="val">${l.email || '—'}</div></div>
+      <div class="info-cell-2"><div class="lbl">Company</div><div class="val">${l.company || '—'}</div></div>
+      <div class="info-cell-2"><div class="lbl">Source</div><div class="val">${l.source || '—'}</div></div>
+      <div class="info-cell-2"><div class="lbl">Address</div><div class="val">${l.address || '—'}</div></div>
+      <div class="info-cell-2"><div class="lbl">Status</div>
+        <div class="val"><span class="status-badge st-${(l.status||'').toLowerCase().replace(' ','').replace('-','')}">${l.status}</span></div>
+      </div>
+      <div class="info-cell-2"><div class="lbl">Assigned Dealer</div><div class="val">${l.assigned_dealer || '—'}</div></div>
+      <div class="info-cell-2"><div class="lbl">Assigned At</div><div class="val">${l.assigned_at ? l.assigned_at.slice(0,16) : '—'}</div></div>
+      <div class="info-cell-2"><div class="lbl">Import File</div><div class="val">${l.import_file_name}</div></div>
+      <div class="info-cell-2"><div class="lbl">Created</div><div class="val">${l.created_at ? l.created_at.slice(0,10) : '—'}</div></div>
+    </div>
+    ${extraHtml}
+    <div style="border-top:1px solid var(--border);padding-top:16px;">
+      <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:12px;">Assignment History</div>
+      ${histHtml}
+    </div>`;
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function deleteLead(leadId, name) {
+  if (!confirm(`Delete lead "${name}"? This cannot be undone.`)) return;
+  const r = await fetch(`/admin/leads/imported/${leadId}/delete`, {method:'POST'});
+  const d = await r.json();
+  if (d.success) {
+    const row = document.getElementById('row-' + leadId);
+    if (row) row.remove();
+  } else { alert('Error: ' + d.message); }
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+function showResult(el, msg, success) {
+  el.style.display = 'block';
+  el.style.background = success ? 'rgba(72,187,120,.15)' : 'rgba(252,129,129,.15)';
+  el.style.color = success ? '#68d391' : '#fc8181';
+  el.style.border = success ? '1px solid rgba(72,187,120,.3)' : '1px solid rgba(252,129,129,.3)';
+  el.textContent = msg;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'admin/base.html' %}
+{% block title %}Reports — Caryanams Admin{% endblock %}
+{% block page_title %}Reports & Exports{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Reports</h1><p>Generate and export live DMS data reports</p></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+  {% set report_types = [
+    ('dealer','Dealer Report','All registered dealers with status and subscription info'),
+    ('vehicle','Vehicle Report','Full inventory report across all dealers'),
+    ('lead','Lead Report','All leads with stage and source breakdown'),
+    ('sales','Sales / Deals Report','All deal transactions and revenue data'),
+  ] %}
+  {% for rtype, label, desc in report_types %}
+  <div class="card">
+    <div class="card-header"><span class="card-title">{{ label }}</span></div>
+    <div style="padding:20px;">
+      <p style="color:var(--text-2);font-size:13px;margin-bottom:16px;">{{ desc }}</p>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px;">From</label>
+          <input type="date" id="from_{{ rtype }}" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px;">To</label>
+          <input type="date" id="to_{{ rtype }}" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+        </div>
+        <button onclick="downloadReport('{{ rtype }}')" class="btn btn-primary btn-sm">⬇ Download CSV</button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function downloadReport(type) {
+  const from = document.getElementById('from_'+type).value;
+  const to   = document.getElementById('to_'+type).value;
+  let url = '/admin/api/reports/generate?type='+type+'&format=csv';
+  if (from) url += '&from='+from;
+  if (to)   url += '&to='+to;
+  window.location.href = url;
+}
+</script>
+{% endblock %}

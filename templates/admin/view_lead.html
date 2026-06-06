@@ -1,0 +1,56 @@
+{% extends 'admin/base.html' %}
+{% block title %}View Lead — Caryanams Admin{% endblock %}
+{% block page_title %}Lead Detail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>{{ lead.customer_name }}</h1>
+    <p>Lead #{{ lead.id }} · Stage: <strong>{{ lead.stage | replace('_',' ') | title }}</strong></p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="{{ url_for('admin.all_leads') }}" class="btn btn-outline btn-sm">← Back</a>
+    <a href="{{ url_for('admin.edit_lead', lead_id=lead.id) }}" class="btn btn-outline btn-sm">✏ Edit</a>
+    <button onclick="deleteLead({{ lead.id }})" class="btn btn-danger btn-sm" title="Delete Lead" aria-label="Delete Lead"><i class="fas fa-trash"></i> Delete</button>
+  </div>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <div class="card-header"><span class="card-title">Lead Information</span></div>
+  <div style="padding:16px 20px;">
+    <table style="width:100%;border-collapse:collapse;">
+      {% set rows = [
+        ('ID', lead.id),
+        ('Customer', lead.customer_name),
+        ('Phone', lead.customer_phone),
+        ('Email', lead.customer_email or '—'),
+        ('City', lead.customer_city or '—'),
+        ('Stage', lead.stage),
+        ('Source', lead.source),
+        ('Budget', '₹{:,.0f}'.format(lead.budget|float) if lead.budget else '—'),
+        ('Vehicle', (lead.vehicle.make + ' ' + lead.vehicle.model) if lead.vehicle else '—'),
+        ('Dealer', lead.dealer.name if lead.dealer else lead.dealer_id),
+        ('Agent', lead.agent.name if lead.agent else 'Unassigned'),
+        ('Notes', lead.notes or '—'),
+        ('Created', lead.created_at.strftime('%d %b %Y %H:%M') if lead.created_at else '—'),
+      ] %}
+      {% for label, val in rows %}
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px 0;color:var(--text-2);font-size:13px;width:120px;">{{ label }}</td>
+        <td style="padding:10px 0;font-size:13px;">{{ val }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function deleteLead(id) {
+  if (!confirm('Delete this lead permanently?')) return;
+  fetch('/admin/api/leads/' + id + '/delete', {method:'POST'})
+    .then(r=>r.json()).then(d=>{ if(d.success) window.location.href='/admin/leads'; });
+}
+</script>
+{% endblock %}

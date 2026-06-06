@@ -1,0 +1,476 @@
+{% extends 'admin/base.html' %}
+{% block title %}Centralized Document Storage{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+  <div>
+    <h1 style="font-size:22px;font-weight:700;margin:0;">Centralized Document Storage</h1>
+    <p style="color:#6b7280;font-size:13px;margin:4px 0 0;">Master repository — documents are permanently retained until explicitly deleted or reassigned.</p>
+  </div>
+  {% if session.get('admin_logged_in') %}
+  <button onclick="document.getElementById('uploadModal').style.display='flex'"
+          class="btn btn-primary" style="display:flex;align-items:center;gap:6px;">
+    <span>⬆</span> Upload &amp; Assign
+  </button>
+  {% endif %}
+</div>
+
+{# ── Stats ── #}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px 22px;">
+    <div style="font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Total Files</div>
+    <div style="font-size:28px;font-weight:700;color:#1e293b;margin-top:4px;">{{ stats.total }}</div>
+  </div>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px 22px;">
+    <div style="font-size:12px;color:#16a34a;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Active</div>
+    <div style="font-size:28px;font-weight:700;color:#16a34a;margin-top:4px;">{{ stats.active }}</div>
+  </div>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px 22px;">
+    <div style="font-size:12px;color:#dc2626;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Deleted</div>
+    <div style="font-size:28px;font-weight:700;color:#dc2626;margin-top:4px;">{{ stats.deleted }}</div>
+  </div>
+</div>
+
+{# ── Filters ── #}
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px 22px;margin-bottom:20px;">
+  <form method="GET" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Status</label>
+      <select name="status" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;">
+        <option value="all"     {% if filters.status=='all'     %}selected{% endif %}>All</option>
+        <option value="active"  {% if filters.status=='active'  %}selected{% endif %}>Active</option>
+        <option value="deleted" {% if filters.status=='deleted' %}selected{% endif %}>Deleted</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Module</label>
+      <select name="module" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;">
+        <option value="">All Modules</option>
+        {% for mod in ['Documents','KYC','Vehicles','Deals','Invoices','Reports','CRM'] %}
+        <option value="{{ mod }}" {% if filters.module_name==mod %}selected{% endif %}>{{ mod }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Dealer</label>
+      <select name="dealer_id" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;">
+        <option value="">All Dealers</option>
+        {% for d in dealers %}
+        <option value="{{ d.id }}" {% if filters.dealer_id|string == d.id|string %}selected{% endif %}>
+          {{ d.display_id or ('D' ~ d.id) }} — {{ d.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="flex:1;min-width:180px;">
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Search</label>
+      <input type="text" name="q" value="{{ filters.search }}" placeholder="Filename, type…"
+             style="width:100%;padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box;">
+    </div>
+    <button type="submit" class="btn btn-primary" style="padding:8px 18px;font-size:13px;">Filter</button>
+    <a href="{{ url_for('admin.document_storage') }}" class="btn btn-outline" style="padding:8px 14px;font-size:13px;">Reset</a>
+  </form>
+</div>
+
+
+{# ── Dealer-wise Document Summary ── #}
+<div style="margin-top:24px;margin-bottom:32px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div>
+      <h2 style="font-size:16px;font-weight:700;color:#1e293b;margin:0;">Dealer-wise Document Summary</h2>
+      <p style="color:#6b7280;font-size:12px;margin:3px 0 0;">Each row shows all active documents for that dealer at a glance.</p>
+    </div>
+  </div>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f8fafc;border-bottom:2px solid #e5e7eb;">
+            <th style="padding:11px 16px;text-align:left;font-weight:600;color:#374151;white-space:nowrap;">Dealer ID</th>
+            <th style="padding:11px 16px;text-align:left;font-weight:600;color:#374151;">Dealer Name</th>
+            <th style="padding:11px 16px;text-align:left;font-weight:600;color:#374151;">Email</th>
+            <th style="padding:11px 16px;text-align:left;font-weight:600;color:#374151;">Phone</th>
+            <th style="padding:11px 16px;text-align:center;font-weight:600;color:#374151;">Total Docs</th>
+            <th style="padding:11px 16px;text-align:left;font-weight:600;color:#374151;min-width:320px;">Documents</th>
+            <th style="padding:11px 16px;text-align:center;font-weight:600;color:#374151;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set dealer_doc_map = {} %}
+          {% for rec in all_active_records %}
+            {% if rec.dealer and rec.status == 'active' %}
+              {% if rec.dealer_id not in dealer_doc_map %}
+                {% set _ = dealer_doc_map.update({rec.dealer_id: {'dealer': rec.dealer, 'docs': []}}) %}
+              {% endif %}
+              {% set _ = dealer_doc_map[rec.dealer_id]['docs'].append(rec) %}
+            {% endif %}
+          {% endfor %}
+
+          {% for dealer_id, entry in dealer_doc_map.items() %}
+          {% set d = entry.dealer %}
+          {% set docs = entry.docs %}
+          <tr style="border-bottom:1px solid #f3f4f6;{% if loop.index is odd %}background:#fafafa;{% endif %}vertical-align:top;">
+            {# Dealer ID badge #}
+            <td style="padding:12px 16px;">
+              <span style="display:inline-block;background:#eef2ff;color:#6366f1;font-weight:700;font-size:12px;padding:3px 10px;border-radius:6px;">
+                {{ d.display_id or ('D' ~ d.id) }}
+              </span>
+            </td>
+            {# Name #}
+            <td style="padding:12px 16px;">
+              <div style="font-weight:600;color:#1e293b;">{{ d.name }}</div>
+            </td>
+            {# Email #}
+            <td style="padding:12px 16px;color:#4b5563;font-size:12px;">{{ d.email or '—' }}</td>
+            {# Phone #}
+            <td style="padding:12px 16px;color:#4b5563;font-size:12px;">{{ d.phone or '—' }}</td>
+            {# Count #}
+            <td style="padding:12px 16px;text-align:center;">
+              <span style="display:inline-block;background:#dcfce7;color:#15803d;font-weight:700;font-size:13px;padding:4px 12px;border-radius:99px;">
+                {{ docs|length }}
+              </span>
+            </td>
+            {# Document chips #}
+            <td style="padding:12px 16px;">
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                {% for rec in docs %}
+                <span title="{{ rec.original_name or rec.file_name }}"
+                      style="display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:500;color:#334155;max-width:180px;">
+                  {# Module color dot #}
+                  <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;
+                    {% if rec.module_name=='KYC' %}background:#1d4ed8;
+                    {% elif rec.module_name=='Vehicles' %}background:#15803d;
+                    {% elif rec.module_name=='Deals' %}background:#92400e;
+                    {% elif rec.module_name=='Documents' %}background:#7c3aed;
+                    {% else %}background:#64748b;{% endif %}"></span>
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    {{ rec.document_type or rec.module_name }}
+                  </span>
+                </span>
+                {% endfor %}
+              </div>
+            </td>
+            {# View all for this dealer #}
+            <td style="padding:12px 16px;text-align:center;">
+              <a href="{{ url_for('admin.document_storage') }}?dealer_id={{ d.id }}&status=active"
+                 style="padding:5px 12px;font-size:11px;background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:6px;text-decoration:none;white-space:nowrap;">
+                View All
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="padding:40px;text-align:center;color:#9ca3af;">
+              <div style="font-size:13px;">No active documents found for any dealer.</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+
+
+{# ── Table ── #}
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="background:#f8fafc;border-bottom:2px solid #e5e7eb;">
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">#</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">File</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">Dealer</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">Module</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">Type</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">Uploaded</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">Status</th>
+          <th style="padding:12px 16px;text-align:center;font-weight:600;color:#374151;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rec in records %}
+        <tr style="border-bottom:1px solid #f3f4f6;{% if loop.index is odd %}background:#fafafa;{% endif %}">
+          <td style="padding:10px 16px;color:#9ca3af;font-size:12px;">{{ rec.id }}</td>
+          <td style="padding:10px 16px;">
+            <div style="font-weight:500;color:#1e293b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                 title="{{ rec.original_name }}">
+              {{ rec.original_name or rec.file_name }}
+            </div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:2px;">{{ rec.file_name }}</div>
+          </td>
+          <td style="padding:10px 16px;">
+            {% if rec.dealer %}
+              <div style="font-weight:600;color:#1e293b;">{{ rec.dealer.name }}</div>
+              <div style="font-size:11px;color:#6366f1;font-weight:700;background:#eef2ff;display:inline-block;padding:1px 7px;border-radius:4px;margin-top:2px;">
+                {{ rec.dealer.display_id or ('D' ~ rec.dealer_id) }}
+              </div>
+            {% else %}
+              <span style="color:#9ca3af;">—</span>
+            {% endif %}
+          </td>
+          <td style="padding:10px 16px;">
+            <span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;
+              {% if rec.module_name=='KYC' %}background:#dbeafe;color:#1d4ed8;
+              {% elif rec.module_name=='Documents' %}background:#f3e8ff;color:#7c3aed;
+              {% elif rec.module_name=='Vehicles' %}background:#dcfce7;color:#15803d;
+              {% elif rec.module_name=='Deals' %}background:#fef3c7;color:#92400e;
+              {% else %}background:#f1f5f9;color:#64748b;{% endif %}">
+              {{ rec.module_name }}
+            </span>
+          </td>
+          <td style="padding:10px 16px;color:#4b5563;">{{ rec.document_type or '—' }}</td>
+          <td style="padding:10px 16px;color:#4b5563;white-space:nowrap;">
+            {{ rec.created_at.strftime('%d %b %Y') if rec.created_at else '—' }}
+          </td>
+          <td style="padding:10px 16px;">
+            {% if rec.status == 'deleted' %}
+              <span style="display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;background:#fee2e2;color:#dc2626;">Deleted</span>
+            {% else %}
+              <span style="display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;background:#dcfce7;color:#15803d;">Active</span>
+            {% endif %}
+          </td>
+          <td style="padding:10px 16px;text-align:center;">
+            <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+
+              {# Download — always available #}
+              {% if rec.status != 'deleted' %}
+              <a href="{{ url_for('admin.cds_download', record_id=rec.id) }}"
+                 title="Download File"
+                 style="padding:4px 10px;font-size:11px;background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+                ⬇ Download
+              </a>
+              {% endif %}
+
+              {# Reassign — Super Admin only, active docs only #}
+              {% if rec.status != 'deleted' and session.get('admin_logged_in') %}
+              <button onclick="showReassignModal({{ rec.id }}, '{{ (rec.original_name or rec.file_name)|replace("'","") }}', '{{ (rec.dealer.name if rec.dealer else 'Unassigned')|replace("'","") }}', '{{ rec.dealer.display_id if rec.dealer else '' }}', {{ rec.dealer_id or 'null' }})"
+                      title="Reassign to Another Dealer"
+                      style="padding:4px 10px;font-size:11px;background:#f3e8ff;color:#7c3aed;border:1px solid #c4b5fd;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+                👤 Reassign
+              </button>
+              {% endif %}
+
+              {# Soft Delete — Super Admin only, active docs only #}
+              {% if rec.status != 'deleted' and session.get('admin_logged_in') %}
+              <form method="POST" action="{{ url_for('admin.cds_soft_delete_doc', record_id=rec.id) }}"
+                    id="del_{{ rec.id }}" style="display:inline;">
+                <button type="button"
+                        onclick="confirmSoftDelete({{ rec.id }}, '{{ (rec.original_name or rec.file_name)|replace("'","") }}')"
+                        title="Soft Delete (hide from dealer)"
+                        style="padding:4px 10px;font-size:11px;background:#fff1f2;color:#dc2626;border:1px solid #fca5a5;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+                  🗑 Delete
+                </button>
+              </form>
+              {% endif %}
+
+              {# Audit Log #}
+              <a href="{{ url_for('admin.cds_audit', record_id=rec.id) }}"
+                 title="View Audit Log"
+                 style="padding:4px 10px;font-size:11px;background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+                📋 Audit
+              </a>
+
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="padding:48px;text-align:center;color:#9ca3af;">
+            <div style="font-size:36px;margin-bottom:8px;">🗄️</div>
+            <div style="font-size:15px;font-weight:500;">No documents found</div>
+            <div style="font-size:12px;margin-top:4px;">Documents uploaded by dealers or assigned by admin will appear here.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if records %}
+  <div style="padding:12px 16px;border-top:1px solid #f3f4f6;font-size:12px;color:#9ca3af;">
+    Showing {{ records|length }} record{{ 's' if records|length != 1 else '' }}
+  </div>
+  {% endif %}
+</div>
+
+
+{# ═══════════════════════════════ REASSIGN MODAL ═══════════════════════════════ #}
+<div id="reassignModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:32px;width:440px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="margin:0;font-size:17px;font-weight:700;color:#1e293b;">👤 Reassign Document</h3>
+      <button onclick="closeModal('reassignModal')" style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
+    </div>
+
+    {# Document info banner #}
+    <div id="reassignDocInfo" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:20px;">
+      <div style="font-size:12px;color:#6b7280;font-weight:600;margin-bottom:4px;">DOCUMENT</div>
+      <div id="reassignDocName" style="font-weight:600;color:#1e293b;font-size:14px;"></div>
+      <div style="margin-top:8px;font-size:12px;color:#6b7280;font-weight:600;">CURRENT OWNER</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+        <span id="reassignCurrentOwnerName" style="font-weight:600;color:#1e293b;font-size:13px;"></span>
+        <span id="reassignCurrentOwnerBadge" style="font-size:11px;color:#6366f1;font-weight:700;background:#eef2ff;padding:1px 7px;border-radius:4px;"></span>
+      </div>
+    </div>
+
+    <form id="reassignForm" method="POST">
+      <div style="margin-bottom:16px;">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">
+          New Dealer <span style="color:#dc2626;">*</span>
+        </label>
+        <select name="new_dealer_id" id="reassignDealerSelect"
+                style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;">
+          <option value="">— Select dealer —</option>
+          {% for d in dealers %}
+          <option value="{{ d.id }}" data-name="{{ d.name }}">
+            {{ d.display_id or ('D' ~ d.id) }} — {{ d.name }}
+          </option>
+          {% endfor %}
+        </select>
+        <div id="sameOwnerWarning" style="display:none;color:#dc2626;font-size:12px;margin-top:4px;">
+          ⚠ This dealer already owns the document.
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">
+          Reason for Reassignment <span style="color:#dc2626;">*</span>
+        </label>
+        <textarea name="note" id="reassignNote" rows="3"
+                  placeholder="Describe why this document is being reassigned…"
+                  style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+        <div id="noteWarning" style="display:none;color:#dc2626;font-size:12px;margin-top:4px;">
+          ⚠ Reason is required.
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button type="button" onclick="submitReassign()" class="btn btn-primary" style="flex:1;padding:11px;font-size:14px;">
+          Reassign
+        </button>
+        <button type="button" onclick="closeModal('reassignModal')" class="btn btn-outline" style="flex:1;padding:11px;font-size:14px;">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+{# ═══════════════════════════════ UPLOAD MODAL ═══════════════════════════════ #}
+<div id="uploadModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:32px;width:460px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="margin:0;font-size:17px;font-weight:700;color:#1e293b;">⬆ Upload &amp; Assign Document</h3>
+      <button onclick="closeModal('uploadModal')" style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.cds_upload_doc') }}" enctype="multipart/form-data">
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">
+          File <span style="color:#dc2626;">*</span>
+        </label>
+        <input type="file" name="file" required
+               style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">
+          Assign to Dealer <span style="color:#dc2626;">*</span>
+        </label>
+        <select name="dealer_id" required
+                style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;">
+          <option value="">— Select dealer —</option>
+          {% for d in dealers %}
+          <option value="{{ d.id }}">{{ d.display_id or ('D' ~ d.id) }} — {{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div>
+          <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Module</label>
+          <select name="module_name"
+                  style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;background:#fff;">
+            {% for mod in ['Documents','KYC','Vehicles','Deals','Invoices','Reports','CRM'] %}
+            <option value="{{ mod }}">{{ mod }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Document Type</label>
+          <input type="text" name="document_type" placeholder="e.g. RC Book, Invoice"
+                 style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Notes</label>
+        <textarea name="notes" rows="2" placeholder="Optional notes…"
+                  style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn btn-primary" style="flex:1;padding:11px;font-size:14px;">Upload &amp; Assign</button>
+        <button type="button" onclick="closeModal('uploadModal')" class="btn btn-outline" style="flex:1;padding:11px;font-size:14px;">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<script>
+var _currentOwnerId = null;
+
+function showReassignModal(recId, docName, ownerName, ownerBadge, ownerId) {
+  _currentOwnerId = ownerId;
+  document.getElementById('reassignDocName').textContent   = docName;
+  document.getElementById('reassignCurrentOwnerName').textContent  = ownerName;
+  document.getElementById('reassignCurrentOwnerBadge').textContent = ownerBadge || '';
+  document.getElementById('reassignNote').value            = '';
+  document.getElementById('sameOwnerWarning').style.display = 'none';
+  document.getElementById('noteWarning').style.display     = 'none';
+  document.getElementById('reassignDealerSelect').value    = '';
+
+  var form = document.getElementById('reassignForm');
+  form.action = '/admin/document-storage/' + recId + '/reassign';
+  document.getElementById('reassignModal').style.display = 'flex';
+}
+
+function submitReassign() {
+  var sel  = document.getElementById('reassignDealerSelect');
+  var note = document.getElementById('reassignNote').value.trim();
+  var valid = true;
+
+  if (parseInt(sel.value) === _currentOwnerId) {
+    document.getElementById('sameOwnerWarning').style.display = 'block';
+    valid = false;
+  } else {
+    document.getElementById('sameOwnerWarning').style.display = 'none';
+  }
+  if (!note) {
+    document.getElementById('noteWarning').style.display = 'block';
+    valid = false;
+  } else {
+    document.getElementById('noteWarning').style.display = 'none';
+  }
+  if (!sel.value) { valid = false; }
+
+  if (valid) document.getElementById('reassignForm').submit();
+}
+
+function confirmSoftDelete(recId, docName) {
+  if (confirm('Delete "' + docName + '"?\n\nThis will hide it from the dealer. The file is NOT removed from disk.')) {
+    document.getElementById('del_' + recId).submit();
+  }
+}
+
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+// Close modals on backdrop click
+['reassignModal','uploadModal'].forEach(function(id) {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) closeModal(id);
+  });
+});
+</script>
+{% endblock %}

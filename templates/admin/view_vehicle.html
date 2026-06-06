@@ -1,0 +1,181 @@
+{% extends 'admin/base.html' %}
+{% block title %}View Vehicle — Caryanams Admin{% endblock %}
+{% block page_title %}Vehicle Detail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>{{ vehicle.make }} {{ vehicle.model }} {{ vehicle.variant or '' }}</h1>
+    <p>{{ vehicle.year }} · {{ vehicle.fuel_type or '—' }} · {{ vehicle.color or '—' }}</p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="{{ url_for('admin.all_vehicles') }}" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Back</a>
+    <a href="{{ url_for('admin.edit_vehicle', vehicle_id=vehicle.id) }}" class="btn btn-outline btn-sm"><i class="fas fa-pencil-alt"></i> Edit</a>
+    <button onclick="approveVehicle({{ vehicle.id }})" class="btn btn-success btn-sm" {% if vehicle.approval_status == 'approved' %}disabled{% endif %}><i class="fas fa-check-circle"></i> Approve</button>
+    <button onclick="rejectVehicle({{ vehicle.id }})" class="btn btn-danger btn-sm" {% if vehicle.approval_status == 'rejected' %}disabled{% endif %}><i class="fas fa-times-circle"></i> Reject</button>
+  </div>
+</div>
+
+<!-- Vehicle Images Gallery -->
+{% set TYPE_LABELS = {'front':'Front','rear':'Rear','right_side':'Right Side','left_side':'Left Side','engine':'Engine','boot':'Boot','interior':'Interior','gallery':''} %}
+{% if vehicle.extra_images_rel %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header">
+    <span class="card-title">Vehicle Images ({{ vehicle.extra_images_rel|length }})</span>
+    <a href="{{ url_for('admin.vehicle_images', vehicle_id=vehicle.id) }}" class="btn btn-outline btn-sm"><i class="fas fa-images"></i> Manage Images</a>
+  </div>
+  <div style="padding:16px 20px;">
+    <!-- Primary image: only show separately if it differs from the front-typed VehicleImage -->
+    {% set front_vi = vehicle.extra_images_rel | selectattr('image_type','equalto','front') | first %}
+    {% if vehicle.image_filename and vehicle.image_filename not in ('default_car.jpg','None','')
+          and (not front_vi or front_vi.filename != vehicle.image_filename) %}
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Cover Photo</div>
+      <img src="/static/images/uploads/{{ vehicle.image_filename }}"
+           style="height:200px;max-width:320px;object-fit:cover;border-radius:10px;border:2px solid #f59e0b;display:block"
+           onerror="this.style.display='none'">
+    </div>
+    {% elif front_vi %}
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Front Photo (Cover)</div>
+      <img src="/static/images/uploads/{{ front_vi.filename }}"
+           style="height:200px;max-width:320px;object-fit:cover;border-radius:10px;border:2px solid #f59e0b;display:block"
+           onerror="this.style.display='none'">
+    </div>
+    {% endif %}
+    <!-- All gallery images with type labels -->
+    <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">All Photos ({{ vehicle.extra_images_rel|length }})</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">
+      {% for img in vehicle.extra_images_rel %}
+      {% set lbl = TYPE_LABELS.get(img.image_type, '') %}
+      <div style="position:relative;border-radius:10px;overflow:hidden;aspect-ratio:4/3;cursor:pointer;border:1px solid #e5e7eb;"
+           onclick="openLightbox('/static/images/uploads/{{ img.filename }}','{{ lbl }}')">
+        <img src="/static/images/uploads/{{ img.filename }}"
+             alt="{{ lbl or 'Gallery' }}"
+             style="width:100%;height:100%;object-fit:cover;display:block;"
+             onerror=\"this.onerror=null;this.src='/static/images/defaults/default_car.jpg'\">
+        {% if lbl %}
+        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:10px;font-weight:700;text-align:center;padding:3px 4px;letter-spacing:.03em">{{ lbl }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if vehicle.extra_images_rel|length > 8 %}
+    <div style="margin-top:10px;font-size:13px;color:var(--text-2);">
+      <a href="{{ url_for('admin.vehicle_images', vehicle_id=vehicle.id) }}" style="color:var(--accent);">View &amp; manage all images →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header">
+    <span class="card-title">Vehicle Images</span>
+    <a href="{{ url_for('admin.vehicle_images', vehicle_id=vehicle.id) }}" class="btn btn-primary btn-sm">+ Upload Images</a>
+  </div>
+  <div style="padding:24px;text-align:center;color:var(--text-2);">
+    <div style="font-size:32px;margin-bottom:8px;">🖼️</div>
+    <div style="font-size:13px;">No images uploaded. <a href="{{ url_for('admin.vehicle_images', vehicle_id=vehicle.id) }}" style="color:var(--accent);">Upload now →</a></div>
+  </div>
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:3fr 1fr;gap:16px;">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Vehicle Details</span></div>
+    <div style="padding:16px 20px;">
+      <table style="width:100%;border-collapse:collapse;">
+        {% set rows = [
+          ('ID', vehicle.id),
+          ('Make', vehicle.make),
+          ('Model', vehicle.model),
+          ('Variant', vehicle.variant or '—'),
+          ('Year', vehicle.year),
+          ('Color', vehicle.color or '—'),
+          ('Fuel Type', vehicle.fuel_type or '—'),
+          ('Transmission', vehicle.transmission or '—'),
+          ('Mileage', (vehicle.mileage|string + ' km') if vehicle.mileage else '—'),
+          ('Engine CC', vehicle.engine_cc or '—'),
+          ('Price', '₹{:,.0f}'.format(vehicle.price|float)),
+          ('Reg. Number', vehicle.registration_number or '—'),
+          ('Status', vehicle.status),
+          ('Approval', vehicle.approval_status),
+          ('Featured', 'Yes' if vehicle.featured else 'No'),
+          ('Dealer', vehicle.dealer.name if vehicle.dealer else vehicle.dealer_id),
+          ('Added', vehicle.created_at.strftime('%d %b %Y') if vehicle.created_at else '—'),
+        ] %}
+        {% for label, val in rows %}
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:10px 0;color:var(--text-2);font-size:13px;width:140px;">{{ label }}</td>
+          <td style="padding:10px 0;font-size:13px;">
+            {% if label == 'Approval' %}
+              <span class="badge {% if vehicle.approval_status == 'approved' %}badge-success{% elif vehicle.approval_status == 'rejected' %}badge-danger{% else %}badge-neutral{% endif %}">{{ val | title }}</span>
+            {% else %}
+              {{ val }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% if vehicle.description %}
+      <div style="margin-top:16px;">
+        <div style="color:var(--text-2);font-size:13px;margin-bottom:6px;">Description</div>
+        <p style="font-size:13px;">{{ vehicle.description }}</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Leads ({{ leads|length }})</span></div>
+      <div style="padding:12px 16px;">
+        {% for l in leads %}
+        <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <strong>{{ l.customer_name }}</strong><br>
+          <span style="color:var(--text-2);">{{ l.stage }} · {{ l.customer_phone }}</span>
+        </div>
+        {% else %}
+        <p style="color:var(--text-2);font-size:13px;margin:8px 0;">No leads for this vehicle.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openLightbox(src, label) {
+  const lb = document.createElement('div');
+  lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:2000;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-direction:column;gap:10px;';
+  lb.onclick = () => lb.remove();
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:90vw;max-height:84vh;border-radius:12px;object-fit:contain;';
+  const close = document.createElement('button');
+  close.textContent = '×';
+  close.style.cssText = 'position:absolute;top:20px;right:24px;background:none;border:none;color:#fff;font-size:32px;cursor:pointer;';
+  close.onclick = e => { e.stopPropagation(); lb.remove(); };
+  lb.appendChild(img);
+  if (label) {
+    const cap = document.createElement('div');
+    cap.textContent = label;
+    cap.style.cssText = 'color:#fff;font-size:13px;font-weight:700;background:rgba(255,255,255,.12);padding:4px 14px;border-radius:20px;letter-spacing:.04em;';
+    lb.appendChild(cap);
+  }
+  lb.appendChild(close);
+  document.body.appendChild(lb);
+}
+function approveVehicle(id) {
+  if (!confirm('Approve this vehicle?')) return;
+  fetch('/admin/api/vehicles/' + id + '/approve', {method:'POST'})
+    .then(r=>r.json()).then(d=>{ if(d.success) location.reload(); });
+}
+function rejectVehicle(id) {
+  if (!confirm('Reject this vehicle?')) return;
+  fetch('/admin/api/vehicles/' + id + '/reject', {method:'POST'})
+    .then(r=>r.json()).then(d=>{ if(d.success) location.reload(); });
+}
+</script>
+{% endblock %}

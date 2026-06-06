@@ -1,0 +1,82 @@
+{% extends 'admin/base.html' %}
+{% block title %}Edit Lead — Caryanams Admin{% endblock %}
+{% block page_title %}Edit Lead{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Edit Lead #{{ lead.id }}</h1></div>
+  <a href="{{ url_for('admin.all_leads') }}" class="btn btn-outline btn-sm">← Back</a>
+</div>
+
+<div class="card" style="max-width:700px;">
+  <div class="card-header"><span class="card-title">Lead Details</span></div>
+  <div style="padding:24px;">
+    <form method="POST">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="form-group">
+          <label>Customer Name *</label>
+          <input type="text" name="customer_name" class="form-control" value="{{ lead.customer_name }}" required>
+        </div>
+        <div class="form-group">
+          <label>Phone *</label>
+          <input type="text" name="customer_phone" class="form-control" value="{{ lead.customer_phone }}" required>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="customer_email" class="form-control" value="{{ lead.customer_email or '' }}">
+        </div>
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" name="customer_city" class="form-control" value="{{ lead.customer_city or '' }}">
+        </div>
+        <div class="form-group">
+          <label>Stage</label>
+          <select name="stage" class="form-control">
+            {% for stage in ['new','interested','test_drive','negotiation','lost','connected','not_connected'] %}
+            <option value="{{ stage }}" {% if lead.stage == stage %}selected{% endif %}>{{ stage | replace('_',' ') | title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Source</label>
+          <select name="source" class="form-control">
+            {% for src in ['website','walk-in','phone','referral','social','admin'] %}
+            <option value="{{ src }}" {% if lead.source == src %}selected{% endif %}>{{ src | title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Assign Agent</label>
+          <select name="agent_id" class="form-control">
+            <option value="">-- Unassigned --</option>
+            {% for a in agents %}
+            <option value="{{ a.id }}" {% if lead.agent_id == a.id %}selected{% endif %}>{{ a.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Vehicle</label>
+          <select name="vehicle_id" class="form-control">
+            <option value="">-- None --</option>
+            {% for v in vehicles %}
+            <option value="{{ v.id }}" {% if lead.vehicle_id == v.id %}selected{% endif %}>{{ v.make }} {{ v.model }} ({{ v.year }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Budget (₹)</label>
+          <input type="number" name="budget" class="form-control" value="{{ lead.budget or '' }}" step="10000">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:16px;">
+        <label>Notes</label>
+        <textarea name="notes" class="form-control" rows="3">{{ lead.notes or '' }}</textarea>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{{ url_for('admin.all_leads') }}" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

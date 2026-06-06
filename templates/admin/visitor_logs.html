@@ -1,0 +1,151 @@
+{% extends 'admin/base.html' %}
+{% block title %}Visitor Logs — Caryanams Admin{% endblock %}
+{% block page_title %}Visitor Logs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Visitor Logs</h1>
+    <p>{{ total }} visit{{ 's' if total != 1 }} recorded &middot; Page {{ page_num }} of {{ total_pages }}</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{{ url_for('admin.visitor_logs', search=search, date=date_f, device=device_f, export='csv') }}"
+       class="btn btn-outline btn-sm"><i class="fas fa-file-csv"></i> Export CSV</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">
+  {% for label, val, color in [
+      ('Total Visits', stats.total, 'var(--accent)'),
+      ('Desktop', stats.desktop, '#6366f1'),
+      ('Mobile', stats.mobile, '#22c55e'),
+      ('Tablet', stats.tablet, '#f59e0b'),
+  ] %}
+  <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
+    <div style="font-size:26px;font-weight:800;color:{{ color }};">{{ val }}</div>
+    <div style="font-size:12px;color:var(--text-2);margin-top:2px;">{{ label }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Filters -->
+<form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+  <input type="text" name="search" value="{{ search }}" placeholder="Search IP, browser, page…"
+    style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;flex:1;min-width:160px;">
+  <input type="date" name="date" value="{{ date_f }}"
+    style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+  <select name="device"
+    style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+    <option value="">All Devices</option>
+    {% for d in ['Desktop','Mobile','Tablet'] %}
+    <option value="{{ d }}" {% if device_f==d %}selected{% endif %}>{{ d }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+  {% if search or date_f or device_f %}
+  <a href="{{ url_for('admin.visitor_logs') }}" class="btn btn-outline btn-sm">Clear</a>
+  {% endif %}
+</form>
+
+<!-- Table -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Visitor Records ({{ total }})</span>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>IP Address</th>
+          <th>Browser / OS</th>
+          <th>Device</th>
+          <th>Page Visited</th>
+          <th>Referrer</th>
+          <th>Visited At</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in logs %}
+        <tr>
+          <td style="font-size:12px;color:var(--text-3);">{{ (page_num - 1) * per_page + loop.index }}</td>
+          <td>
+            <code style="font-size:12px;background:var(--bg-hover,rgba(99,102,241,.08));padding:2px 6px;border-radius:4px;">{{ v.ip_address }}</code>
+            {% if v.country %}
+            <div style="font-size:11px;color:var(--text-2);margin-top:2px;">
+              {{ v.country }}{% if v.city %}, {{ v.city }}{% endif %}
+            </div>
+            {% endif %}
+          </td>
+          <td>
+            <div style="font-size:13px;font-weight:500;color:var(--text-1);">{{ v.browser or '—' }}</div>
+            <div style="font-size:11px;color:var(--text-2);">{{ v.operating_system or '' }}</div>
+          </td>
+          <td>
+            {% set device_icon = {'Desktop': 'fa-desktop', 'Mobile': 'fa-mobile-alt', 'Tablet': 'fa-tablet-alt'} %}
+            {% set device_color = {'Desktop': '#6366f1', 'Mobile': '#22c55e', 'Tablet': '#f59e0b'} %}
+            <span style="font-size:12px;color:{{ device_color.get(v.device_type, 'var(--text-2)') }};">
+              <i class="fas {{ device_icon.get(v.device_type, 'fa-question-circle') }}"></i>
+              {{ v.device_type or '—' }}
+            </span>
+          </td>
+          <td style="max-width:200px;overflow:hidden;">
+            <span title="{{ v.page_url or '' }}"
+              style="font-size:12px;color:var(--accent);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">
+              {{ v.page_url or '—' }}
+            </span>
+          </td>
+          <td style="max-width:150px;overflow:hidden;">
+            {% if v.referrer %}
+            <span title="{{ v.referrer }}"
+              style="font-size:11px;color:var(--text-2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;">
+              {{ v.referrer }}
+            </span>
+            {% else %}
+            <span style="color:var(--text-3);font-size:12px;">Direct</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text-2);white-space:nowrap;">
+            {{ v.visited_at.strftime('%d %b %Y') if v.visited_at else '—' }}<br>
+            <span style="color:var(--text-3);">{{ v.visited_at.strftime('%H:%M:%S') if v.visited_at else '' }}</span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align:center;padding:40px;color:var(--text-2);">
+            <i class="fas fa-users" style="font-size:32px;margin-bottom:10px;display:block;opacity:.4;"></i>
+            No visitor logs found{% if search or date_f or device_f %} matching your filters{% endif %}.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div style="display:flex;gap:6px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
+  {% if page_num > 1 %}
+  <a href="{{ url_for('admin.visitor_logs', page=page_num-1, search=search, date=date_f, device=device_f) }}"
+     class="btn btn-outline btn-sm">&laquo; Prev</a>
+  {% endif %}
+  {% for p in range(1, total_pages+1) %}
+  {% if p == page_num %}
+  <span class="btn btn-primary btn-sm" style="min-width:36px;text-align:center;">{{ p }}</span>
+  {% elif p <= 2 or p >= total_pages-1 or (p >= page_num-2 and p <= page_num+2) %}
+  <a href="{{ url_for('admin.visitor_logs', page=p, search=search, date=date_f, device=device_f) }}"
+     class="btn btn-outline btn-sm" style="min-width:36px;text-align:center;">{{ p }}</a>
+  {% elif p == 3 or p == total_pages-2 %}
+  <span style="padding:6px 4px;color:var(--text-3);">…</span>
+  {% endif %}
+  {% endfor %}
+  {% if page_num < total_pages %}
+  <a href="{{ url_for('admin.visitor_logs', page=page_num+1, search=search, date=date_f, device=device_f) }}"
+     class="btn btn-outline btn-sm">Next &raquo;</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'admin/base.html' %}
+{% block title %}Settings — Caryanams Admin{% endblock %}
+{% block page_title %}Admin Settings{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Settings</h1><p>Manage admin panel configuration</p></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+  <!-- General Settings -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">General Settings</span></div>
+    <div style="padding:20px;">
+      <form method="POST" action="{{ url_for('admin.save_settings') }}">
+        {% for key, label in [('company_name','Company Name'),('support_email','Support Email'),('contact','Contact'),('timezone','Timezone'),('currency','Currency'),('address','Address')] %}
+        <div class="form-group" style="margin-bottom:14px;">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:5px;">{{ label }}</label>
+          <input type="text" name="{{ key }}" value="{{ gs.get(key,'') }}" class="form-control" style="padding:9px 12px;font-size:13px;">
+        </div>
+        {% endfor %}
+        <button class="btn btn-primary btn-sm">Save Settings</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Change Password -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Change Admin Password</span></div>
+    <div style="padding:20px;">
+      <div id="pw-msg" style="display:none;padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px;"></div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:5px;">Current Password</label>
+        <input type="password" id="curr_pw" class="form-control" style="padding:9px 12px;font-size:13px;" placeholder="Current password">
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:5px;">New Password</label>
+        <input type="password" id="new_pw" class="form-control" style="padding:9px 12px;font-size:13px;" placeholder="New password (min 6 chars)">
+      </div>
+      <div class="form-group" style="margin-bottom:18px;">
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:5px;">Confirm New Password</label>
+        <input type="password" id="conf_pw" class="form-control" style="padding:9px 12px;font-size:13px;" placeholder="Confirm new password">
+      </div>
+      <button onclick="changePassword()" class="btn btn-primary btn-sm">Update Password</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function changePassword() {
+  const current = document.getElementById('curr_pw').value;
+  const newPw   = document.getElementById('new_pw').value;
+  const confPw  = document.getElementById('conf_pw').value;
+  const msg     = document.getElementById('pw-msg');
+
+  if (newPw !== confPw) {
+    showMsg('error', 'Passwords do not match.'); return;
+  }
+  fetch('/admin/settings/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current, newPassword: newPw })
+  }).then(r => r.json()).then(d => {
+    showMsg(d.success ? 'success' : 'error', d.message);
+    if (d.success) { document.getElementById('curr_pw').value=''; document.getElementById('new_pw').value=''; document.getElementById('conf_pw').value=''; }
+  });
+}
+
+function showMsg(type, text) {
+  const el = document.getElementById('pw-msg');
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? 'rgba(46,232,154,.12)' : 'rgba(255,85,102,.12)';
+  el.style.border = '1px solid ' + (type === 'success' ? 'rgba(46,232,154,.3)' : 'rgba(255,85,102,.3)');
+  el.style.color = type === 'success' ? '#2EE89A' : '#FF5566';
+  el.textContent = text;
+}
+</script>
+{% endblock %}

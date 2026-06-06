@@ -1,0 +1,66 @@
+{% extends 'admin/base.html' %}
+{% block title %}Notifications — Caryanams Admin{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Notifications</h1>
+    <p>System alerts and recent activity</p>
+  </div>
+  <button class="btn btn-outline btn-sm" onclick="markAllRead()">Mark All Read</button>
+</div>
+
+<div class="card" style="padding:0;">
+  <div class="notif-list">
+    {% set notifs = [
+      ('New Lead Received','A new inquiry has been submitted via the platform.','2 minutes ago','blue','unread'),
+      ('Vehicle Pending Approval','A vehicle is awaiting your review and approval.','15 minutes ago','orange','unread'),
+      ('New Dealer Registration','A new dealership has submitted a registration request.','1 hour ago','purple','unread'),
+      ('KYC Documents Uploaded','A dealer has uploaded KYC documents for review.','2 hours ago','green',''),
+      ('System Update','Platform updated to latest version successfully.','Yesterday','gray',''),
+    ] %}
+    {% for title, desc, time, color, unread in notifs %}
+    <div class="notif-item {{ unread }}">
+      <div class="notif-item-icon" style="background:rgba({% if color=='blue' %}68,153,255{% elif color=='orange' %}255,153,68{% elif color=='green' %}46,232,154{% elif color=='purple' %}170,119,255{% elif color=='red' %}255,85,102{% else %}144,144,160{% endif %},0.12);color:var(--{{ color }});">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+      <div class="notif-item-body">
+        <div class="notif-item-title">{{ title }}</div>
+        <div class="notif-item-desc">{{ desc }}</div>
+        <div class="notif-item-time">{{ time }}</div>
+      </div>
+      {% if unread %}
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px;"></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    {# Live DB notifications: recent admin logs #}
+    {% if logs %}
+    {% for log in logs %}
+    <div class="notif-item">
+      <div class="notif-item-icon" style="background:rgba(99,102,241,0.12);color:#6366F1;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div class="notif-item-body">
+        <div class="notif-item-title">{{ log.action }}</div>
+        <div class="notif-item-desc">Module: {{ log.module }} — by {{ log.admin_user }}</div>
+        <div class="notif-item-time">{{ log.created_at.strftime('%d %b %Y, %I:%M %p') if log.created_at else '' }}</div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function markAllRead() {
+  document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+  document.querySelector('.notif-dot') && document.querySelector('.notif-dot').remove();
+  showToast('All notifications marked as read', 'success');
+}
+</script>
+{% endblock %}

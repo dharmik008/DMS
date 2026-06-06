@@ -1,0 +1,572 @@
+{% extends 'admin/base.html' %}
+{% block title %}Leads — Caryanams Admin{% endblock %}
+{% block page_title %}Lead Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Leads</h1>
+    <p>{{ total }} lead{{ 's' if total != 1 }} · Page {{ current_page }} of {{ total_pages }}</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button onclick="openImportModal()"
+      class="btn btn-outline btn-sm"><i class="fas fa-file-upload"></i> Import File</button>
+    <a href="{{ url_for('admin.all_leads', search=search, stage=stage_filter, dealer_id=dealer_filter, export='csv') }}"
+      class="btn btn-outline btn-sm"><i class="fas fa-file-csv"></i> Export CSV</a>
+    <a href="{{ url_for('admin.all_leads', search=search, stage=stage_filter, dealer_id=dealer_filter, export='xlsx') }}"
+      class="btn btn-outline btn-sm"><i class="fas fa-file-excel"></i> Export Excel</a>
+    <a href="{{ url_for('admin.add_lead') }}" class="btn btn-primary btn-sm">+ Add Lead</a>
+  </div>
+</div>
+
+<!-- Filters -->
+<form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+  <input type="text" name="search" value="{{ search }}" placeholder="Search name / phone…"
+    style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;flex:1;min-width:160px;">
+  <select name="stage" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+    <option value="">All Stages</option>
+    {% for s in ['new','interested','test_drive','negotiation','lost','connected','not_connected'] %}
+    <option value="{{ s }}" {% if stage_filter==s %}selected{% endif %}>{{ s|replace('_',' ')|title }}</option>
+    {% endfor %}
+  </select>
+  <select name="dealer_id" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;max-width:180px;">
+    <option value="">All Dealers</option>
+    {% for d in dealers %}
+    <option value="{{ d.id }}" {% if dealer_filter|string==d.id|string %}selected{% endif %}>{{ d.display_id or ('D' ~ d.id) }} — {{ d.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+  {% if search or stage_filter or dealer_filter %}
+  <a href="{{ url_for('admin.all_leads') }}" class="btn btn-outline btn-sm">Clear</a>
+  {% endif %}
+</form>
+
+<!-- Bulk Actions Bar -->
+<div id="bulkBar" style="display:none;background:var(--bg-surface);border:1px solid var(--accent);
+     border-radius:10px;padding:12px 16px;margin-bottom:16px;
+     align-items:center;gap:12px;flex-wrap:wrap;">
+  <span id="bulkCount" style="font-weight:600;color:var(--accent);font-size:14px;"></span>
+  <span style="color:var(--text-2);font-size:13px;">leads selected</span>
+  <div style="display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;">
+    <label style="font-size:13px;font-weight:500;color:var(--text-1);">Assign to Dealer:</label>
+    <select id="bulkDealerSelect" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);
+            background:var(--bg-surface);color:var(--text-1);font-size:13px;min-width:160px;">
+      <option value="">-- Select Dealer --</option>
+      {% for d in dealers %}
+      <option value="{{ d.id }}">{{ d.display_id or ('D' ~ d.id) }} — {{ d.name }}</option>
+      {% endfor %}
+    </select>
+    <button onclick="doBulkAssign()" class="btn btn-primary btn-sm">
+      <i class="fas fa-user-check"></i> Assign Selected
+    </button>
+    <button onclick="clearSelection()" class="btn btn-outline btn-sm">
+      <i class="fas fa-times"></i> Clear
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Leads ({{ total }})</span>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text-2);">
+      <input type="checkbox" id="headerCheck" onchange="toggleSelectAll(this)"> Select All on Page
+    </label>
+  </div>
+  <div class="table-wrapper">
+  <table class="table" id="leadsTable">
+    <thead>
+      <tr>
+        <th style="width:36px;"></th>
+        <th>#</th><th>Customer</th><th>Phone</th><th>Stage</th><th>Source</th>
+        <th>Budget</th><th>Dealer</th><th>Agent</th><th>Created</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in leads %}
+      <tr id="lead-row-{{ l.id }}">
+        <td><input type="checkbox" class="lead-check" value="{{ l.id }}" onchange="onCheckChange()"></td>
+        <td style="font-size:12px;color:var(--text-2);">#{{ l.id }}</td>
+        <td>
+          <div style="font-weight:600;font-size:13px;">{{ l.customer_name }}</div>
+          <div style="font-size:11px;color:var(--text-2);">{{ l.customer_email or '' }}</div>
+          {% if l.customer_city %}<div style="font-size:11px;color:var(--text-3);">{{ l.customer_city }}</div>{% endif %}
+        </td>
+        <td style="font-size:13px;">{{ l.customer_phone }}</td>
+        <td>
+          <select onchange="updateLeadStage({{ l.id }}, this.value)"
+            style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:12px;">
+            {% for stage in ['new','interested','test_drive','negotiation','lost','connected','not_connected'] %}
+            <option value="{{ stage }}" {% if l.stage == stage %}selected{% endif %}>{{ stage | replace('_',' ') | title }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td style="font-size:12px;">{{ l.source or '—' }}</td>
+        <td style="font-size:13px;">{{ '₹{:,.0f}'.format(l.budget|float) if l.budget else '—' }}</td>
+        <td>
+          {% if l.dealer %}
+            <span style="font-size:12px;font-weight:600;">{{ l.dealer.name }}</span>
+            <div style="font-size:10px;color:var(--accent);">{{ l.dealer.display_id or ('D' ~ l.dealer_id) }}</div>
+          {% else %}
+            <span style="color:var(--text-3);font-size:12px;font-style:italic;">Unassigned</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if l.agent %}
+            <span style="font-size:12px;">{{ l.agent.name }}</span>
+          {% else %}
+            <span style="color:var(--text-2);font-size:12px;">—</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px;white-space:nowrap;">{{ l.created_at.strftime('%d %b %Y') if l.created_at else '—' }}</td>
+        <td style="white-space:nowrap;">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <a href="{{ url_for('admin.view_lead', lead_id=l.id) }}"
+               title="View Lead"
+               aria-label="View Lead"
+               style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:#06b6d4;color:#ffffff;border:none;text-decoration:none;font-size:14px;flex-shrink:0;transition:opacity .15s;">
+              <i class="fas fa-eye"></i></a>
+            <a href="{{ url_for('admin.edit_lead', lead_id=l.id) }}"
+               title="Edit Lead"
+               aria-label="Edit Lead"
+               style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:#f97316;color:#ffffff;border:none;text-decoration:none;font-size:14px;flex-shrink:0;transition:opacity .15s;">
+              <i class="fas fa-pencil-alt"></i></a>
+            <button onclick="showAssignModal({{ l.id }})"
+                    title="Assign Agent"
+                    aria-label="Assign Agent"
+                    style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:#8b5cf6;color:#ffffff;border:none;cursor:pointer;font-size:14px;flex-shrink:0;transition:opacity .15s;">
+              <i class="fas fa-user-tie"></i></button>
+            <button onclick="showSingleDealerModal({{ l.id }}, '{{ l.customer_name }}')"
+                    title="Assign Dealer"
+                    aria-label="Assign Dealer"
+                    style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:#22c55e;color:#ffffff;border:none;cursor:pointer;font-size:14px;flex-shrink:0;transition:opacity .15s;">
+              <i class="fas fa-building"></i></button>
+            <button onclick="deleteLead({{ l.id }})"
+                    title="Delete Lead"
+                    aria-label="Delete Lead"
+                    style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:#ef4444;color:#ffffff;border:none;cursor:pointer;font-size:14px;flex-shrink:0;transition:opacity .15s;">
+              <i class="fas fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text-2);">No leads found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:20px;flex-wrap:wrap;">
+  {% if current_page > 1 %}
+  <a href="{{ url_for('admin.all_leads', page=current_page-1, search=search, stage=stage_filter, dealer_id=dealer_filter) }}"
+     class="btn btn-outline btn-sm">← Prev</a>
+  {% endif %}
+
+  {% for p in range(1, total_pages+1) %}
+    {% if p == current_page %}
+    <span style="padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;">{{ p }}</span>
+    {% elif p <= 2 or p >= total_pages-1 or (p >= current_page-2 and p <= current_page+2) %}
+    <a href="{{ url_for('admin.all_leads', page=p, search=search, stage=stage_filter, dealer_id=dealer_filter) }}"
+       style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);text-decoration:none;background:var(--bg-surface);">{{ p }}</a>
+    {% elif p == 3 and current_page > 5 %}
+    <span style="color:var(--text-2);">…</span>
+    {% elif p == total_pages-2 and current_page < total_pages-4 %}
+    <span style="color:var(--text-2);">…</span>
+    {% endif %}
+  {% endfor %}
+
+  {% if current_page < total_pages %}
+  <a href="{{ url_for('admin.all_leads', page=current_page+1, search=search, stage=stage_filter, dealer_id=dealer_filter) }}"
+     class="btn btn-outline btn-sm">Next →</a>
+  {% endif %}
+  <span style="font-size:12px;color:var(--text-2);margin-left:8px;">Showing {{ (current_page-1)*20+1 }}–{{ [current_page*20, total]|min }} of {{ total }}</span>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     IMPORT LEADS MODAL  –  drag-and-drop, CSV/XLS/XLSX, progress, summary
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);
+     z-index:1000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--bg-surface);border-radius:16px;padding:28px 28px 24px;
+       width:500px;max-width:96vw;box-shadow:0 20px 60px rgba(0,0,0,.35);
+       max-height:90vh;overflow-y:auto;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="margin:0;font-size:17px;font-weight:700;color:var(--text-1);">
+        <i class="fas fa-file-upload" style="color:var(--accent);margin-right:8px;"></i>
+        Import Leads
+      </h3>
+      <button onclick="closeImportModal()"
+        style="background:none;border:none;cursor:pointer;color:var(--text-2);font-size:20px;
+               line-height:1;padding:2px 6px;border-radius:6px;"
+        onmouseover="this.style.background='var(--bg-hover)'"
+        onmouseout="this.style.background='none'">&times;</button>
+    </div>
+
+    <!-- Step 1: Upload -->
+    <div id="importStep1">
+      <!-- Drag-and-drop zone -->
+      <div id="dropZone"
+        onclick="document.getElementById('leadFileInput').click()"
+        ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)"
+        style="border:2px dashed var(--border);border-radius:12px;padding:32px 20px;
+               text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px;">
+        <i class="fas fa-cloud-upload-alt" style="font-size:32px;color:var(--accent);margin-bottom:10px;display:block;"></i>
+        <p style="margin:0 0 6px;font-weight:600;color:var(--text-1);font-size:14px;">
+          Drag &amp; drop your file here, or <span style="color:var(--accent);">click to browse</span>
+        </p>
+        <p style="margin:0;font-size:12px;color:var(--text-2);">Supports CSV, XLSX, XLS</p>
+        <input type="file" id="leadFileInput" accept=".csv,.xlsx,.xls"
+          style="display:none;" onchange="handleFileSelect(this.files[0])">
+      </div>
+
+      <!-- Selected file indicator -->
+      <div id="fileIndicator" style="display:none;background:var(--bg-hover,rgba(99,102,241,.08));
+           border-radius:8px;padding:10px 14px;margin-bottom:16px;
+           display:none;align-items:center;gap:10px;">
+        <i class="fas fa-file-alt" style="color:var(--accent);font-size:16px;"></i>
+        <span id="fileName" style="font-size:13px;font-weight:600;color:var(--text-1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <button onclick="clearFile()" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:0;">&times;</button>
+      </div>
+
+      <!-- Default dealer -->
+      <div style="margin-bottom:18px;">
+        <label style="font-size:13px;font-weight:600;color:var(--text-1);display:block;margin-bottom:6px;">
+          Default Dealer <span style="font-weight:400;color:var(--text-2);">(used when not specified in file)</span>
+        </label>
+        <select id="importDealerSelect"
+          style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border);
+                 background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+          <option value="">— Rows without a dealer will be imported as Unassigned —</option>
+          {% for d in dealers %}
+          <option value="{{ d.id }}">{{ d.display_id or ('D' ~ d.id) }} — {{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Column hints -->
+      <div style="background:var(--bg-hover,rgba(99,102,241,.06));border-radius:8px;padding:12px 14px;
+           margin-bottom:20px;font-size:12px;color:var(--text-2);line-height:1.7;">
+        <strong style="color:var(--text-1);">Accepted column names:</strong><br>
+        <code>customer_name / name</code> &nbsp;·&nbsp; <code>customer_phone / phone / mobile</code><br>
+        <code>email</code> &nbsp;·&nbsp; <code>stage</code> &nbsp;·&nbsp; <code>source</code>
+        &nbsp;·&nbsp; <code>budget</code> &nbsp;·&nbsp; <code>dealer_id / dealer</code>
+        &nbsp;·&nbsp; <code>notes</code> &nbsp;·&nbsp; <code>city</code>
+      </div>
+
+      <!-- Buttons -->
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="closeImportModal()" class="btn btn-outline btn-sm">Cancel</button>
+        <button id="startImportBtn" onclick="startImport()" class="btn btn-primary btn-sm" disabled>
+          <i class="fas fa-upload"></i> Import File
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: Progress -->
+    <div id="importStep2" style="display:none;text-align:center;padding:16px 0;">
+      <div style="margin-bottom:16px;">
+        <i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--accent);"></i>
+      </div>
+      <p style="font-size:14px;font-weight:600;color:var(--text-1);margin:0 0 8px;">Importing leads…</p>
+      <p style="font-size:12px;color:var(--text-2);margin:0;">Please wait while we process your file.</p>
+      <div style="margin-top:16px;background:var(--border);border-radius:99px;height:6px;overflow:hidden;">
+        <div id="importProgressBar"
+          style="height:100%;background:var(--accent);border-radius:99px;width:0%;transition:width .4s;"></div>
+      </div>
+    </div>
+
+    <!-- Step 3: Summary -->
+    <div id="importStep3" style="display:none;">
+      <div id="importSummary"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+        <button onclick="closeImportModal()" class="btn btn-outline btn-sm">Close</button>
+        <button onclick="location.reload()" class="btn btn-primary btn-sm">
+          <i class="fas fa-sync-alt"></i> Refresh Page
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Import Modal ────────────────────────────────────────────────────────────
+let _selectedFile = null;
+
+function openImportModal() {
+  document.getElementById('importModal').style.display = 'flex';
+  showStep(1);
+}
+function closeImportModal() {
+  document.getElementById('importModal').style.display = 'none';
+  clearFile();
+  showStep(1);
+}
+function showStep(n) {
+  [1,2,3].forEach(i => {
+    const el = document.getElementById('importStep'+i);
+    if(el) el.style.display = (i===n) ? 'block' : 'none';
+  });
+}
+
+// Drag-and-drop
+function handleDragOver(e) {
+  e.preventDefault();
+  const z = document.getElementById('dropZone');
+  z.style.borderColor = 'var(--accent)';
+  z.style.background  = 'rgba(99,102,241,.06)';
+}
+function handleDragLeave(e) {
+  const z = document.getElementById('dropZone');
+  z.style.borderColor = 'var(--border)';
+  z.style.background  = '';
+}
+function handleDrop(e) {
+  e.preventDefault();
+  handleDragLeave(e);
+  const file = e.dataTransfer.files[0];
+  if (file) handleFileSelect(file);
+}
+function handleFileSelect(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['csv','xlsx','xls'].includes(ext)) {
+    alert('Unsupported format. Please select a CSV, XLSX, or XLS file.');
+    return;
+  }
+  _selectedFile = file;
+  const ind = document.getElementById('fileIndicator');
+  document.getElementById('fileName').textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+  ind.style.display = 'flex';
+  document.getElementById('startImportBtn').disabled = false;
+}
+function clearFile() {
+  _selectedFile = null;
+  document.getElementById('leadFileInput').value = '';
+  document.getElementById('fileIndicator').style.display = 'none';
+  document.getElementById('startImportBtn').disabled = true;
+}
+
+// Animate progress bar during upload
+function animateProgress(targetPct, durationMs) {
+  const bar = document.getElementById('importProgressBar');
+  let current = parseFloat(bar.style.width) || 0;
+  const steps = 30;
+  const inc = (targetPct - current) / steps;
+  const interval = durationMs / steps;
+  let s = 0;
+  const t = setInterval(() => {
+    s++;
+    current += inc;
+    bar.style.width = Math.min(current, targetPct) + '%';
+    if (s >= steps) clearInterval(t);
+  }, interval);
+}
+
+async function startImport() {
+  if (!_selectedFile) return;
+  showStep(2);
+  animateProgress(70, 1200);
+
+  const fd = new FormData();
+  fd.append('lead_file', _selectedFile);
+  const dealer = document.getElementById('importDealerSelect').value;
+  if (dealer) fd.append('default_dealer_id', dealer);
+
+  try {
+    const res  = await fetch("{{ url_for('admin.import_leads') }}", { method:'POST', body:fd });
+    animateProgress(100, 300);
+    await new Promise(r => setTimeout(r, 400));
+
+    const data = await res.json();
+    showStep(3);
+
+    if (!data.success) {
+      document.getElementById('importSummary').innerHTML =
+        `<div style="text-align:center;padding:12px 0;">
+           <i class="fas fa-times-circle" style="font-size:36px;color:#ef4444;margin-bottom:12px;display:block;"></i>
+           <p style="font-size:14px;font-weight:600;color:var(--text-1);margin:0 0 6px;">Import Failed</p>
+           <p style="font-size:13px;color:var(--text-2);margin:0;">${data.message}</p>
+         </div>`;
+      return;
+    }
+
+    const hasErrors = data.errors && data.errors.length > 0;
+    const errHtml = hasErrors
+      ? `<div style="margin-top:14px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);
+              border-radius:8px;padding:12px 14px;">
+           <p style="font-size:12px;font-weight:600;color:#ef4444;margin:0 0 6px;">Error Details (first ${data.errors.length})</p>
+           <ul style="margin:0;padding-left:16px;font-size:12px;color:var(--text-2);line-height:1.8;">
+             ${data.errors.map(e => `<li>${e}</li>`).join('')}
+           </ul>
+         </div>` : '';
+
+    document.getElementById('importSummary').innerHTML = `
+      <div style="text-align:center;margin-bottom:20px;">
+        <i class="fas fa-check-circle" style="font-size:40px;color:#22c55e;margin-bottom:10px;display:block;"></i>
+        <p style="font-size:15px;font-weight:700;color:var(--text-1);margin:0;">Import Complete!</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
+        <div style="background:var(--bg-hover,rgba(99,102,241,.07));border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:var(--text-1);">${data.total}</div>
+          <div style="font-size:11px;color:var(--text-2);margin-top:2px;">Total Rows</div>
+        </div>
+        <div style="background:rgba(34,197,94,.1);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#22c55e;">${data.imported}</div>
+          <div style="font-size:11px;color:var(--text-2);margin-top:2px;">Imported</div>
+        </div>
+        <div style="background:rgba(234,179,8,.1);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#ca8a04;">${data.duplicates}</div>
+          <div style="font-size:11px;color:var(--text-2);margin-top:2px;">Duplicates Skipped</div>
+        </div>
+        <div style="background:rgba(239,68,68,.1);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#ef4444;">${data.failed}</div>
+          <div style="font-size:11px;color:var(--text-2);margin-top:2px;">Failed</div>
+        </div>
+      </div>
+      ${errHtml}`;
+  } catch(err) {
+    showStep(3);
+    document.getElementById('importSummary').innerHTML =
+      `<div style="text-align:center;padding:12px 0;">
+         <i class="fas fa-exclamation-triangle" style="font-size:36px;color:#f59e0b;margin-bottom:12px;display:block;"></i>
+         <p style="font-size:14px;font-weight:600;color:var(--text-1);margin:0 0 6px;">Network Error</p>
+         <p style="font-size:13px;color:var(--text-2);margin:0;">${err.message}</p>
+       </div>`;
+  }
+}
+</script>
+
+<!-- Assign Agent Modal -->
+<div id="assignModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-surface);border-radius:12px;padding:24px;width:380px;max-width:90vw;">
+    <h3 style="margin:0 0 16px;font-size:16px;">Assign Lead to Agent</h3>
+    <input type="hidden" id="assignLeadId">
+    <div style="margin-bottom:16px;">
+      <label style="font-size:13px;color:var(--text-2);">Select Agent</label>
+      <select id="assignAgentSelect" class="form-control" style="font-size:13px;margin-top:6px;">
+        <option value="">-- Select Agent --</option>
+        {% for a in agents %}
+        <option value="{{ a.id }}">{{ a.name }} ({{ a.phone }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="closeAssignModal()" class="btn btn-outline btn-sm">Cancel</button>
+      <button onclick="doAssign()" class="btn btn-primary btn-sm">Assign</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign to Dealer Modal -->
+<div id="dealerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-surface);border-radius:12px;padding:24px;width:400px;max-width:90vw;">
+    <h3 style="margin:0 0 4px;font-size:16px;">Assign Lead to Dealer</h3>
+    <p id="dealerModalSubtitle" style="margin:0 0 16px;font-size:13px;color:var(--text-2);"></p>
+    <input type="hidden" id="dealerModalLeadId">
+    <div style="margin-bottom:16px;">
+      <label style="font-size:13px;color:var(--text-2);">Select Dealer</label>
+      <select id="dealerModalSelect" class="form-control" style="font-size:13px;margin-top:6px;">
+        <option value="">-- Select Dealer --</option>
+        {% for d in dealers %}
+        <option value="{{ d.id }}">{{ d.display_id or ('D' ~ d.id) }} — {{ d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="closeDealerModal()" class="btn btn-outline btn-sm">Cancel</button>
+      <button onclick="doSingleDealerAssign()" class="btn btn-primary btn-sm">Assign</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.lead-check').forEach(c => c.checked = cb.checked);
+  document.getElementById('headerCheck').checked = cb.checked;
+  onCheckChange();
+}
+function onCheckChange() {
+  const checked = document.querySelectorAll('.lead-check:checked');
+  const bar = document.getElementById('bulkBar');
+  document.getElementById('bulkCount').textContent = checked.length;
+  bar.style.display = checked.length > 0 ? 'flex' : 'none';
+}
+function clearSelection() {
+  document.querySelectorAll('.lead-check').forEach(c => c.checked = false);
+  document.getElementById('headerCheck').checked = false;
+  document.getElementById('bulkBar').style.display = 'none';
+}
+function doBulkAssign() {
+  const dealerId = document.getElementById('bulkDealerSelect').value;
+  if (!dealerId) { showToast('Please select a dealer','error'); return; }
+  const leadIds = Array.from(document.querySelectorAll('.lead-check:checked')).map(c=>parseInt(c.value));
+  if (!leadIds.length) { showToast('No leads selected','error'); return; }
+  if (!confirm(`Assign ${leadIds.length} lead(s) to selected dealer?`)) return;
+  fetch('/admin/api/leads/bulk-assign-dealer',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({lead_ids:leadIds,dealer_id:parseInt(dealerId)})})
+  .then(r=>r.json()).then(d=>{
+    if(d.success){showToast(d.message,'success');clearSelection();setTimeout(()=>location.reload(),1200);}
+    else showToast(d.message||'Failed','error');
+  });
+}
+function showSingleDealerModal(leadId,name){
+  document.getElementById('dealerModalLeadId').value=leadId;
+  document.getElementById('dealerModalSubtitle').textContent='Lead: '+name;
+  document.getElementById('dealerModalSelect').value='';
+  document.getElementById('dealerModal').style.display='flex';
+}
+function closeDealerModal(){document.getElementById('dealerModal').style.display='none';}
+function doSingleDealerAssign(){
+  const lid=document.getElementById('dealerModalLeadId').value;
+  const did=document.getElementById('dealerModalSelect').value;
+  if(!did){showToast('Please select a dealer','error');return;}
+  fetch('/admin/api/leads/bulk-assign-dealer',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({lead_ids:[parseInt(lid)],dealer_id:parseInt(did)})})
+  .then(r=>r.json()).then(d=>{
+    if(d.success){closeDealerModal();showToast(d.message,'success');setTimeout(()=>location.reload(),1200);}
+    else showToast(d.message||'Failed','error');
+  });
+}
+function updateLeadStage(leadId,stage){
+  fetch('/admin/api/leads/'+leadId+'/update-stage',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({stage:stage})})
+  .then(r=>r.json()).then(d=>{if(d.success)showToast('Stage updated','success');});
+}
+function deleteLead(leadId){
+  if(!confirm('Delete this lead? Cannot be undone.'))return;
+  fetch('/admin/api/leads/'+leadId+'/delete',{method:'POST'})
+  .then(r=>r.json()).then(d=>{
+    if(d.success){document.getElementById('lead-row-'+leadId)?.remove();showToast('Lead deleted','success');}
+  });
+}
+function showAssignModal(leadId){
+  document.getElementById('assignLeadId').value=leadId;
+  document.getElementById('assignModal').style.display='flex';
+}
+function closeAssignModal(){document.getElementById('assignModal').style.display='none';}
+function doAssign(){
+  const lid=document.getElementById('assignLeadId').value;
+  const aid=document.getElementById('assignAgentSelect').value;
+  if(!aid){showToast('Please select an agent','error');return;}
+  fetch('/admin/api/leads/'+lid+'/assign',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({agent_id:parseInt(aid)})})
+  .then(r=>r.json()).then(d=>{
+    if(d.success){closeAssignModal();showToast(d.message,'success');location.reload();}
+    else showToast(d.message||'Failed','error');
+  });
+}
+function showToast(msg,type){
+  const t=document.createElement('div');t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;z-index:9999;background:'+(type==='success'?'#22c55e':'#ef4444');
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+</script>
+{% endblock %}

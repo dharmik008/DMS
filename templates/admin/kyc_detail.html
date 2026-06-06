@@ -1,0 +1,345 @@
+{% extends 'admin/base.html' %}
+{% block title %}KYC Detail — {{ dealer.name }}{% endblock %}
+{% block page_title %}KYC Verification Detail{% endblock %}
+
+{% block content %}
+{% set status = kyc.kyc_status if kyc else 'none' %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>{{ dealer.name }}</h1>
+    <p>{{ dealer.company_name or 'Independent Dealer' }} · KYC Verification</p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <a href="{{ url_for('admin.kyc_list') }}" class="btn btn-outline btn-sm">← Back to KYC List</a>
+    <a href="{{ url_for('admin.view_dealer', dealer_id=dealer.id) }}" class="btn btn-outline btn-sm">View Dealer</a>
+  </div>
+</div>
+
+<!-- Status Banner -->
+<div style="margin-bottom:20px;padding:16px 20px;border-radius:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  {% if status == 'approved' %}background:rgba(46,232,154,0.08);border:1px solid rgba(46,232,154,0.2);
+  {% elif status == 'rejected' %}background:rgba(255,85,102,0.08);border:1px solid rgba(255,85,102,0.2);
+  {% elif status == 'pending' %}background:rgba(255,153,68,0.08);border:1px solid rgba(255,153,68,0.2);
+  {% else %}background:var(--bg-card);border:1px solid var(--border);{% endif %}">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="font-size:32px;">
+      {% if status == 'approved' %}✅{% elif status == 'rejected' %}❌{% elif status == 'pending' %}⏳{% else %}📋{% endif %}
+    </div>
+    <div>
+      <div style="font-weight:700;font-size:16px;">
+        {% if status == 'approved' %}KYC Approved
+        {% elif status == 'rejected' %}KYC Rejected
+        {% elif status == 'pending' %}KYC Pending Review
+        {% else %}No KYC Submitted{% endif %}
+      </div>
+      {% if kyc and kyc.reviewed_at %}
+      <div style="font-size:12px;color:var(--text-2);">
+        Reviewed by {{ kyc.reviewed_by or 'Admin' }} on {{ kyc.reviewed_at.strftime('%d %b %Y, %H:%M') }}
+      </div>
+      {% endif %}
+      {% if status == 'rejected' and kyc and kyc.rejection_reason %}
+      <div style="font-size:13px;color:var(--red);margin-top:4px;">Reason: {{ kyc.rejection_reason }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    {% if status != 'approved' %}
+    <button onclick="approveKyc({{ dealer.id }})" class="btn btn-sm" style="background:rgba(46,232,154,0.15);color:var(--green);border:1px solid rgba(46,232,154,0.3);display:inline-flex;align-items:center;gap:5px;"><i class="fas fa-check-circle"></i> Approve KYC</button>
+    {% endif %}
+    {% if status != 'rejected' %}
+    <button onclick="openRejectModal({{ dealer.id }},'{{ dealer.name|replace("'","\\'")}}')" class="btn btn-sm" style="background:rgba(255,85,102,0.15);color:var(--red);border:1px solid rgba(255,85,102,0.3);display:inline-flex;align-items:center;gap:5px;"><i class="fas fa-times-circle"></i> Reject KYC</button>
+    {% endif %}
+    {% if status != 'none' and status != 'pending' %}
+    <button onclick="resetKyc({{ dealer.id }})" class="btn btn-outline btn-sm">↺ Reset to Pending</button>
+    {% endif %}
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+  <!-- Dealer Info -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Dealer Information</span></div>
+    <div style="padding:16px 20px;">
+      {% for label, val in [
+        ('Name', dealer.name),
+        ('Email', dealer.email),
+        ('Phone', dealer.phone or '—'),
+        ('Company', dealer.company_name or '—'),
+        ('City', dealer.city or '—'),
+        ('GST No.', dealer.gst_number or '—'),
+        ('Account Status', 'Active' if dealer.is_active else 'Inactive'),
+        ('Joined', dealer.created_at.strftime('%d %b %Y') if dealer.created_at else '—'),
+      ] %}
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+        <span style="color:var(--text-2);">{{ label }}</span>
+        <span style="font-weight:500;">
+          {% if label == 'Account Status' %}
+            <span class="badge {% if dealer.is_active %}badge-success{% else %}badge-danger{% endif %}">{{ val }}</span>
+          {% else %}{{ val }}{% endif %}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- KYC Submission Info -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">KYC Submission Details</span></div>
+    <div style="padding:16px 20px;">
+      {% if kyc %}
+      {% for label, val in [
+        ('KYC Status', status),
+        ('Submitted', kyc.submitted_at.strftime('%d %b %Y, %H:%M') if kyc.submitted_at else '—'),
+        ('Aadhaar Front', '✅ Uploaded' if kyc.aadhaar_front else '❌ Missing'),
+        ('Aadhaar Back', '✅ Uploaded' if kyc.aadhaar_back else '❌ Missing'),
+        ('PAN Card', '✅ Uploaded' if kyc.pan_card else '❌ Missing'),
+        ('Reviewed By', kyc.reviewed_by or '—'),
+        ('Reviewed At', kyc.reviewed_at.strftime('%d %b %Y, %H:%M') if kyc.reviewed_at else '—'),
+      ] %}
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+        <span style="color:var(--text-2);">{{ label }}</span>
+        <span style="font-weight:500;">
+          {% if label == 'KYC Status' %}
+            {% if val == 'approved' %}<span class="badge badge-success">Approved</span>
+            {% elif val == 'rejected' %}<span class="badge badge-danger">Rejected</span>
+            {% else %}<span class="badge" style="background:rgba(255,153,68,0.15);color:var(--orange);">Pending</span>{% endif %}
+          {% else %}{{ val }}{% endif %}
+        </span>
+      </div>
+      {% endfor %}
+      {% if kyc.rejection_reason %}
+      <div style="margin-top:12px;padding:10px;background:rgba(255,85,102,0.08);border-radius:8px;border:1px solid rgba(255,85,102,0.2);">
+        <div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px;">REJECTION REASON</div>
+        <div style="font-size:13px;">{{ kyc.rejection_reason }}</div>
+      </div>
+      {% endif %}
+      {% else %}
+      <div style="text-align:center;padding:32px;color:var(--text-2);">No KYC record found for this dealer.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Document Preview Cards -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <span class="card-title">KYC Documents</span>
+    <button onclick="document.getElementById('uploadSection').classList.toggle('hidden')" class="btn btn-outline btn-sm">📁 Upload / Replace Documents</button>
+  </div>
+  <div style="padding:20px;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+      {% for doc_key, doc_label, icon in [
+        ('aadhaar_front','Aadhaar Front','🪪'),
+        ('aadhaar_back','Aadhaar Back','🪪'),
+        ('pan_card','PAN Card','💳')
+      ] %}
+      {% set filename = kyc[doc_key] if kyc and kyc[doc_key] else None %}
+      {% set img_url = url_for('static', filename='uploads/dealers/' ~ dealer.id ~ '/' ~ filename) if filename else None %}
+      <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg-surface);">
+        <div style="padding:10px 14px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+          <span>{{ icon }}</span>
+          <span style="font-size:13px;font-weight:600;">{{ doc_label }}</span>
+          {% if filename %}
+          <span class="badge badge-success" style="margin-left:auto;font-size:10px;">Uploaded</span>
+          {% else %}
+          <span class="badge badge-danger" style="margin-left:auto;font-size:10px;">Missing</span>
+          {% endif %}
+        </div>
+        {% if filename %}
+        <div style="position:relative;cursor:pointer;" onclick="openLightbox('{{ img_url }}','{{ doc_label }}')">
+          <img src="{{ img_url }}"
+               alt="{{ doc_label }}"
+               style="width:100%;height:180px;object-fit:cover;display:block;">
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0);transition:background 0.2s;display:flex;align-items:center;justify-content:center;"
+               onmouseover="this.style.background='rgba(0,0,0,0.4)';this.querySelector('span').style.opacity=1"
+               onmouseout="this.style.background='rgba(0,0,0,0)';this.querySelector('span').style.opacity=0">
+            <span style="opacity:0;color:#fff;font-size:13px;font-weight:600;transition:opacity 0.2s;">🔍 Click to View</span>
+          </div>
+        </div>
+        <div style="padding:10px 14px;display:flex;gap:8px;">
+          <a href="{{ img_url }}" download
+             style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px 10px;border-radius:50px;border:1.5px solid var(--border-md);background:var(--bg-surface);font-size:12px;font-weight:600;color:var(--text-1);text-decoration:none;">
+            ⬇ Download
+          </a>
+          <button onclick="document.getElementById('rep_{{ doc_key }}').click()"
+             style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px 10px;border-radius:50px;border:none;background:var(--navy,#1a2e4a);font-size:12px;font-weight:600;color:#fff;cursor:pointer;">
+            ↑ Replace
+          </button>
+          <form method="POST" action="{{ url_for('admin.kyc_upload_docs', dealer_id=dealer.id) }}" enctype="multipart/form-data" style="display:none;">
+            <input type="file" id="rep_{{ doc_key }}" name="{{ doc_key }}" accept=".jpg,.jpeg,.png,.webp"
+                   onchange="this.closest('form').submit()">
+          </form>
+        </div>
+        {% else %}
+        <div style="height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-3);">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <div style="font-size:12px;margin-top:8px;">Not uploaded</div>
+        </div>
+        <div style="padding:10px 14px;">
+          <span style="font-size:12px;color:var(--text-3);">No document available</span>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Upload Section (hidden by default) -->
+<div id="uploadSection" class="card hidden" style="margin-bottom:20px;">
+  <div class="card-header"><span class="card-title">Upload / Replace KYC Documents</span></div>
+  <div style="padding:20px;">
+    <div style="font-size:13px;color:var(--text-2);margin-bottom:16px;">
+      Allowed formats: JPG, JPEG, PNG, WEBP · Max size: 10 MB per file
+    </div>
+    <form method="POST" action="{{ url_for('admin.kyc_upload_docs', dealer_id=dealer.id) }}" enctype="multipart/form-data">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+        {% for field, label in [('aadhaar_front','Aadhaar Front'),('aadhaar_back','Aadhaar Back'),('pan_card','PAN Card')] %}
+        {% set cur_file = kyc[field] if kyc and kyc[field] else None %}
+        {% set cur_url = url_for('static', filename='uploads/dealers/' ~ dealer.id ~ '/' ~ cur_file) if cur_file else None %}
+        <div class="form-group">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <label style="font-size:13px;font-weight:600;margin:0;">{{ label }}</label>
+            {% if cur_file %}
+            <span style="font-size:10px;font-weight:700;background:rgba(255,153,68,0.12);color:#b45309;padding:2px 9px;border-radius:20px;border:1px solid rgba(255,153,68,0.35);">Pending Review</span>
+            {% endif %}
+          </div>
+          <div id="preview_{{ field }}" style="width:100%;height:120px;border:2px solid var(--border-md);border-radius:10px;overflow:hidden;background:var(--bg-surface);position:relative;">
+            {% if cur_file %}
+            <img src="{{ cur_url }}" alt="{{ label }}" style="width:100%;height:100%;object-fit:cover;">
+            {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--text-2);cursor:pointer;"
+                 onclick="document.getElementById('file_{{ field }}').click()">
+              <div style="font-size:24px;margin-bottom:4px;">📎</div>
+              <div style="font-size:12px;">Click to upload</div>
+            </div>
+            {% endif %}
+          </div>
+          <input type="file" id="file_{{ field }}" name="{{ field }}" accept=".jpg,.jpeg,.png,.webp"
+                 onchange="previewFile(this,'preview_{{ field }}')"
+                 style="display:none;">
+          {% if cur_file %}
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <a href="{{ cur_url }}" download
+               style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:8px 10px;border-radius:50px;border:1.5px solid var(--border-md);background:var(--bg-surface);font-size:12px;font-weight:600;color:var(--text-1);text-decoration:none;">
+              ⬇ Download
+            </a>
+            <button type="button" onclick="document.getElementById('file_{{ field }}').click()"
+               style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:8px 10px;border-radius:50px;border:none;background:var(--navy,#1a2e4a);font-size:12px;font-weight:600;color:#fff;cursor:pointer;">
+              ↑ Replace
+            </button>
+          </div>
+          {% else %}
+          <button type="button" onclick="document.getElementById('file_{{ field }}').click()"
+             style="width:100%;margin-top:8px;padding:9px;border-radius:50px;border:1.5px dashed var(--border-md);background:transparent;font-size:12px;font-weight:600;color:var(--text-2);cursor:pointer;">
+            📎 Upload {{ label }}
+          </button>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top:16px;">💾 Save Documents</button>
+    </form>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:2000;align-items:center;justify-content:center;flex-direction:column;"
+     onclick="if(event.target===this)closeLightbox()">
+  <div style="position:relative;max-width:90vw;max-height:85vh;">
+    <button onclick="closeLightbox()" style="position:absolute;top:-40px;right:0;background:none;border:none;color:#fff;font-size:32px;cursor:pointer;line-height:1;">×</button>
+    <div id="lightboxLabel" style="position:absolute;top:-36px;left:0;color:#fff;font-size:14px;font-weight:600;"></div>
+    <img id="lightboxImg" src="" alt="" style="max-width:90vw;max-height:85vh;border-radius:12px;object-fit:contain;">
+    <a id="lightboxDownload" href="#" download style="display:block;text-align:center;margin-top:12px;color:var(--accent);font-size:13px;text-decoration:none;">⬇ Download Document</a>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:28px;width:440px;max-width:95vw;">
+    <h3 style="margin-bottom:8px;">Reject KYC</h3>
+    <p id="rejectTitle" style="color:var(--text-2);font-size:13px;margin-bottom:20px;"></p>
+    <div class="form-group">
+      <label style="font-size:13px;color:var(--text-2);margin-bottom:6px;display:block;">Rejection Reason *</label>
+      <textarea id="rejectReason" rows="3" placeholder="Explain why…"
+        style="width:100%;background:var(--bg-surface);border:1px solid var(--border-md);border-radius:8px;padding:10px;color:var(--text-1);font-size:13px;resize:vertical;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button onclick="submitReject()" class="btn btn-danger" style="flex:1;">Confirm Reject</button>
+      <button onclick="closeRejectModal()" class="btn btn-outline" style="flex:1;">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let rejectDealerId = null;
+
+function previewFile(input, previewId) {
+  const file = input.files[0];
+  if (!file) return;
+  const preview = document.getElementById(previewId);
+  const reader = new FileReader();
+  reader.onload = e => {
+    preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function approveKyc(dealerId) {
+  if (!confirm('Approve KYC for this dealer?')) return;
+  fetch('/admin/api/kyc/' + dealerId + '/approve', { method: 'POST' })
+    .then(r => r.json()).then(d => {
+      if (d.success) { showToast(d.message, 'success'); setTimeout(() => location.reload(), 900); }
+      else showToast(d.message || 'Error', 'error');
+    });
+}
+
+function openRejectModal(dealerId, name) {
+  rejectDealerId = dealerId;
+  document.getElementById('rejectTitle').textContent = 'Rejecting KYC for: ' + name;
+  document.getElementById('rejectReason').value = '';
+  document.getElementById('rejectModal').style.display = 'flex';
+}
+function closeRejectModal() { document.getElementById('rejectModal').style.display = 'none'; }
+
+function submitReject() {
+  const reason = document.getElementById('rejectReason').value.trim();
+  if (!reason) { showToast('Rejection reason required.', 'error'); return; }
+  fetch('/admin/api/kyc/' + rejectDealerId + '/reject', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({reason})
+  }).then(r => r.json()).then(d => {
+    if (d.success) { closeRejectModal(); showToast(d.message, 'success'); setTimeout(() => location.reload(), 900); }
+    else showToast(d.message || 'Error', 'error');
+  });
+}
+
+function resetKyc(dealerId) {
+  if (!confirm('Reset KYC to Pending status?')) return;
+  fetch('/admin/api/kyc/' + dealerId + '/reset', { method: 'POST' })
+    .then(r => r.json()).then(d => {
+      if (d.success) { showToast('KYC reset to pending', 'success'); setTimeout(() => location.reload(), 900); }
+    });
+}
+
+function openLightbox(src, label) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightboxLabel').textContent = label;
+  document.getElementById('lightboxDownload').href = src;
+  document.getElementById('lightbox').style.display = 'flex';
+}
+function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLightbox(); closeRejectModal(); }});
+
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;z-index:9999;background:' + (type==='success'?'#22c55e':'#ef4444');
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+}
+</script>
+<style>.hidden{display:none!important;}</style>
+{% endblock %}

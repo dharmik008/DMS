@@ -1,0 +1,252 @@
+{% extends 'admin/base.html' %}
+{% block title %}Import Leads — Caryanams Admin{% endblock %}
+{% block page_title %}Lead Import{% endblock %}
+
+{% block content %}
+<style>
+.import-hero{background:linear-gradient(135deg,#1e3a5f 0%,#162a48 100%);border-radius:14px;padding:32px 36px;margin-bottom:24px;display:flex;align-items:center;gap:32px;flex-wrap:wrap;}
+.import-hero-icon{width:72px;height:72px;background:rgba(99,179,237,.18);border-radius:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.import-hero h2{font-size:1.45rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;}
+.import-hero p{color:#90cdf4;font-size:.9rem;line-height:1.55;}
+.upload-zone{border:2.5px dashed var(--border);border-radius:14px;padding:40px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg-surface);position:relative;}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(99,179,237,.05);}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-zone-icon{font-size:2.5rem;margin-bottom:12px;}
+.upload-zone h3{font-size:1.05rem;font-weight:600;margin-bottom:6px;color:var(--text-1);}
+.upload-zone p{font-size:.82rem;color:var(--text-2);}
+.format-badges{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
+.format-badge{padding:4px 12px;border-radius:99px;font-size:.72rem;font-weight:600;letter-spacing:.04em;}
+.fmt-csv{background:rgba(72,187,120,.15);color:#68d391;border:1px solid rgba(72,187,120,.3);}
+.fmt-xlsx{background:rgba(66,153,225,.15);color:#63b3ed;border:1px solid rgba(66,153,225,.3);}
+.fmt-xls{background:rgba(154,91,208,.15);color:#b794f4;border:1px solid rgba(154,91,208,.3);}
+.progress-bar-wrap{background:var(--border);border-radius:99px;height:8px;overflow:hidden;margin:12px 0;}
+.progress-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#6ee7b7);transition:width .4s;}
+.hist-table{width:100%;border-collapse:collapse;}
+.hist-table th,.hist-table td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:.83rem;}
+.hist-table th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);background:var(--bg-surface);}
+.hist-table tr:hover td{background:rgba(99,179,237,.04);}
+.status-dot{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;font-weight:600;}
+.dot-done{color:#68d391;} .dot-failed{color:#fc8181;} .dot-proc{color:#fbd38d;}
+.sample-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;font-size:.8rem;}
+.sample-card table{width:100%;border-collapse:collapse;font-size:.75rem;}
+.sample-card td,.sample-card th{padding:6px 10px;border:1px solid var(--border);color:var(--text-2);}
+.sample-card th{background:var(--border);color:var(--text-1);font-weight:600;}
+</style>
+
+<!-- Hero -->
+<div class="import-hero">
+  <div class="import-hero-icon">
+    <svg width="32" height="32" fill="none" stroke="#63b3ed" stroke-width="1.8" viewBox="0 0 24 24">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/>
+    </svg>
+  </div>
+  <div>
+    <h2>Import Leads from File</h2>
+    <p>Upload a CSV or Excel file to bulk-import leads. Each row becomes a lead record.<br>
+       Duplicate leads (by phone or email) are automatically skipped.</p>
+  </div>
+  <a href="{{ url_for('admin.imported_leads_list') }}" class="btn btn-outline btn-sm" style="margin-left:auto;white-space:nowrap;">
+    <i class="fas fa-list"></i> View All Leads
+  </a>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start;flex-wrap:wrap;">
+
+  <!-- Upload Form -->
+  <div>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-cloud-upload-alt" style="color:var(--accent);"></i> Upload File</h3></div>
+      <div class="card-body">
+        <form id="importForm" method="POST" action="{{ url_for('admin.lead_import_page') }}" enctype="multipart/form-data">
+          <div class="upload-zone" id="dropZone">
+            <input type="file" name="file" id="fileInput" accept=".csv,.xlsx,.xls" required>
+            <div class="upload-zone-icon">📂</div>
+            <h3>Drag & Drop or Click to Browse</h3>
+            <p>Supports CSV, XLSX, XLS files up to 50 MB</p>
+            <div class="format-badges">
+              <span class="format-badge fmt-csv">CSV</span>
+              <span class="format-badge fmt-xlsx">XLSX</span>
+              <span class="format-badge fmt-xls">XLS</span>
+            </div>
+          </div>
+
+          <!-- file preview -->
+          <div id="filePreview" style="display:none;margin-top:14px;padding:14px 16px;
+               background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;
+               display:none;align-items:center;gap:12px;">
+            <span style="font-size:1.8rem;" id="previewIcon">📄</span>
+            <div style="flex:1;min-width:0;">
+              <div id="previewName" style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+              <div id="previewSize" style="font-size:.75rem;color:var(--text-2);margin-top:2px;"></div>
+            </div>
+            <button type="button" onclick="clearFile()" style="background:none;border:none;color:var(--text-2);cursor:pointer;font-size:1.1rem;">✕</button>
+          </div>
+
+          <!-- progress -->
+          <div id="uploadProgress" style="display:none;margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;color:var(--text-2);margin-bottom:4px;">
+              <span>Uploading & processing…</span><span id="progPct">0%</span>
+            </div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progBar" style="width:0%"></div></div>
+          </div>
+
+          <div style="margin-top:20px;display:flex;gap:10px;">
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+              <i class="fas fa-file-import"></i> Import Leads
+            </button>
+            <a href="{{ url_for('admin.imported_leads_list') }}" class="btn btn-outline">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Sample Format -->
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-table" style="color:#68d391;"></i> Expected File Format</h3></div>
+      <div class="card-body">
+        <p style="font-size:.82rem;color:var(--text-2);margin-bottom:12px;">
+          Your file should have a header row. Column names are flexible — the system auto-detects common variations.
+        </p>
+        <div class="sample-card">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Phone</th><th>Email</th><th>Company</th><th>Address</th><th>Source</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Rahul Sharma</td><td>9876543210</td><td>rahul@email.com</td><td>Sharma Pvt</td><td>Mumbai</td><td>Google Ads</td></tr>
+              <tr><td>Priya Singh</td><td>9123456789</td><td>priya@email.com</td><td>Singh Corp</td><td>Delhi</td><td>Referral</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px;font-size:.78rem;color:var(--text-2);line-height:1.7;">
+          <strong style="color:var(--text-1);">Accepted column names:</strong><br>
+          • <strong>Name:</strong> name, customer_name, full_name<br>
+          • <strong>Phone:</strong> phone, phone_number, mobile, contact<br>
+          • <strong>Email:</strong> email, email_address<br>
+          • <strong>Company:</strong> company, company_name, organization<br>
+          • <strong>Address:</strong> address, location<br>
+          • <strong>Source:</strong> source, lead_source<br>
+          • Any additional columns are stored as extra data.
+        </div>
+        <a href="#" id="downloadSample" class="btn btn-outline btn-sm" style="margin-top:14px;"
+           onclick="downloadSampleCSV(event)">
+          <i class="fas fa-download"></i> Download Sample CSV
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Import History -->
+  <div class="card" style="position:sticky;top:80px;">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+      <h3 class="card-title" style="margin:0;"><i class="fas fa-history" style="color:var(--accent);"></i> Import History</h3>
+      <span style="font-size:.75rem;color:var(--text-2);">Last 20 imports</span>
+    </div>
+    <div style="overflow-x:auto;">
+      {% if import_history %}
+      <table class="hist-table">
+        <thead><tr><th>File</th><th>Imported</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+        {% for h in import_history %}
+        <tr>
+          <td>
+            <div style="font-weight:600;font-size:.82rem;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ h.file_name }}">{{ h.file_name }}</div>
+            <div style="font-size:.7rem;color:var(--text-2);">{{ h.file_type|upper }} · {{ h.total_rows }} rows</div>
+          </td>
+          <td>
+            <span style="color:#68d391;font-weight:700;">{{ h.imported_rows }}</span>
+            {% if h.duplicate_rows %}<span style="color:#fbd38d;font-size:.72rem;"> +{{ h.duplicate_rows }} dup</span>{% endif %}
+            {% if h.failed_rows %}<span style="color:#fc8181;font-size:.72rem;"> +{{ h.failed_rows }} fail</span>{% endif %}
+          </td>
+          <td>
+            {% if h.status == 'done' %}<span class="status-dot dot-done">✓ Done</span>
+            {% elif h.status == 'failed' %}<span class="status-dot dot-failed">✗ Failed</span>
+            {% else %}<span class="status-dot dot-proc">⟳ Processing</span>{% endif %}
+          </td>
+          <td style="font-size:.72rem;color:var(--text-2);white-space:nowrap;">
+            {{ h.uploaded_at|fmtdate('%d %b') }}<br>{{ h.uploaded_at.strftime('%H:%M') if h.uploaded_at }}
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="padding:32px;text-align:center;color:var(--text-2);font-size:.83rem;">
+        <div style="font-size:2rem;margin-bottom:8px;">📭</div>No imports yet
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('fileInput');
+const filePreview= document.getElementById('filePreview');
+const previewName= document.getElementById('previewName');
+const previewSize= document.getElementById('previewSize');
+const previewIcon= document.getElementById('previewIcon');
+const submitBtn  = document.getElementById('submitBtn');
+const importForm = document.getElementById('importForm');
+const progWrap   = document.getElementById('uploadProgress');
+const progBar    = document.getElementById('progBar');
+const progPct    = document.getElementById('progPct');
+
+const ICONS = {csv:'📊', xlsx:'📗', xls:'📗'};
+
+fileInput.addEventListener('change', () => showPreview(fileInput.files[0]));
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave',() => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) { fileInput.files = e.dataTransfer.files; showPreview(file); }
+});
+
+function showPreview(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  previewIcon.textContent = ICONS[ext] || '📄';
+  previewName.textContent = file.name;
+  previewSize.textContent = (file.size / 1024).toFixed(1) + ' KB · ' + ext.toUpperCase();
+  filePreview.style.display = 'flex';
+}
+
+function clearFile() {
+  fileInput.value = '';
+  filePreview.style.display = 'none';
+}
+
+importForm.addEventListener('submit', e => {
+  if (!fileInput.files[0]) return;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…';
+  progWrap.style.display = 'block';
+  // animate progress bar
+  let pct = 0;
+  const iv = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 8, 92);
+    progBar.style.width = pct + '%';
+    progPct.textContent = Math.round(pct) + '%';
+  }, 300);
+  importForm._interval = iv;
+});
+
+function downloadSampleCSV(e) {
+  e.preventDefault();
+  const rows = [
+    ['Name','Phone','Email','Company','Address','Source'],
+    ['Rahul Sharma','9876543210','rahul@email.com','Sharma Pvt','Mumbai','Google Ads'],
+    ['Priya Singh','9123456789','priya@email.com','Singh Corp','Delhi','Referral'],
+    ['Amit Patel','9988776655','amit@email.com','Patel Motors','Ahmedabad','Walk-in'],
+  ];
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv,' + encodeURIComponent(csv);
+  a.download = 'sample_leads.csv';
+  a.click();
+}
+</script>
+{% endblock %}

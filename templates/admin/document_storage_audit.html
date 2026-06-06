@@ -1,0 +1,79 @@
+{% extends 'admin/base.html' %}
+{% block title %}Document Audit Log{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+  <a href="{{ url_for('admin.document_storage') }}" style="color:#6366f1;font-size:13px;text-decoration:none;">← Back to Document Storage</a>
+</div>
+
+{% if record %}
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:22px 26px;margin-bottom:24px;">
+  <h2 style="font-size:16px;font-weight:700;margin:0 0 16px;">Document Details</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;font-size:13px;">
+    <div><span style="color:#9ca3af;display:block;margin-bottom:2px;">File Name</span><strong>{{ record.original_name or record.file_name }}</strong></div>
+    <div><span style="color:#9ca3af;display:block;margin-bottom:2px;">Module</span><strong>{{ record.module_name }}</strong></div>
+    <div><span style="color:#9ca3af;display:block;margin-bottom:2px;">Type</span><strong>{{ record.document_type or '—' }}</strong></div>
+    <div><span style="color:#9ca3af;display:block;margin-bottom:2px;">Dealer</span><strong>{{ record.dealer.name if record.dealer else '—' }}</strong></div>
+    <div><span style="color:#9ca3af;display:block;margin-bottom:2px;">Uploaded</span><strong>{{ record.created_at.strftime('%d %b %Y %H:%M') if record.created_at else '—' }}</strong></div>
+    <div><span style="color:#9ca3af;display:block;margin-bottom:2px;">Status</span>
+      <strong style="color:{% if record.status=='active' %}#16a34a{% else %}#dc2626{% endif %}">
+        {{ record.status|title }}
+      </strong>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+  <div style="padding:16px 22px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+    <h2 style="font-size:16px;font-weight:700;margin:0;">Audit Trail</h2>
+    <span style="font-size:12px;color:#9ca3af;">{{ logs|length }} entr{{ 'y' if logs|length == 1 else 'ies' }}</span>
+  </div>
+  {% if logs %}
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="background:#f8fafc;border-bottom:2px solid #e5e7eb;">
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;white-space:nowrap;">Date / Time</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">Action</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">Performed By</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">Role</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">Dealer</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600;color:#374151;">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr style="border-bottom:1px solid #f3f4f6;{% if loop.index is odd %}background:#fafafa;{% endif %}">
+          <td style="padding:10px 16px;color:#4b5563;white-space:nowrap;">
+            {{ log.created_at.strftime('%d/%m/%Y') if log.created_at else '—' }}<br>
+            <span style="font-size:11px;color:#9ca3af;">{{ log.created_at.strftime('%I:%M %p') if log.created_at else '' }}</span>
+          </td>
+          <td style="padding:10px 16px;">
+            <span style="display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;
+              background:{% if log.action=='uploaded' %}#dcfce7;color:#15803d;
+              {% elif log.action in ['deleted','hard_deleted'] %}#fee2e2;color:#dc2626;
+              {% elif log.action=='reassigned' %}#fef3c7;color:#92400e;
+              {% else %}#f1f5f9;color:#64748b;{% endif %}">
+              {{ log.action|replace('_',' ')|title }}
+            </span>
+          </td>
+          <td style="padding:10px 16px;color:#374151;font-weight:500;">{{ log.performed_by }}</td>
+          <td style="padding:10px 16px;color:#6b7280;font-size:12px;">{{ log.user_role or '—' }}</td>
+          <td style="padding:10px 16px;color:#4b5563;">
+            {% if log.dealer_name %}{{ log.dealer_name }}{% else %}—{% endif %}
+          </td>
+          <td style="padding:10px 16px;color:#6b7280;max-width:300px;">{{ log.notes or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding:48px;text-align:center;color:#9ca3af;">
+    <div style="font-size:32px;margin-bottom:8px;">📋</div>
+    <div style="font-size:14px;">No audit log entries yet.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
