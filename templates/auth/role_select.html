@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Select Role — Caryanams</title>
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+<body style="background:var(--bg)">
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(135deg,#001A4D 0%,#002366 50%,#003399 100%)">
+  
+  <div style="max-width:700px;width:100%;text-align:center">
+    <div style="margin-bottom:40px">
+      <div style="display:inline-flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="width:52px;height:52px;background:var(--gold);border-radius:14px;display:flex;align-items:center;justify-content:center;">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Caryanams" style="width:40px;height:40px;">
+        </div>
+        <div style="font-family:'Poppins',sans-serif;font-size:28px;font-weight:800;color:white;letter-spacing:2px">Caryanams</div>
+      </div>
+      <div style="font-family:'Poppins',sans-serif;font-size:32px;font-weight:800;color:white;margin-bottom:8px">How would you like to continue?</div>
+      <div style="font-size:16px;color:rgba(255,255,255,0.6)">Choose your role to access the right platform</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px">
+      <!-- Dealer Card -->
+      <a href="{{ url_for('dealer.dashboard') }}" class="role-choice-card">
+        <div class="rcc-icon"><i class="fas fa-store"></i></div>
+        <div class="rcc-title">I'm a Dealer</div>
+        <div class="rcc-sub">Access Dealer Management System</div>
+        <ul class="rcc-features">
+          <li><i class="fas fa-check"></i> Inventory Management</li>
+          <li><i class="fas fa-check"></i> CRM & Lead Tracking</li>
+          <li><i class="fas fa-check"></i> Sales & Finance Dashboard</li>
+          <li><i class="fas fa-check"></i> GST Invoicing</li>
+        </ul>
+        <div class="rcc-cta">Enter DMS <i class="fas fa-arrow-right"></i></div>
+      </a>
+
+      <!-- User Card -->
+      <a href="{{ url_for('user.home') }}" class="role-choice-card">
+        <div class="rcc-icon"><i class="fas fa-search"></i></div>
+        <div class="rcc-title">I'm a Buyer</div>
+        <div class="rcc-sub">Browse Caryanams Marketplace</div>
+        <ul class="rcc-features">
+          <li><i class="fas fa-check"></i> Browse 1000+ Cars</li>
+          <li><i class="fas fa-check"></i> Advanced Search & Filters</li>
+          <li><i class="fas fa-check"></i> Contact Dealers Directly</li>
+          <li><i class="fas fa-check"></i> EMI Calculator</li>
+        </ul>
+        <div class="rcc-cta">Browse Cars <i class="fas fa-arrow-right"></i></div>
+      </a>
+    </div>
+
+    <div style="font-size:14px;color:rgba(255,255,255,0.5)">
+      <a href="{{ url_for('auth.login') }}" style="color:rgba(255,255,255,0.7);text-decoration:none">← Back to Login</a>
+    </div>
+  </div>
+</div>
+
+<style>
+:root { --bg:#F5F5F5; --navy:#002366; --gold:#F7E7CE; --gold-dark:#E5D3B3; }
+.role-choice-card {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 32px 28px;
+  text-decoration: none;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transition: all 0.3s;
+  cursor: pointer;
+  text-align: left;
+}
+.role-choice-card:hover {
+  background: rgba(247,231,206,0.12);
+  border-color: var(--gold);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+}
+.rcc-icon {
+  width: 56px; height: 56px;
+  background: var(--gold);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; color: var(--navy);
+  margin-bottom: 20px;
+}
+.rcc-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 22px; font-weight: 800;
+  margin-bottom: 6px;
+}
+.rcc-sub { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px; }
+.rcc-features {
+  list-style: none;
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 24px;
+}
+.rcc-features li {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: rgba(255,255,255,0.8);
+}
+.rcc-features li i { color: var(--gold); font-size: 11px; }
+.rcc-cta {
+  font-size: 14px; font-weight: 700;
+  color: var(--gold);
+  display: flex; align-items: center; gap: 8px;
+  margin-top: auto;
+}
+@media (max-width: 600px) {
+  [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</body>
+</html>

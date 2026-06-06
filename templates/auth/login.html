@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Caryanams</title>
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+<style>
+/* Role selector tabs */
+.role-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 4px;
+}
+.role-tab {
+  flex: 1;
+  padding: 10px 6px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Inter', sans-serif;
+}
+.role-tab i { font-size: 16px; }
+.role-tab.active {
+  background: #fff;
+  color: #002366;
+  box-shadow: 0 2px 8px rgba(0,35,102,0.12);
+}
+.role-tab[data-role="admin"].active { color: #7c3aed; }
+.role-tab[data-role="dealer"].active { color: #0369a1; }
+.role-tab[data-role="user"].active { color: #059669; }
+
+/* Admin panel notice */
+.admin-notice {
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #6d28d9;
+  margin-bottom: 16px;
+  display: none;
+}
+.admin-notice i { margin-right: 6px; }
+
+/* ── POLICY CHECKBOX STYLES (additive, isolated) ── */
+.policy-agree-wrap {
+  background: #f8faff;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.policy-agree-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.55;
+  user-select: none;
+}
+.policy-agree-label input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: #002366;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.policy-agree-label a {
+  color: #002366;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.policy-agree-label a:hover { color: #0369a1; }
+.policy-agree-error {
+  display: none;
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 8px;
+  font-weight: 500;
+}
+.policy-agree-error i { margin-right: 4px; }
+/* ── END POLICY CHECKBOX STYLES ── */
+/* ── VALIDATION STYLES ── */
+.field-error {
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 5px;
+  display: none;
+  font-weight: 500;
+}
+.field-error i { margin-right: 4px; }
+.form-group input.input-invalid {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.12) !important;
+}
+.form-group input.input-valid {
+  border-color: #16a34a !important;
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.1) !important;
+}
+/* ── END VALIDATION STYLES ── */
+</style>
+</head>
+<body>
+<div class="auth-layout">
+  <!-- Left Panel -->
+  <div class="auth-panel">
+    <div class="auth-brand">
+      <div class="brand-logo">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Caryanams" class="logo-login">
+      </div>
+      <div class="brand-name">Caryanams</div>
+    </div>
+    <div class="auth-hero">
+      <div class="hero-title">India's Premier<br>Automobile Platform</div>
+      <div class="hero-sub">DMS for Dealers. Marketplace for Buyers.</div>
+      <div class="hero-features">
+        <div class="feat"><i class="fas fa-check-circle"></i> Complete Dealer Management System</div>
+        <div class="feat"><i class="fas fa-check-circle"></i> Live Marketplace — Caryanams</div>
+        <div class="feat"><i class="fas fa-check-circle"></i> CRM, Finance &amp; Document Tools</div>
+        <div class="feat"><i class="fas fa-check-circle"></i> GST Invoicing &amp; EMI Calculator</div>
+      </div>
+    </div>
+    <div class="auth-panel-cars">
+      <div class="floating-car c1"><i class="fas fa-car"></i></div>
+      <div class="floating-car c2"><i class="fas fa-car-side"></i></div>
+      <div class="floating-car c3"><i class="fas fa-truck"></i></div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="auth-form-panel">
+    <div class="auth-form-wrap">
+      <div class="form-header">
+        <h1>Welcome Back</h1>
+        <p>Sign in to your Caryanams account</p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }}">
+              <i class="fas fa-{% if cat == 'success' %}check-circle{% elif cat == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+              {{ msg }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- Role Selector -->
+      <div class="role-tabs">
+        <button type="button" class="role-tab active" data-role="dealer" onclick="selectRole('dealer')">
+          <i class="fas fa-store"></i> Dealer
+        </button>
+        <button type="button" class="role-tab" data-role="user" onclick="selectRole('user')">
+          <i class="fas fa-user"></i> User
+        </button>
+        <button type="button" class="role-tab" data-role="admin" onclick="selectRole('admin')">
+          <i class="fas fa-shield-alt"></i> Admin
+        </button>
+      </div>
+
+      <!-- Admin redirect notice -->
+      <div class="admin-notice" id="adminNotice">
+        <i class="fas fa-info-circle"></i>
+        Admin login uses a separate secure panel. Click <strong>Go to Admin Panel</strong> below.
+      </div>
+
+      <!-- Dealer/User login form -->
+      <div id="normalLoginForm">
+        <form method="POST" action="{{ url_for('auth.login') }}" id="mainLoginForm" novalidate>
+          <input type="hidden" name="selected_role" id="selectedRoleInput" value="dealer">
+          <div class="form-group">
+            <label><i class="fas fa-envelope"></i> Email Address</label>
+            <input type="email" name="email" id="loginEmail" placeholder="you@example.com" required autofocus oninput="vLoginEmail()" onblur="vLoginEmail()">
+            <div class="field-error" id="loginEmailErr"><i class="fas fa-exclamation-circle"></i> <span id="loginEmailErrTxt">Please enter a valid email address.</span></div>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-lock"></i> Password</label>
+            <div class="pass-wrap">
+              <input type="password" name="password" id="password" placeholder="Enter your password" required oninput="vLoginPass()" onblur="vLoginPass()">
+              </div>
+            <div class="field-error" id="loginPassErr"><i class="fas fa-exclamation-circle"></i> <span id="loginPassErrTxt">Password is required.</span></div>
+            <div style="display:none">
+              <button type="button" onclick="togglePass()" class="pass-toggle"><i class="fas fa-eye" id="passIcon"></i></button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+              <input type="checkbox" name="remember" style="accent-color:#002366"> Remember me
+            </label>
+          </div>
+
+          <!-- ── POLICY AGREEMENT CHECKBOX (additive only) ── -->
+          <div class="policy-agree-wrap">
+            <label class="policy-agree-label">
+              <input type="checkbox" id="policyAgreeCheck" name="policy_agreed">
+              <span>
+                I have read and agree to the
+                <a href="{{ url_for('policies.privacy_policy') }}" target="_blank" rel="noopener">Privacy Policy</a>
+                and
+                <a href="{{ url_for('policies.refund_policy') }}" target="_blank" rel="noopener">Refund &amp; Cancellation Policy</a>
+                of Caryanams.
+              </span>
+            </label>
+            <div class="policy-agree-error" id="policyAgreeError">
+              <i class="fas fa-exclamation-circle"></i> Please accept the Privacy Policy and Refund Policy to continue.
+            </div>
+          </div>
+          <!-- ── END POLICY AGREEMENT CHECKBOX ── -->
+
+          <button type="submit" class="btn-auth" onclick="return validateLoginForm(event)">
+            <span>Sign In</span> <i class="fas fa-arrow-right"></i>
+          </button>
+        </form>
+
+        <div class="auth-divider"><span>or</span></div>
+
+        <div class="auth-footer">
+          Don't have an account? <a href="{{ url_for('auth.register') }}">Create one →</a>
+        </div>
+      </div>
+
+      <!-- Admin redirect button -->
+      <div id="adminLoginSection" style="display:none">
+        <a href="{{ url_for('admin.login') }}" class="btn-auth" style="display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;background:#7c3aed;">
+          <i class="fas fa-shield-alt"></i> <span>Go to Admin Panel</span>
+        </a>
+        <div class="auth-footer" style="margin-top:16px">
+          Not an admin? <a href="#" onclick="selectRole('dealer')">Login as Dealer/User</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function selectRole(role) {
+  document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('[data-role="' + role + '"]').classList.add('active');
+  document.getElementById('selectedRoleInput').value = role;
+  const adminNotice  = document.getElementById('adminNotice');
+  const normalForm   = document.getElementById('normalLoginForm');
+  const adminSection = document.getElementById('adminLoginSection');
+  if (role === 'admin') {
+    adminNotice.style.display  = 'block';
+    normalForm.style.display   = 'none';
+    adminSection.style.display = 'block';
+  } else {
+    adminNotice.style.display  = 'none';
+    normalForm.style.display   = 'block';
+    adminSection.style.display = 'none';
+  }
+}
+
+function togglePass() {
+  const p = document.getElementById('password');
+  const i = document.getElementById('passIcon');
+  p.type = p.type === 'password' ? 'text' : 'password';
+  i.className = p.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+function fillDemo(email, pass, role) {
+  selectRole(role);
+  document.querySelector('[name="email"]').value    = email;
+  document.querySelector('[name="password"]').value = pass;
+}
+
+/* ── VALIDATION HELPERS ── */
+function _showErr(inputId, errId, msg) {
+  const inp = document.getElementById(inputId);
+  const err = document.getElementById(errId);
+  if (msg) { const s = document.getElementById(errId+'Txt'); if(s) s.textContent = msg; }
+  if (inp) { inp.classList.add('input-invalid'); inp.classList.remove('input-valid'); }
+  if (err) err.style.display = 'block';
+  return false;
+}
+function _clearErr(inputId, errId) {
+  const inp = document.getElementById(inputId);
+  const err = document.getElementById(errId);
+  if (inp) { inp.classList.remove('input-invalid'); inp.classList.add('input-valid'); }
+  if (err) err.style.display = 'none';
+  return true;
+}
+
+function vLoginEmail() {
+  const val = (document.getElementById('loginEmail').value || '').trim();
+  if (!val) return _showErr('loginEmail','loginEmailErr','Email address is required.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return _showErr('loginEmail','loginEmailErr','Please enter a valid email (e.g. abc@gmail.com).');
+  return _clearErr('loginEmail','loginEmailErr');
+}
+function vLoginPass() {
+  const val = document.getElementById('password').value;
+  if (!val) return _showErr('password','loginPassErr','Password is required.');
+  if (val.length < 6) return _showErr('password','loginPassErr','Password must be at least 6 characters.');
+  return _clearErr('password','loginPassErr');
+}
+
+function validateLoginForm(event) {
+  const emailOk = vLoginEmail();
+  const passOk  = vLoginPass();
+  const checkbox = document.getElementById('policyAgreeCheck');
+  const policyErr = document.getElementById('policyAgreeError');
+  let policyOk = checkbox.checked;
+  policyErr.style.display = policyOk ? 'none' : 'block';
+  if (!emailOk || !passOk || !policyOk) {
+    event.preventDefault();
+    const first = document.querySelector('.input-invalid');
+    if (first) first.scrollIntoView({ behavior:'smooth', block:'center' });
+    else if (!policyOk) policyErr.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    return false;
+  }
+  return true;
+}
+
+document.getElementById('policyAgreeCheck').addEventListener('change', function() {
+  if (this.checked) document.getElementById('policyAgreeError').style.display = 'none';
+});
+</script>
+</body>
+</html>
