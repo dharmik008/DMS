@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refund Policy — Caryanams</title>
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  :root {
+    --navy: #002366;
+    --navy-dark: #001A4D;
+    --navy-mid: #003399;
+    --gold-accent: #C8A96E;
+    --white: #FFFFFF;
+    --bg: #F5F5F5;
+    --text-primary: #1E293B;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --border: #E2E8F0;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-primary);
+    background: var(--bg);
+  }
+  .policy-nav {
+    background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%);
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  }
+  .policy-nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+  }
+  .policy-nav-logo {
+    width: 38px;
+    height: 38px;
+    background: #F7E7CE;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .policy-nav-logo img { width: 30px; height: 30px; object-fit: contain; }
+  .policy-nav-name {
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.3px;
+  }
+  .policy-nav-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #F7E7CE;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border: 1px solid rgba(247,231,206,0.35);
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .policy-nav-back:hover { background: rgba(247,231,206,0.12); color: #fff; }
+
+  .policy-hero {
+    background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 60%, var(--navy-mid) 100%);
+    padding: 56px 40px 48px;
+    text-align: center;
+    color: #fff;
+  }
+  .policy-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(247,231,206,0.15);
+    border: 1px solid rgba(247,231,206,0.3);
+    color: #F7E7CE;
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .policy-hero h1 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+  .policy-hero p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    max-width: 520px;
+    margin: 0 auto 20px;
+  }
+  .policy-hero-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
+  }
+
+  .policy-container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  .policy-intro {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--navy);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 36px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.75;
+    font-style: italic;
+  }
+
+  .policy-warning {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 4px solid #f59e0b;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    color: #92400e;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .policy-warning i { margin-top: 2px; flex-shrink: 0; }
+
+  .policy-section {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .policy-section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 24px;
+    background: #fafbff;
+    border-bottom: 1px solid var(--border);
+  }
+  .policy-section-num {
+    width: 32px;
+    height: 32px;
+    background: var(--navy);
+    color: #fff;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .policy-section-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.2px;
+  }
+  .policy-section-body {
+    padding: 20px 24px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.78;
+  }
+  .policy-section-body p + p { margin-top: 12px; }
+
+  /* Bullet list inside policy body */
+  .policy-list {
+    margin: 12px 0 0 4px;
+    padding-left: 20px;
+    list-style: disc;
+  }
+  .policy-list li {
+    margin-bottom: 6px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  .policy-consent {
+    background: linear-gradient(135deg, #eef2ff 0%, #f0f9ff 100%);
+    border: 1px solid #c7d2fe;
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-top: 36px;
+    text-align: center;
+  }
+  .policy-consent i { font-size: 28px; color: var(--navy); margin-bottom: 12px; display: block; }
+  .policy-consent h3 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .policy-consent p { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+
+  .policy-contact {
+    background: var(--navy);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-top: 16px;
+    text-align: center;
+  }
+  .policy-contact h3 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #F7E7CE;
+  }
+  .policy-contact p { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.75; }
+
+  .policy-footer {
+    background: var(--navy-dark);
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+  }
+  .policy-footer a { color: #F7E7CE; text-decoration: none; }
+  .policy-footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 640px) {
+    .policy-nav { padding: 14px 20px; }
+    .policy-hero { padding: 40px 20px 36px; }
+    .policy-hero h1 { font-size: 24px; }
+    .policy-container { padding: 28px 16px 60px; }
+    .policy-section-body { padding: 16px 18px; }
+    .policy-section-header { padding: 14px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="policy-nav">
+  <a href="{{ url_for('auth.login') }}" class="policy-nav-brand">
+    <div class="policy-nav-logo">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Caryanams">
+    </div>
+    <span class="policy-nav-name">Caryanams</span>
+  </a>
+  <a href="{{ url_for('auth.login') }}" class="policy-nav-back">
+    <i class="fas fa-arrow-left"></i> Back to Login
+  </a>
+</nav>
+
+<!-- Hero -->
+<div class="policy-hero">
+  <div class="policy-hero-badge"><i class="fas fa-receipt"></i> Legal Document</div>
+  <h1>Refund, Cancellation &amp; Payment Policy</h1>
+  <p>Luxurya Cars Private Limited – Caryanams Dealer SaaS Platform</p>
+  <div class="policy-hero-meta">
+    <i class="fas fa-calendar-alt"></i> Effective Date: [Insert Date]
+  </div>
+</div>
+
+<!-- Content -->
+<div class="policy-container">
+
+  <!-- Intro -->
+  <div class="policy-intro">
+    This Refund, Cancellation &amp; Payment Policy ("Policy") governs all payments, subscriptions, onboarding fees, SaaS plans, dealer dashboard services, CRM subscriptions, website services, lead management services, listing services, AI media enhancement services, promotional services, advertisements, operational tools, integrations, marketplace services, and all other commercial transactions conducted through or in relation to Luxurya Cars Private Limited – Caryanams (hereinafter referred to as the "Company", "Platform", "we", "our", or "us").<br><br>
+    By registering, onboarding, subscribing, making payment, activating services, logging into the Platform, or continuing to use any services provided by the Company, the User, Dealer, Subscriber, Customer, Business Entity, Employee, Representative, or Service User expressly acknowledges, understands, and agrees to the terms contained under this Policy.
+  </div>
+
+  <!-- Non-refund notice -->
+  <div class="policy-warning">
+    <i class="fas fa-exclamation-triangle"></i>
+    <span><strong>Important Notice:</strong> Most services provided by the Platform are digital, subscription-based, and non-refundable after activation or access. Please read this policy carefully before making any payment.</span>
+  </div>
+
+  <!-- Section 1 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">1</div>
+      <div class="policy-section-title">Nature of Services</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Company may provide various paid or subscription-based services including but not limited to:</p>
+      <ul class="policy-list">
+        <li>Dealer Management System (DMS) services</li>
+        <li>Automotive CRM services</li>
+        <li>Dealer dashboard access</li>
+        <li>Inventory management systems</li>
+        <li>Lead management systems</li>
+        <li>Vehicle marketplace listings</li>
+        <li>Mini website and dealer website hosting</li>
+        <li>AI media enhancement services through Caryanams Studio</li>
+        <li>Marketing and promotional services</li>
+        <li>Premium listing visibility</li>
+        <li>Advertisement campaigns</li>
+        <li>Inquiry forwarding services</li>
+        <li>SaaS subscriptions</li>
+        <li>Technology integrations</li>
+        <li>Operational and reporting tools</li>
+        <li>Communication systems</li>
+        <li>Customer management systems</li>
+        <li>Analytics and reporting infrastructure</li>
+        <li>Other automobile-related digital and technology services</li>
+      </ul>
+      <p style="margin-top:14px;">The User expressly understands that most services provided by the Platform are digital, software-based, subscription-oriented, technology-enabled, automated, operational, or infrastructure-related services.</p>
+    </div>
+  </div>
+
+  <!-- Section 2 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">2</div>
+      <div class="policy-section-title">Payment Terms</div>
+    </div>
+    <div class="policy-section-body">
+      <p>All payments payable to the Company shall be made only through official bank accounts, approved payment gateways, authorized billing systems, or officially approved payment mechanisms designated by the Company.</p>
+      <p>The User expressly agrees that any payment made to any employee, dealer, consultant, agent, representative, third party, or unauthorized individual without written authorization from the Company shall be entirely at the User's own risk and responsibility, and the Company shall not be liable or responsible for the same in any manner whatsoever.</p>
+      <p>The Company reserves the unrestricted right to revise, modify, increase, decrease, restructure, or amend subscription fees, onboarding charges, SaaS pricing, dashboard fees, listing charges, promotional charges, taxes, renewal fees, service charges, or any other commercial terms at any time without prior notice.</p>
+      <p>All applicable taxes, statutory dues, government levies, gateway charges, processing fees, banking charges, and applicable financial liabilities shall be borne solely by the User unless otherwise specifically agreed in writing.</p>
+    </div>
+  </div>
+
+  <!-- Section 3 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">3</div>
+      <div class="policy-section-title">Non-Refundable Nature of Services</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The User expressly acknowledges and agrees that the services offered through the Platform are primarily digital, software-based, technology-enabled, subscription-oriented, operational, facilitation-based, infrastructure-based, automated, AI-driven, or service-access-oriented in nature.</p>
+      <p>Accordingly, all payments made towards subscriptions, onboarding fees, SaaS plans, dealer dashboard activation, CRM access, inventory systems, lead management services, listing charges, website services, hosting charges, promotional campaigns, advertisement services, AI media enhancement services, digital marketing services, operational setup charges, integrations, software licensing, access credentials, communication tools, analytics systems, or any associated digital services shall be strictly non-refundable unless specifically approved in writing by the Company.</p>
+    </div>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">4</div>
+      <div class="policy-section-title">No Refund After Activation or Access</div>
+    </div>
+    <div class="policy-section-body">
+      <p>Once any service, subscription, dashboard, SaaS plan, dealer account, website panel, CRM system, lead system, inventory system, AI system, listing service, operational tool, API access, integration service, or digital functionality has been activated, provisioned, deployed, processed, initiated, accessed, scheduled, delivered, or partially utilized, no refund request shall be entertained under any circumstances whatsoever.</p>
+      <p>Generation of login credentials, dashboard access, operational deployment, account creation, onboarding support, inventory upload access, CRM activation, lead access, server allocation, cloud provisioning, software deployment, or technical setup shall constitute commencement of services.</p>
+    </div>
+  </div>
+
+  <!-- Section 5 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">5</div>
+      <div class="policy-section-title">Dealer SaaS Platform &amp; Dashboard Services</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Company may provide dedicated dealer dashboards, operational panels, CRM systems, mini websites, dealer websites, inventory management systems, communication systems, reporting tools, customer management systems, and related SaaS infrastructure.</p>
+      <p>The User expressly acknowledges that substantial technical resources, software infrastructure, cloud allocation, server capacity, operational deployment, implementation support, AI systems, storage systems, and administrative resources are allocated immediately upon onboarding or activation.</p>
+      <p>Accordingly, all dealer onboarding charges, SaaS subscription fees, dashboard activation charges, operational setup fees, CRM subscription charges, inventory hosting fees, dealer website charges, mini website charges, cloud hosting fees, operational deployment fees, maintenance charges, and related software service fees shall remain non-refundable after activation or onboarding.</p>
+    </div>
+  </div>
+
+  <!-- Section 6 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">6</div>
+      <div class="policy-section-title">Lead Generation &amp; Marketplace Services</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform may provide marketplace visibility, inquiry forwarding services, lead generation systems, listing exposure, communication tools, buyer-seller connectivity, promotional visibility, or customer inquiry access.</p>
+      <p>The Company does not guarantee lead quality, customer intent, conversion rates, customer response, sales completion, transaction success, business generation, commercial outcomes, or revenue generation from any inquiry, listing, lead, visibility service, or marketplace exposure provided through the Platform.</p>
+      <p>Accordingly, all lead generation charges, promotional visibility charges, listing charges, inquiry access charges, marketplace fees, exposure fees, and related commercial charges shall remain strictly non-refundable irrespective of conversion outcomes or business performance.</p>
+    </div>
+  </div>
+
+  <!-- Section 7 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">7</div>
+      <div class="policy-section-title">AI Media Enhancement &amp; Caryanams Studio Services</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform may provide AI-powered media enhancement and digital creative services through Caryanams Studio including image enhancement, rendering, editing, automated branding, creative generation, catalog creation, watermarking, background enhancement, promotional design generation, and associated AI-based services.</p>
+      <p>Once any uploaded content enters processing, rendering, enhancement, AI execution, editing workflow, or automated generation workflow, no refund shall be applicable.</p>
+      <p>The User expressly acknowledges that AI-generated outputs may differ based on automation, machine learning behavior, rendering variables, image quality, user inputs, and technical processing systems, and therefore subjective dissatisfaction or expectation mismatch shall not constitute grounds for refund.</p>
+    </div>
+  </div>
+
+  <!-- Section 8 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">8</div>
+      <div class="policy-section-title">Third-Party Services &amp; Facilitation</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform may facilitate automobile-related third-party services including finance, insurance, warranties, evaluations, inspections, auctions, dealerships, consultations, RTO services, and related automotive services.</p>
+      <p>The Company merely acts as a technology platform and facilitation infrastructure and shall not be liable for refund claims arising from third-party transactions, vehicle disputes, insurance rejection, financing rejection, transaction failures, service dissatisfaction, ownership disputes, evaluation discrepancies, RTO complications, delays, cancellations, or third-party misconduct.</p>
+      <p>Refunds relating to third-party services shall remain subject solely to the policies and discretion of the concerned third-party service provider.</p>
+    </div>
+  </div>
+
+  <!-- Section 9 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">9</div>
+      <div class="policy-section-title">Cancellation Policy</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The User may request cancellation of future renewals or recurring subscriptions by submitting a written request before commencement of the next billing cycle.</p>
+      <p>Cancellation requests shall not entitle the User to refund of any previously paid amount.</p>
+      <p>The Company reserves the unrestricted right to suspend, terminate, deactivate, restrict, remove, or block any account, dashboard, website, listing, SaaS access, subscription, CRM system, or service in cases involving policy violations, suspicious activities, payment defaults, misuse, unlawful conduct, reputational concerns, security threats, operational requirements, or breach of Company policies.</p>
+      <p>In such circumstances, no refund, compensation, reimbursement, or financial claim shall be payable by the Company.</p>
+    </div>
+  </div>
+
+  <!-- Section 10 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">10</div>
+      <div class="policy-section-title">Failed Transactions &amp; Duplicate Payments</div>
+    </div>
+    <div class="policy-section-body">
+      <p>In cases involving duplicate deductions, failed payment transactions, gateway errors, banking issues, or technical payment failures verified by the Company, eligible reversals or refunds may be processed subject to internal verification, payment confirmation, reconciliation procedures, banking timelines, and gateway approvals.</p>
+      <p>The Company shall not be responsible for delays caused by banks, financial institutions, payment gateways, technical systems, or third-party processors.</p>
+    </div>
+  </div>
+
+  <!-- Section 11 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">11</div>
+      <div class="policy-section-title">Chargebacks &amp; Payment Disputes</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The User agrees not to initiate fraudulent chargebacks, false payment disputes, unauthorized reversals, bad-faith refund claims, or malicious financial disputes against the Company.</p>
+      <p>In the event of any unauthorized or fraudulent chargeback activity, the Company reserves the unrestricted right to suspend services, recover dues, block accounts, initiate recovery proceedings, impose penalties, restrict access, or initiate legal proceedings before appropriate authorities.</p>
+    </div>
+  </div>
+
+  <!-- Section 12 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">12</div>
+      <div class="policy-section-title">No Guarantee of Commercial Outcomes</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Company does not guarantee:</p>
+      <ul class="policy-list">
+        <li>Business growth</li>
+        <li>Revenue generation</li>
+        <li>Lead conversion</li>
+        <li>Vehicle sales</li>
+        <li>Marketplace success</li>
+        <li>Dealer profitability</li>
+        <li>Promotional effectiveness</li>
+        <li>Customer acquisition</li>
+        <li>SEO rankings</li>
+        <li>Financing approvals</li>
+        <li>Insurance approvals</li>
+        <li>Customer engagement</li>
+        <li>Business continuity</li>
+        <li>Commercial performance</li>
+      </ul>
+      <p style="margin-top:14px;">Accordingly, dissatisfaction relating to commercial outcomes, marketplace performance, customer response, or operational expectations shall not constitute valid grounds for refund.</p>
+    </div>
+  </div>
+
+  <!-- Section 13 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">13</div>
+      <div class="policy-section-title">Limitation of Liability</div>
+    </div>
+    <div class="policy-section-body">
+      <p>To the fullest extent permissible under applicable law, the aggregate liability of the Company arising out of or relating to any payment, subscription, refund claim, cancellation dispute, SaaS service issue, or operational dispute shall be limited solely to the amount actually received by the Company for the concerned service, subject to applicability of this Policy.</p>
+      <p>The Company shall not be liable for any indirect, consequential, incidental, reputational, commercial, technical, operational, or financial losses.</p>
+    </div>
+  </div>
+
+  <!-- Section 14 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">14</div>
+      <div class="policy-section-title">Modification of Policy</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Company reserves the unrestricted right to amend, revise, modify, replace, update, or change this Refund, Cancellation &amp; Payment Policy at any time without prior notice.</p>
+      <p>Continued use of the Platform after such modification shall constitute acceptance of the revised Policy.</p>
+    </div>
+  </div>
+
+  <!-- Section 15 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">15</div>
+      <div class="policy-section-title">Governing Law &amp; Jurisdiction</div>
+    </div>
+    <div class="policy-section-body">
+      <p>This Policy shall be governed by and construed in accordance with the laws of India.</p>
+      <p>Any dispute arising out of or relating to this Policy shall be subject to the exclusive jurisdiction of competent courts situated at Ahmedabad, Gujarat, India.</p>
+    </div>
+  </div>
+
+  <!-- Contact -->
+  <div class="policy-contact">
+    <h3><i class="fas fa-envelope" style="margin-right:8px;"></i>Contact Details</h3>
+    <p>
+      For refund-related queries, billing concerns, subscription cancellation requests, or payment-related communications:<br><br>
+      <strong style="color:#F7E7CE;">Luxurya Cars Private Limited – Caryanams</strong><br>
+      Ahmedabad, Gujarat, India<br>
+      Email: info@caryanams.com<br>
+      Contact Number: 18002022011<br>
+      Website: www.caryanams.com
+    </p>
+  </div>
+
+  <!-- Acceptance -->
+  <div class="policy-consent">
+    <i class="fas fa-check-circle"></i>
+    <h3>Acceptance of Policy</h3>
+    <p>By making payment, registering, subscribing, onboarding, accessing dashboards, activating services, or continuing to use the Platform in any manner whatsoever, the User expressly confirms that the User has read, understood, accepted, and agreed to this Refund, Cancellation &amp; Payment Policy in its entirety.</p>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<div class="policy-footer">
+  &copy; Luxurya Cars Private Limited – Caryanams. All rights reserved. &nbsp;|&nbsp;
+  <a href="{{ url_for('policies.privacy_policy') }}">Privacy Policy</a> &nbsp;|&nbsp;
+  <a href="{{ url_for('auth.login') }}">Back to Login</a>
+</div>
+
+</body>
+</html>

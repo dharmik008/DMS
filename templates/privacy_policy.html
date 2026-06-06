@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — Caryanams</title>
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  :root {
+    --navy: #002366;
+    --navy-dark: #001A4D;
+    --navy-mid: #003399;
+    --gold-accent: #C8A96E;
+    --white: #FFFFFF;
+    --bg: #F5F5F5;
+    --text-primary: #1E293B;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --border: #E2E8F0;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-primary);
+    background: var(--bg);
+  }
+  /* ── Top nav bar ── */
+  .policy-nav {
+    background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%);
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  }
+  .policy-nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+  }
+  .policy-nav-logo {
+    width: 38px;
+    height: 38px;
+    background: #F7E7CE;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .policy-nav-logo img { width: 30px; height: 30px; object-fit: contain; }
+  .policy-nav-name {
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.3px;
+  }
+  .policy-nav-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #F7E7CE;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border: 1px solid rgba(247,231,206,0.35);
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .policy-nav-back:hover { background: rgba(247,231,206,0.12); color: #fff; }
+
+  /* ── Hero banner ── */
+  .policy-hero {
+    background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 60%, var(--navy-mid) 100%);
+    padding: 56px 40px 48px;
+    text-align: center;
+    color: #fff;
+  }
+  .policy-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(247,231,206,0.15);
+    border: 1px solid rgba(247,231,206,0.3);
+    color: #F7E7CE;
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .policy-hero h1 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+  .policy-hero p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    max-width: 520px;
+    margin: 0 auto 20px;
+  }
+  .policy-hero-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
+  }
+
+  /* ── Content wrapper ── */
+  .policy-container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── Intro card ── */
+  .policy-intro {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--navy);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 36px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.75;
+    font-style: italic;
+  }
+
+  /* ── Section ── */
+  .policy-section {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .policy-section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 24px;
+    background: #fafbff;
+    border-bottom: 1px solid var(--border);
+  }
+  .policy-section-num {
+    width: 32px;
+    height: 32px;
+    background: var(--navy);
+    color: #fff;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .policy-section-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.2px;
+  }
+  .policy-section-body {
+    padding: 20px 24px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.78;
+  }
+  .policy-section-body p + p { margin-top: 12px; }
+
+  /* ── Consent box ── */
+  .policy-consent {
+    background: linear-gradient(135deg, #eef2ff 0%, #f0f9ff 100%);
+    border: 1px solid #c7d2fe;
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-top: 36px;
+    text-align: center;
+  }
+  .policy-consent i { font-size: 28px; color: var(--navy); margin-bottom: 12px; display: block; }
+  .policy-consent h3 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .policy-consent p { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+
+  /* ── Contact box ── */
+  .policy-contact {
+    background: var(--navy);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-top: 16px;
+    text-align: center;
+  }
+  .policy-contact h3 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #F7E7CE;
+  }
+  .policy-contact p { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.75; }
+
+  /* ── Footer ── */
+  .policy-footer {
+    background: var(--navy-dark);
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+  }
+  .policy-footer a { color: #F7E7CE; text-decoration: none; }
+  .policy-footer a:hover { text-decoration: underline; }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .policy-nav { padding: 14px 20px; }
+    .policy-hero { padding: 40px 20px 36px; }
+    .policy-hero h1 { font-size: 24px; }
+    .policy-container { padding: 28px 16px 60px; }
+    .policy-section-body { padding: 16px 18px; }
+    .policy-section-header { padding: 14px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="policy-nav">
+  <a href="{{ url_for('auth.login') }}" class="policy-nav-brand">
+    <div class="policy-nav-logo">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Caryanams">
+    </div>
+    <span class="policy-nav-name">Caryanams</span>
+  </a>
+  <a href="{{ url_for('auth.login') }}" class="policy-nav-back">
+    <i class="fas fa-arrow-left"></i> Back to Login
+  </a>
+</nav>
+
+<!-- Hero -->
+<div class="policy-hero">
+  <div class="policy-hero-badge"><i class="fas fa-shield-alt"></i> Legal Document</div>
+  <h1>Privacy Policy</h1>
+  <p>Luxurya Cars Private Limited – Caryanams Dealer SaaS Platform</p>
+  <div class="policy-hero-meta">
+    <i class="fas fa-calendar-alt"></i> Effective Date: [Insert Date]
+  </div>
+</div>
+
+<!-- Content -->
+<div class="policy-container">
+
+  <!-- Intro -->
+  <div class="policy-intro">
+    This Privacy Policy governs the manner in which Luxurya Cars Private Limited – Caryanams collects, stores, processes, uses, retains, transfers, discloses, and protects information through its SaaS-based Dealer Management System, Automotive CRM Platform, Dealer Operations Platform, Vehicle Marketplace Platform, Lead Management Platform, Dealer Website Management Platform, Mini Website Services, AI Media Enhancement Platform known as Caryanams Studio, applications, dashboards, websites, APIs, communication systems, and all associated digital infrastructure (collectively referred to as the "Platform").<br><br>
+    By accessing, registering, subscribing, logging into, onboarding onto, or using the Platform in any manner whatsoever, the Dealer, User, Employee, Representative, Business Entity, Customer, or Visitor expressly acknowledges and agrees that they have read, understood, and accepted the terms contained under this Privacy Policy and voluntarily consent to the collection and processing of information in accordance with the terms mentioned herein.
+  </div>
+
+  <!-- Section 1 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">1</div>
+      <div class="policy-section-title">Nature of the Platform</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform operates as a Software-as-a-Service (SaaS) automotive technology infrastructure intended for automobile dealers, automotive businesses, showrooms, agencies, vehicle sellers, and associated commercial entities. The Platform provides integrated digital services including dealer management systems, automotive CRM operations, inventory management systems, lead management solutions, dealer website management services, customer relationship management infrastructure, vehicle marketplace services, business operational tools, AI-powered media enhancement services, analytics systems, communication modules, reporting systems, and associated technological solutions.</p>
+      <p>The Platform may also provide dealers with dedicated dashboards, login credentials, mini websites, inventory hosting systems, customer management systems, and AI-assisted content generation or media enhancement services through Caryanams Studio.</p>
+    </div>
+  </div>
+
+  <!-- Section 2 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">2</div>
+      <div class="policy-section-title">Acceptance of Privacy Policy</div>
+    </div>
+    <div class="policy-section-body">
+      <p>By creating an account, registering on the Platform, subscribing to any service, onboarding as a dealer, accessing dealer dashboards, uploading information, using mini website services, availing AI media enhancement services, or continuing to use the Platform in any manner whatsoever, the User expressly consents to the collection, storage, processing, usage, retention, disclosure, transfer, and handling of information by the Platform.</p>
+      <p>Such consent shall constitute valid electronic consent under applicable laws and shall remain binding throughout the period of usage of the Platform and thereafter as may be required for legal, operational, contractual, compliance, or business purposes.</p>
+      <p>If the User does not agree with the terms contained herein, the User shall refrain from accessing or using the Platform.</p>
+    </div>
+  </div>
+
+  <!-- Section 3 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">3</div>
+      <div class="policy-section-title">Information Collected by the Platform</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform may collect, receive, process, store, retain, generate, or monitor various categories of information for operational, legal, analytical, technological, and commercial purposes.</p>
+      <p>Such information may include dealer business information including dealership name, trade name, company details, GST details, PAN information, business registration records, branch details, operational information, dealership licenses, authorized representative information, and associated business records.</p>
+      <p>The Platform may also collect user account information including names, mobile numbers, email addresses, login credentials, usernames, passwords, profile information, designations, permissions, access roles, employee information, and authentication-related information.</p>
+      <p>Where dealers upload customer or lead information onto the Platform, the Platform may process customer names, contact information, inquiry details, vehicle preferences, follow-up records, financing information, insurance-related information, sales information, communication history, uploaded documents, and CRM records solely for operational and service-related purposes.</p>
+      <p>The Platform may further collect vehicle-related information including inventory details, registration information, inspection records, photographs, videos, specifications, pricing information, listing details, service records, stock information, and associated automotive data.</p>
+      <p>Technical and system-generated information including IP addresses, browser information, device identifiers, geolocation information, cookies, access logs, session details, device data, operating systems, activity logs, analytics data, and usage behavior may also be collected automatically for security, analytical, monitoring, and operational purposes.</p>
+      <p>Where Users upload media content onto Caryanams Studio or associated services, the Platform may process photographs, videos, graphics, branding materials, advertisements, catalogs, promotional creatives, and AI-generated outputs.</p>
+    </div>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">4</div>
+      <div class="policy-section-title">Purpose of Collection and Processing</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The information collected by the Platform may be used for purposes including dealer onboarding, account management, authentication, operational management, dashboard access, CRM operations, customer management, inventory management, vehicle listing services, marketplace hosting, lead management, communication systems, AI media enhancement, mini website hosting, analytics, technical support, subscription management, service optimization, fraud prevention, legal compliance, payment processing, marketing activities, business communications, platform improvement, infrastructure maintenance, and operational administration.</p>
+      <p>The Platform may additionally use information for internal research, technological development, AI training and optimization, automation systems, security monitoring, system improvement, customer support services, and service enhancement activities.</p>
+      <p>The User expressly acknowledges that the Platform may use automated technologies, AI-based processing systems, analytical systems, and algorithmic tools for operational and service-related functions.</p>
+    </div>
+  </div>
+
+  <!-- Section 5 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">5</div>
+      <div class="policy-section-title">Dealer Responsibility for Customer Information</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Dealer expressly acknowledges and agrees that any customer information, lead data, inquiry records, documents, communications, or personal information uploaded onto the Platform by the Dealer shall remain the sole responsibility of the Dealer.</p>
+      <p>The Dealer confirms and warrants that it has obtained all necessary consents, permissions, authorizations, and lawful rights from customers or third parties prior to uploading or processing such information through the Platform.</p>
+      <p>The Platform functions merely as a technology service provider and shall not independently verify the legality, authenticity, validity, or consent associated with information uploaded by Dealers.</p>
+      <p>The Dealer shall remain solely liable for compliance with applicable privacy laws, data protection laws, consent obligations, customer communications, and lawful processing requirements.</p>
+    </div>
+  </div>
+
+  <!-- Section 6 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">6</div>
+      <div class="policy-section-title">Dealer Website and Mini Website Services</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform may provide dedicated dealer websites, mini websites, landing pages, inventory pages, microsites, or hosted web infrastructure for dealers using the Platform.</p>
+      <p>Where such services are provided, the Dealer shall remain solely responsible for all content, listings, representations, advertisements, claims, customer communications, vehicle descriptions, uploaded material, and information displayed or published through such websites.</p>
+      <p>The Platform may host, manage, technically maintain, or process visitor data for operational and service-related purposes including analytics, lead generation, CRM integration, communication systems, and performance monitoring.</p>
+      <p>The Platform reserves the unrestricted right to suspend, disable, restrict, remove, or modify any content, website, listing, or hosted material which may violate applicable laws, intellectual property rights, platform policies, public policy, or business standards.</p>
+    </div>
+  </div>
+
+  <!-- Section 7 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">7</div>
+      <div class="policy-section-title">AI Media Enhancement Services – Caryanams Studio</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform may provide AI-based media enhancement services through Caryanams Studio including image enhancement, background modification, watermarking, AI editing, automated branding, catalog creation, promotional creative generation, image optimization, automated rendering, and associated AI-powered services.</p>
+      <p>By uploading any content onto Caryanams Studio, the User expressly confirms that the User possesses lawful ownership, rights, licenses, permissions, and authority to upload and process such content.</p>
+      <p>The User further authorizes the Platform to process such content through automated systems, artificial intelligence tools, machine learning systems, cloud infrastructure, and associated technologies for operational and service-related purposes.</p>
+      <p>The Platform does not guarantee the accuracy, perfection, consistency, or suitability of AI-generated outputs and shall not be liable for any unintended modifications, inaccuracies, distortions, AI-generated errors, or content-related disputes.</p>
+    </div>
+  </div>
+
+  <!-- Section 8 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">8</div>
+      <div class="policy-section-title">Sharing and Disclosure of Information</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform may disclose, share, transfer, process, or provide access to information with employees, technical teams, hosting providers, cloud service providers, payment gateway providers, analytics partners, communication service providers, integrated automotive partners, financing partners, insurance partners, regulatory authorities, legal authorities, auditors, consultants, affiliates, contractors, vendors, and authorized third parties for operational, technical, legal, compliance, security, or business purposes.</p>
+      <p>The Platform may additionally disclose information where required under applicable law, court orders, legal proceedings, governmental directions, investigations, regulatory obligations, fraud prevention requirements, or enforcement actions.</p>
+      <p>In the event of merger, acquisition, restructuring, business transfer, asset transfer, or organizational reconstitution, information associated with the Platform may also be transferred as part of such transaction.</p>
+    </div>
+  </div>
+
+  <!-- Section 9 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">9</div>
+      <div class="policy-section-title">Cookies and Tracking Technologies</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform may use cookies, tracking technologies, analytical systems, pixels, browser storage systems, session identifiers, marketing technologies, activity monitoring tools, and automated tracking mechanisms for authentication, personalization, analytics, marketing, performance optimization, security monitoring, operational management, and service improvement.</p>
+      <p>By continuing to use the Platform, the User expressly consents to the use of such technologies.</p>
+    </div>
+  </div>
+
+  <!-- Section 10 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">10</div>
+      <div class="policy-section-title">Data Storage and Retention</div>
+    </div>
+    <div class="policy-section-body">
+      <p>Information processed through the Platform may be stored on servers located within India or outside India through secure hosting and cloud infrastructure providers.</p>
+      <p>The Platform may retain information for operational continuity, legal compliance, audit purposes, dispute resolution, fraud prevention, contractual obligations, backup requirements, business continuity, disaster recovery, and service-related purposes.</p>
+      <p>Even after account suspension, termination, inactivity, or discontinuation of services, the Platform may continue to retain certain records and information as may be necessary under applicable laws, business requirements, legal obligations, or technical infrastructure requirements.</p>
+    </div>
+  </div>
+
+  <!-- Section 11 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">11</div>
+      <div class="policy-section-title">Data Security</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform undertakes commercially reasonable and industry-standard measures for protection of information including secured servers, encrypted systems, authentication controls, firewall systems, access restrictions, monitoring systems, administrative safeguards, and technical security infrastructure.</p>
+      <p>However, the User acknowledges that no electronic system, digital platform, internet transmission, cloud infrastructure, or technological environment can be guaranteed to be completely secure or immune from unauthorized access, cyber threats, technical failures, or security breaches.</p>
+      <p>Accordingly, the Platform does not guarantee absolute security of information and shall not be liable for unauthorized access, hacking incidents, data theft, cyber-attacks, transmission failures, or external security breaches beyond reasonable control.</p>
+    </div>
+  </div>
+
+  <!-- Section 12 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">12</div>
+      <div class="policy-section-title">User Obligations</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The User agrees not to misuse the Platform or engage in unlawful, fraudulent, infringing, harmful, misleading, defamatory, malicious, or unauthorized activities through the Platform.</p>
+      <p>The User shall not upload unlawful content, malware, unauthorized material, infringing content, false information, or any content which violates applicable laws or third-party rights.</p>
+      <p>The User shall remain solely responsible for maintaining confidentiality of login credentials, passwords, access permissions, and account-related information.</p>
+      <p>Any activity conducted through the User account shall be deemed to have been conducted by the User.</p>
+    </div>
+  </div>
+
+  <!-- Section 13 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">13</div>
+      <div class="policy-section-title">Third-Party Integrations</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform may integrate or connect with third-party services including payment gateways, financing providers, insurance services, cloud hosting providers, communication platforms, analytical systems, CRM integrations, APIs, automotive systems, external software, and associated technological services.</p>
+      <p>The Platform shall not be responsible for privacy practices, operational standards, security measures, policies, content, or activities of such third-party platforms or service providers.</p>
+      <p>Users are advised to independently review applicable third-party policies prior to using such integrated services.</p>
+    </div>
+  </div>
+
+  <!-- Section 14 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">14</div>
+      <div class="policy-section-title">Marketing and Communications</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The User expressly authorizes the Platform to communicate through emails, calls, SMS, WhatsApp messages, push notifications, system alerts, promotional messages, advertisements, newsletters, onboarding communications, operational notices, marketing campaigns, and service-related notifications.</p>
+      <p>Such communications may be sent for operational purposes, promotional activities, customer engagement, product awareness, subscription reminders, service updates, and business-related activities.</p>
+    </div>
+  </div>
+
+  <!-- Section 15 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">15</div>
+      <div class="policy-section-title">Intellectual Property Rights</div>
+    </div>
+    <div class="policy-section-body">
+      <p>All intellectual property rights associated with the Platform including software systems, dashboards, designs, AI systems, branding elements, source code, databases, technological infrastructure, operational workflows, interfaces, features, modules, graphics, systems, and associated technology shall remain the sole and exclusive property of Luxurya Cars Private Limited – Caryanams.</p>
+      <p>Use of the Platform shall not confer any ownership rights upon the User.</p>
+    </div>
+  </div>
+
+  <!-- Section 16 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">16</div>
+      <div class="policy-section-title">Limitation of Liability</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform shall not be liable for any indirect, consequential, incidental, special, business, reputational, commercial, technical, operational, or financial loss arising out of usage of the Platform.</p>
+      <p>The Platform shall additionally not be responsible for dealer misuse of customer information, customer disputes, AI-generated inaccuracies, unauthorized access caused by User negligence, cyber attacks, data loss, technical interruptions, third-party failures, downtime, or external service disruptions.</p>
+      <p>Use of the Platform shall be entirely at the User's own risk.</p>
+    </div>
+  </div>
+
+  <!-- Section 17 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">17</div>
+      <div class="policy-section-title">Suspension and Termination</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform reserves the unrestricted right to suspend, restrict, terminate, disable, remove, or block access to any account, dashboard, service, content, mini website, listing, or Platform feature at its sole discretion in cases involving misuse, policy violations, unlawful activities, security risks, payment defaults, suspicious activity, legal concerns, or operational requirements.</p>
+    </div>
+  </div>
+
+  <!-- Section 18 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">18</div>
+      <div class="policy-section-title">Modification of Privacy Policy</div>
+    </div>
+    <div class="policy-section-body">
+      <p>The Platform reserves the unrestricted right to amend, revise, modify, update, replace, or change this Privacy Policy at any time without prior notice.</p>
+      <p>Continued usage of the Platform after such modifications shall constitute acceptance of the revised Privacy Policy.</p>
+    </div>
+  </div>
+
+  <!-- Section 19 -->
+  <div class="policy-section">
+    <div class="policy-section-header">
+      <div class="policy-section-num">19</div>
+      <div class="policy-section-title">Governing Law and Jurisdiction</div>
+    </div>
+    <div class="policy-section-body">
+      <p>This Privacy Policy shall be governed and interpreted in accordance with the laws of India.</p>
+      <p>Any disputes arising out of or relating to this Privacy Policy or usage of the Platform shall be subject to the exclusive jurisdiction of competent courts situated at Ahmedabad, Gujarat, India.</p>
+    </div>
+  </div>
+
+  <!-- Contact -->
+  <div class="policy-contact">
+    <h3><i class="fas fa-envelope" style="margin-right:8px;"></i>Contact Information</h3>
+    <p>
+      For privacy-related concerns, data-related requests, grievance redressal, or legal communications:<br><br>
+      <strong style="color:#F7E7CE;">Luxurya Cars Private Limited – Caryanams</strong><br>
+      Ahmedabad, Gujarat, India<br>
+      Email: info@caryanams.com<br>
+      Website: www.caryanams.com
+    </p>
+  </div>
+
+  <!-- Consent -->
+  <div class="policy-consent">
+    <i class="fas fa-check-circle"></i>
+    <h3>Consent Declaration</h3>
+    <p>By clicking "I Agree", "Accept", "Register", "Subscribe", "Continue", "Login", or by accessing or using the Platform in any manner whatsoever, the User expressly confirms and declares that the User has read, understood, accepted, and voluntarily agreed to the terms of this Privacy Policy and consents to the collection, storage, processing, usage, retention, disclosure, and handling of information by the Platform in accordance with the terms contained herein.</p>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<div class="policy-footer">
+  &copy; Luxurya Cars Private Limited – Caryanams. All rights reserved. &nbsp;|&nbsp;
+  <a href="{{ url_for('policies.refund_policy') }}">Refund Policy</a> &nbsp;|&nbsp;
+  <a href="{{ url_for('auth.login') }}">Back to Login</a>
+</div>
+
+</body>
+</html>
