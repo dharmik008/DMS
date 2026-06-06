@@ -1,0 +1,312 @@
+{% extends "user/base.html" %}
+{% block title %}Caryanams — Find Your Dream Car in India{% endblock %}
+
+{% block content %}
+<!-- ═══════════════ HERO ═══════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="hero-title">
+        Find Your<br><span>Dream Car</span><br>in India
+      </div>
+      <p class="hero-sub">Browse verified used and new cars from trusted dealers across India. Best prices, complete transparency.</p>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-val">{{ total_cars }}+</div>
+          <div class="hero-stat-label">Cars Listed</div>
+        </div>
+        <div>
+          <div class="hero-stat-val">{{ total_dealers }}+</div>
+          <div class="hero-stat-label">Verified Dealers</div>
+        </div>
+        <div>
+          <div class="hero-stat-val">100%</div>
+          <div class="hero-stat-label">Verified Listings</div>
+        </div>
+      </div>
+      <a href="{{ url_for('user.listings') }}" class="btn-search" style="width:fit-content;padding:14px 28px">
+        <i class="fas fa-th-large"></i> Browse All Cars
+      </a>
+    </div>
+
+    <!-- ── Search Widget ── -->
+    <div class="hero-search">
+      <div class="hero-search-title">
+        <i class="fas fa-search" style="color:#C8A96E"></i>
+        Find Your Car
+      </div>
+
+      <form action="{{ url_for('user.listings') }}" method="GET" id="heroSearchForm">
+
+        <!-- Row 1: keyword search -->
+        <div class="hs-row" style="margin-bottom:14px">
+          <div class="search-input-wrap" style="position:relative">
+            <label>Search</label>
+            <input type="text" name="search" placeholder="e.g. Swift, Creta, Innova…"
+                   style="padding-left:36px">
+            <i class="fas fa-search" style="position:absolute;left:12px;bottom:11px;color:var(--text-muted);font-size:13px;pointer-events:none"></i>
+          </div>
+        </div>
+
+        <!-- Row 2: Brand + Fuel -->
+        <div class="hero-search-grid">
+          <div class="search-input-wrap">
+            <label>Brand</label>
+            <select name="make">
+              <option value="">All Brands</option>
+              {% for m in makes %}
+              <option value="{{ m.make }}">{{ m.make }} ({{ m.cnt }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="search-input-wrap">
+            <label>Fuel Type</label>
+            <select name="fuel">
+              <option value="">Any Fuel</option>
+              <option value="Petrol">⛽ Petrol</option>
+              <option value="Diesel">🛢 Diesel</option>
+              <option value="Electric">⚡ Electric</option>
+              <option value="Hybrid">🔋 Hybrid</option>
+              <option value="CNG">🌿 CNG</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 3: Transmission + Condition -->
+        <div class="hero-search-grid">
+          <div class="search-input-wrap">
+            <label>Transmission</label>
+            <select name="transmission">
+              <option value="">Any</option>
+              <option value="Automatic">Automatic</option>
+              <option value="Manual">Manual</option>
+              <option value="AMT">AMT</option>
+              <option value="CVT">CVT</option>
+              <option value="DCT">DCT</option>
+            </select>
+          </div>
+          <div class="search-input-wrap">
+            <label>Condition</label>
+            <select name="condition">
+              <option value="">Any</option>
+              <option value="used">Used</option>
+              <option value="new">New</option>
+              <option value="certified">Certified Pre-Owned</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 4: Budget -->
+        <div class="hero-search-grid">
+          <div class="search-input-wrap">
+            <label>Min Budget (₹)</label>
+            <select name="min_price">
+              <option value="">No Min</option>
+              <option value="100000">₹1 Lakh</option>
+              <option value="200000">₹2 Lakh</option>
+              <option value="300000">₹3 Lakh</option>
+              <option value="500000">₹5 Lakh</option>
+              <option value="750000">₹7.5 Lakh</option>
+              <option value="1000000">₹10 Lakh</option>
+              <option value="1500000">₹15 Lakh</option>
+              <option value="2000000">₹20 Lakh</option>
+            </select>
+          </div>
+          <div class="search-input-wrap">
+            <label>Max Budget (₹)</label>
+            <select name="max_price">
+              <option value="">No Max</option>
+              <option value="200000">₹2 Lakh</option>
+              <option value="300000">₹3 Lakh</option>
+              <option value="500000">₹5 Lakh</option>
+              <option value="750000">₹7.5 Lakh</option>
+              <option value="1000000">₹10 Lakh</option>
+              <option value="1500000">₹15 Lakh</option>
+              <option value="2000000">₹20 Lakh</option>
+              <option value="5000000">₹50 Lakh</option>
+              <option value="10000000">₹1 Crore+</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 5: Year range -->
+        <div class="hero-search-grid" style="margin-bottom:20px">
+          <div class="search-input-wrap">
+            <label>Year From</label>
+            <select name="min_year">
+              <option value="">Any Year</option>
+              {% for y in range(2024, 2009, -1) %}
+              <option value="{{ y }}">{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="search-input-wrap">
+            <label>Year To</label>
+            <select name="max_year">
+              <option value="">Any Year</option>
+              {% for y in range(2025, 2009, -1) %}
+              <option value="{{ y }}">{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-search" style="width:100%;justify-content:center;font-size:15px">
+          <i class="fas fa-search"></i> Search Cars
+        </button>
+
+        <a href="{{ url_for('user.listings') }}" class="hs-reset-link"
+           style="display:block;text-align:center;margin-top:10px;font-size:12px;color:var(--text-muted);text-decoration:none">
+          <i class="fas fa-times-circle"></i> Clear filters &amp; show all
+        </a>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ BRANDS STRIP ═══════════════ -->
+<div class="brands-section">
+  <div class="brands-title">Popular Brands</div>
+  <div class="brands-row">
+    {% if makes %}
+      {% for m in makes %}
+      <a href="{{ url_for('user.listings', make=m.make) }}" class="brand-chip">
+        {{ m.make }} <span style="font-size:10px;opacity:0.6">({{ m.cnt }})</span>
+      </a>
+      {% endfor %}
+    {% else %}
+      {% for brand in ['Maruti','Hyundai','Tata','Honda','Toyota','Mahindra','Kia','MG','Skoda','Volkswagen'] %}
+      <a href="{{ url_for('user.listings', make=brand) }}" class="brand-chip">{{ brand }}</a>
+      {% endfor %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- ═══════════════ FEATURED CARS ═══════════════ -->
+{% if featured %}
+<div class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-title">⭐ Featured <span>Listings</span></div>
+      <div class="section-sub">Hand-picked cars from trusted dealers</div>
+    </div>
+    <a href="{{ url_for('user.listings') }}" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+  </div>
+  <div class="cars-grid">
+    {% for car in featured %}
+    <a href="{{ url_for('user.car_detail', vid=car['id']) }}" class="car-card">
+      <div class="car-img-wrap">
+        {% if car['image_filename'] and car['image_filename'] not in ['default_car.jpg','None'] %}
+          <img src="{{ url_for('static', filename='images/uploads/' + car['image_filename']) }}" alt="{{ car['make'] }} {{ car['model'] }}" loading="lazy"
+               onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/defaults/default_car.jpg') }}'">
+        {% else %}
+          <div class="car-img-placeholder"><i class="fas fa-car"></i></div>
+        {% endif %}
+        <span class="car-badge gold-badge"><i class="fas fa-star"></i> Featured</span>
+      </div>
+      <div class="car-body">
+        <div class="car-name">{{ car['year'] }} {{ car['make'] }} {{ car['model'] }}</div>
+        <div class="car-variant">{{ car['variant'] or 'Base Variant' }} • {{ car['condition'].title() }}</div>
+        <div class="car-specs">
+          <span class="spec"><i class="fas fa-gas-pump"></i> {{ car['fuel_type'] }}</span>
+          <span class="spec"><i class="fas fa-cog"></i> {{ car['transmission'] }}</span>
+          <span class="spec"><i class="fas fa-road"></i> {{ "{:,}".format(car['mileage']) }} km</span>
+          <span class="spec"><i class="fas fa-calendar"></i> {{ car['year'] }}</span>
+        </div>
+        <div class="car-footer">
+          <div class="car-price"><span class="rupee">₹</span>{{ "{:,.0f}".format(car['price']) }}</div>
+          <span class="car-cta">View Details</span>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════ WHY CARYANAMS ═══════════════ -->
+<div class="why-section">
+  <div style="text-align:center;margin-bottom:40px">
+    <div style="font-family:'Poppins',sans-serif;font-size:30px;font-weight:700;color:white;margin-bottom:8px">
+      Why Choose <span style="color:var(--gold-accent)">Caryanams</span>?
+    </div>
+    <div style="font-size:15px;color:rgba(255,255,255,0.5)">The smarter way to buy and sell cars in India</div>
+  </div>
+  <div class="why-grid">
+    <div class="why-card">
+      <div class="why-icon"><i class="fas fa-shield-alt"></i></div>
+      <div class="why-title">Verified Dealers</div>
+      <div class="why-desc">All dealers are verified and certified. Buy with complete confidence and peace of mind.</div>
+    </div>
+    <div class="why-card">
+      <div class="why-icon"><i class="fas fa-rupee-sign"></i></div>
+      <div class="why-title">Best Prices</div>
+      <div class="why-desc">Compare prices across multiple dealers. Negotiate directly and get the best deal possible.</div>
+    </div>
+    <div class="why-card">
+      <div class="why-icon"><i class="fas fa-file-alt"></i></div>
+      <div class="why-title">Full Documentation</div>
+      <div class="why-desc">RC, Insurance, Service History — all documents verified and available for your review.</div>
+    </div>
+    <div class="why-card">
+      <div class="why-icon"><i class="fas fa-calculator"></i></div>
+      <div class="why-title">EMI Calculator</div>
+      <div class="why-desc">Plan your finance with our built-in EMI calculator. Get loan estimates instantly.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ LATEST ARRIVALS ═══════════════ -->
+{% if latest %}
+<div class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-title">🆕 Latest <span>Arrivals</span></div>
+      <div class="section-sub">Fresh listings added recently</div>
+    </div>
+    <a href="{{ url_for('user.listings', sort='newest') }}" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+  </div>
+  <div class="cars-grid">
+    {% for car in latest %}
+    <a href="{{ url_for('user.car_detail', vid=car['id']) }}" class="car-card">
+      <div class="car-img-wrap">
+        {% if car['image_filename'] and car['image_filename'] not in ['default_car.jpg','None'] %}
+          <img src="{{ url_for('static', filename='images/uploads/' + car['image_filename']) }}" alt="{{ car['make'] }} {{ car['model'] }}" loading="lazy"
+               onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/defaults/default_car.jpg') }}'">
+        {% else %}
+          <div class="car-img-placeholder"><i class="fas fa-car"></i></div>
+        {% endif %}
+        <span class="car-badge">{{ car['condition'].title() }}</span>
+      </div>
+      <div class="car-body">
+        <div class="car-name">{{ car['year'] }} {{ car['make'] }} {{ car['model'] }}</div>
+        <div class="car-variant">{{ car['variant'] or 'Base Variant' }}</div>
+        <div class="car-specs">
+          <span class="spec"><i class="fas fa-gas-pump"></i> {{ car['fuel_type'] }}</span>
+          <span class="spec"><i class="fas fa-cog"></i> {{ car['transmission'] }}</span>
+          <span class="spec"><i class="fas fa-road"></i> {{ "{:,}".format(car['mileage']) }} km</span>
+        </div>
+        <div class="car-footer">
+          <div class="car-price"><span class="rupee">₹</span>{{ "{:,.0f}".format(car['price']) }}</div>
+          <span class="car-cta">Inquire</span>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════ DEALER CTA ═══════════════ -->
+<div style="background:linear-gradient(135deg,#001A4D,#002366);padding:50px 5%;text-align:center;margin-top:20px">
+  <div style="font-family:'Poppins',sans-serif;font-size:28px;font-weight:700;color:white;margin-bottom:12px">
+    Are You a <span style="color:#C8A96E">Car Dealer?</span>
+  </div>
+  <div style="font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:24px;max-width:500px;margin-left:auto;margin-right:auto">
+    Join Caryanams — the complete platform to manage inventory, track leads, handle finance &amp; generate invoices.
+  </div>
+  <a href="{{ url_for('auth.register') }}" class="btn-search" style="display:inline-flex;width:auto;padding:14px 32px">
+    <i class="fas fa-store"></i> Register as Dealer — Free
+  </a>
+</div>
+{% endblock %}

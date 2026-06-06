@@ -1,0 +1,167 @@
+{% extends "user/base.html" %}
+{% block title %}Browse Cars — Caryanams{% endblock %}
+
+{% block content %}
+<div class="listings-layout">
+  <!-- Sidebar Filters -->
+  <aside class="filters-sidebar">
+    <div class="filter-section-title"><i class="fas fa-sliders-h"></i> Filters</div>
+    <form method="GET" action="{{ url_for('user.listings') }}" id="filterForm">
+      <div class="filter-group">
+        <label>Search</label>
+        <input type="text" name="search" placeholder="Brand, model, variant..." value="{{ search or '' }}">
+      </div>
+      <div class="filter-group">
+        <label>Brand / Make</label>
+        <select name="make">
+          <option value="">All Brands</option>
+          {% for m in makes %}
+          <option value="{{ m }}" {% if make == m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Fuel Type</label>
+        <select name="fuel">
+          <option value="">Any</option>
+          {% for ft in ['Petrol','Diesel','Electric','Hybrid','CNG'] %}
+          <option value="{{ ft }}" {% if fuel == ft %}selected{% endif %}>{{ ft }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Transmission</label>
+        <select name="transmission">
+          <option value="">Any</option>
+          {% for t in ['Manual','Automatic','AMT','CVT'] %}
+          <option value="{{ t }}" {% if transmission == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Condition</label>
+        <select name="condition">
+          <option value="">Any</option>
+          <option value="new" {% if condition == 'new' %}selected{% endif %}>New</option>
+          <option value="used" {% if condition == 'used' %}selected{% endif %}>Used</option>
+          <option value="certified" {% if condition == 'certified' %}selected{% endif %}>Certified Pre-Owned</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Price Range (₹)</label>
+        <div class="price-range">
+          <input type="number" name="min_price" placeholder="Min" value="{{ min_price or '' }}">
+          <input type="number" name="max_price" placeholder="Max" value="{{ max_price or '' }}">
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>Year Range</label>
+        <div class="price-range">
+          <input type="number" name="min_year" placeholder="From" min="1990" max="2025" value="{{ min_year or '' }}">
+          <input type="number" name="max_year" placeholder="To" min="1990" max="2025" value="{{ max_year or '' }}">
+        </div>
+      </div>
+      <button type="submit" class="btn-filter-apply"><i class="fas fa-search"></i> Apply Filters</button>
+      <a href="{{ url_for('user.listings') }}" class="btn-filter-reset" style="display:block;text-align:center;text-decoration:none;padding:9px;background:transparent;color:var(--text-secondary);border:1px solid var(--card-border);border-radius:8px;font-size:13px;margin-top:8px">
+        <i class="fas fa-times"></i> Clear All
+      </a>
+    </form>
+  </aside>
+
+  <!-- Listings Main -->
+  <div>
+    <!-- Sort Bar -->
+    <div class="listings-header">
+      <div class="listings-count">
+        <i class="fas fa-car" style="color:var(--navy-mid)"></i>
+        <strong>{{ vehicles['total'] }}</strong> cars found
+        {% if search %} for "<em>{{ search }}</em>"{% endif %}
+        {% if make %} — {{ make }}{% endif %}
+      </div>
+      <form method="GET" style="display:flex;align-items:center;gap:8px">
+        {% if search %}<input type="hidden" name="search" value="{{ search }}">{% endif %}
+        {% if make %}<input type="hidden" name="make" value="{{ make }}">{% endif %}
+        {% if fuel %}<input type="hidden" name="fuel" value="{{ fuel }}">{% endif %}
+        {% if transmission %}<input type="hidden" name="transmission" value="{{ transmission }}">{% endif %}
+        {% if condition %}<input type="hidden" name="condition" value="{{ condition }}">{% endif %}
+        {% if min_price %}<input type="hidden" name="min_price" value="{{ min_price }}">{% endif %}
+        {% if max_price %}<input type="hidden" name="max_price" value="{{ max_price }}">{% endif %}
+        {% if min_year %}<input type="hidden" name="min_year" value="{{ min_year }}">{% endif %}
+        {% if max_year %}<input type="hidden" name="max_year" value="{{ max_year }}">{% endif %}
+        <label style="font-size:13px;color:var(--text-secondary);font-weight:600">Sort by:</label>
+        <select name="sort" class="sort-select" onchange="this.form.submit()">
+          <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest First</option>
+          <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+          <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+          <option value="year_desc" {% if sort == 'year_desc' %}selected{% endif %}>Newest Year</option>
+          <option value="mileage_asc" {% if sort == 'mileage_asc' %}selected{% endif %}>Lowest Mileage</option>
+        </select>
+      </form>
+    </div>
+
+    <!-- Cars Grid -->
+    {% if vehicles['items'] %}
+    <div class="cars-grid">
+      {% for car in vehicles['items'] %}
+      <a href="{{ url_for('user.car_detail', vid=car['id']) }}" class="car-card">
+        <div class="car-img-wrap">
+          {% if car['image_filename'] and car['image_filename'] not in ['default_car.jpg', 'None', ''] %}
+            <img src="{{ url_for('static', filename='images/uploads/' + car['image_filename']) }}" alt="{{ car['make'] }} {{ car['model'] }}" loading="lazy"
+                 onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/defaults/default_car.jpg') }}'">
+          {% else %}
+            <div class="car-img-placeholder"><i class="fas fa-car"></i></div>
+          {% endif %}
+          {% if car['featured'] %}<span class="car-badge gold-badge"><i class="fas fa-star"></i> Featured</span>{% else %}<span class="car-badge">{{ car['condition'].title() }}</span>{% endif %}
+        </div>
+        <div class="car-body">
+          <div class="car-name">{{ car['year'] }} {{ car['make'] }} {{ car['model'] }}</div>
+          <div class="car-variant">{{ car['variant'] or 'Base Variant' }}</div>
+          <div class="car-specs">
+            <span class="spec"><i class="fas fa-gas-pump"></i> {{ car['fuel_type'] }}</span>
+            <span class="spec"><i class="fas fa-cog"></i> {{ car['transmission'] }}</span>
+            <span class="spec"><i class="fas fa-road"></i> {{ "{:,}".format(car['mileage']) }} km</span>
+            {% if car.engine_cc and car['fuel_type'] != 'Electric' %}
+            <span class="spec"><i class="fas fa-bolt"></i> {{ car.engine_cc }}cc</span>
+            {% endif %}
+          </div>
+          <div class="car-footer">
+            <div>
+              <div class="car-price"><span class="rupee">₹</span>{{ "{:,.0f}".format(car['price']) }}</div>
+              {% if car['negotiable'] %}<div style="font-size:11px;color:var(--success);font-weight:600">Negotiable</div>{% endif %}
+            </div>
+            <span class="car-cta">View Details</span>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if vehicles['pages'] > 1 %}
+    <div class="pagination">
+      <a href="{{ url_for('user.listings', page=vehicles['prev_num'], search=search, make=make, fuel=fuel, sort=sort) }}"
+         class="page-btn {% if not vehicles['has_prev'] %}disabled{% endif %}"><i class="fas fa-chevron-left"></i></a>
+      {% for p in range(1, vehicles['pages']+1) %}
+        {% if p %}
+          <a href="{{ url_for('user.listings', page=p, search=search, make=make, fuel=fuel, sort=sort) }}"
+             class="page-btn {% if p == vehicles['page'] %}active{% endif %}">{{ p }}</a>
+        {% else %}
+          <span class="page-btn">…</span>
+        {% endif %}
+      {% endfor %}
+      <a href="{{ url_for('user.listings', page=vehicles['next_num'], search=search, make=make, fuel=fuel, sort=sort) }}"
+         class="page-btn {% if not vehicles['has_next'] %}disabled{% endif %}"><i class="fas fa-chevron-right"></i></a>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="text-align:center;padding:60px 20px;background:white;border-radius:14px;border:1px solid var(--card-border)">
+      <i class="fas fa-car" style="font-size:48px;color:var(--card-border);display:block;margin-bottom:16px"></i>
+      <h3 style="font-size:20px;color:var(--text-secondary);margin-bottom:8px">No cars found</h3>
+      <p style="color:var(--text-muted);margin-bottom:20px">Try adjusting your filters to see more results.</p>
+      <a href="{{ url_for('user.listings') }}" style="padding:10px 24px;background:var(--navy);color:white;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Clear Filters</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

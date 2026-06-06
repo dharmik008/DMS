@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Caryanams — Find Your Dream Car{% endblock %}</title>
+<meta name="description" content="{% block meta_desc %}Browse thousands of cars on Caryanams — India's trusted automobile marketplace.{% endblock %}">
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/marketplace.css') }}">
+
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <a href="{{ url_for('user.home') }}" class="nav-brand">
+    <div class="nav-logo-box">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Caryanams" class="logo-nav">
+    </div>
+    <span class="nav-brand-text">Caryanams</span>
+  </a>
+
+  <ul class="nav-links" id="navLinks">
+    <li><a href="{{ url_for('user.home') }}" class="{% if request.endpoint == 'user.home' %}active{% endif %}">Home</a></li>
+    <li><a href="{{ url_for('user.listings') }}" class="{% if request.endpoint == 'user.listings' %}active{% endif %}">Browse Cars</a></li>
+    <li><a href="{{ url_for('user.contact') }}" class="{% if request.endpoint == 'user.contact' %}active{% endif %}">Contact</a></li>
+  </ul>
+
+  <div class="nav-actions">
+    {% if current_user is not none and current_user.get('id') %}
+      {% if current_user.get('role') == 'dealer' %}
+      <a href="{{ url_for('dealer.dashboard') }}" class="btn-nav-dealer"><i class="fas fa-tachometer-alt"></i> DMS Dashboard</a>
+      {% endif %}
+      <a href="{{ url_for('auth.logout') }}" class="btn-nav-login"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}" class="btn-nav-dealer">Sign In</a>
+      <a href="{{ url_for('auth.register') }}" class="btn-nav-login">List Your Car</a>
+    {% endif %}
+    <button class="nav-mobile-toggle" onclick="toggleMobileNav()"><i class="fas fa-bars"></i></button>
+  </div>
+</nav>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for cat, msg in messages %}
+    <div class="flash-bar {% if cat == 'error' %}error{% endif %}">
+      <i class="fas fa-{% if cat == 'success' %}check-circle{% else %}info-circle{% endif %}"></i>
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand-name">Caryanams</div>
+      <div class="footer-tagline">India's Premier Auto Marketplace</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.4);line-height:1.6">
+        Connecting buyers with trusted dealers across India. Find your perfect car today.
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Quick Links</div>
+      <ul class="footer-links">
+        <li><a href="{{ url_for('user.home') }}">Home</a></li>
+        <li><a href="{{ url_for('user.listings') }}">Browse Cars</a></li>
+        <li><a href="{{ url_for('user.contact') }}">Contact Us</a></li>
+        <li><a href="{{ url_for('auth.register') }}">Register as Dealer</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Car Types</div>
+      <ul class="footer-links">
+        <li><a href="{{ url_for('user.listings', fuel='Petrol') }}">Petrol Cars</a></li>
+        <li><a href="{{ url_for('user.listings', fuel='Diesel') }}">Diesel Cars</a></li>
+        <li><a href="{{ url_for('user.listings', fuel='Electric') }}">Electric Vehicles</a></li>
+        <li><a href="{{ url_for('user.listings', transmission='Automatic') }}">Automatic Cars</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">For Dealers</div>
+      <ul class="footer-links">
+        <li><a href="{{ url_for('auth.register') }}">Register</a></li>
+        <li><a href="{{ url_for('auth.login') }}">Login to DMS</a></li>
+        <li><a href="{{ url_for('dealer.dashboard') }}">Dashboard</a></li>
+        <li><a href="{{ url_for('dealer.inventory') }}">Manage Inventory</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div>© 2025 Caryanams. All rights reserved.</div>
+    <div>Built with ❤️ for India's automobile ecosystem</div>
+  </div>
+</footer>
+
+<script>
+function toggleMobileNav() {
+  const nav = document.getElementById('navLinks');
+  nav.style.display = nav.style.display === 'flex' ? 'none' : 'flex';
+  nav.style.flexDirection = 'column';
+  nav.style.position = 'absolute';
+  nav.style.top = '68px';
+  nav.style.left = '0';
+  nav.style.right = '0';
+  nav.style.background = '#002366';
+  nav.style.padding = '12px';
+  nav.style.zIndex = '99';
+}
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,421 @@
+{% extends "user/base.html" %}
+{% block title %}{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} — Caryanams{% endblock %}
+{% block meta_desc %}{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} for ₹{{ '{:,.0f}'.format(vehicle.price) }}. {{ vehicle.fuel_type }}, {{ vehicle.transmission }}, {{ '{:,}'.format(vehicle.mileage) }} km. Available at Caryanams.{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Image URL helper macro ── */
+/* Gallery */
+.gallery-wrap { position: relative; background: linear-gradient(135deg,var(--navy-dark),var(--navy-mid)); border-radius: var(--radius-lg); overflow: hidden; }
+.gallery-main-img { width: 100%; aspect-ratio: 16/10; object-fit: cover; display: block; transition: opacity .22s; }
+.gallery-placeholder { width: 100%; aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+.gallery-placeholder i { font-size: 72px; color: rgba(255,255,255,.15); }
+.gallery-counter { position: absolute; bottom: 14px; right: 16px; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; }
+.gallery-arr { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.45); color: #fff; border: none; width: 42px; height: 42px; border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .18s; z-index: 2; }
+.gallery-arr:hover { background: rgba(0,0,0,.75); }
+.gallery-arr.prev { left: 14px; }
+.gallery-arr.next { right: 14px; }
+.gallery-thumbs { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.g-thumb { width: 76px; height: 56px; border-radius: 8px; overflow: hidden; cursor: pointer; border: 2.5px solid transparent; flex-shrink: 0; transition: border .18s; background: var(--bg); }
+.g-thumb.active { border-color: var(--navy); }
+.g-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Detail Info Block */
+.detail-info-block { background: #fff; border-radius: var(--radius); border: 1px solid var(--card-border); padding: 28px; margin-top: 24px; }
+.detail-info-block h2 { font-family: 'Poppins',sans-serif; font-size: 26px; font-weight: 800; color: var(--navy); margin-bottom: 2px; }
+.detail-variant-row { font-size: 14px; color: var(--text-secondary); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fuel-badge { background: var(--bg); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+.detail-price-big { font-family: 'Poppins',sans-serif; font-size: 34px; font-weight: 800; color: var(--navy); }
+.detail-neg-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--success); font-weight: 600; margin-top: 4px; }
+
+.specs-icon-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 0; margin-top: 22px; border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+.spec-cell { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+.spec-cell i { font-size: 16px; color: var(--navy-mid); width: 20px; text-align: center; }
+.spec-cell-key { font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: .4px; }
+.spec-cell-val { font-size: 14px; font-weight: 700; color: var(--navy); margin-top: 2px; }
+.about-block { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.about-block h3 { font-family: 'Poppins',sans-serif; font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .5px; }
+.about-block p { font-size: 14px; color: var(--text-secondary); line-height: 1.8; }
+
+/* Inquiry Card */
+.inquiry-card { background: #fff; border-radius: var(--radius); border: 1px solid var(--card-border); padding: 24px; position: sticky; top: 80px; }
+.inquiry-title { font-family: 'Poppins',sans-serif; font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
+.inquiry-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 18px; }
+.inq-input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'Inter',sans-serif; font-size: 14px; margin-bottom: 10px; box-sizing: border-box; outline: none; transition: border .18s; }
+.inq-input:focus { border-color: var(--navy); }
+.inq-input[readonly] { background: #f5f7fa; color: var(--text-secondary); cursor: default; border-color: var(--border); }
+.inq-input[readonly]:focus { border-color: var(--border); }
+.btn-inquire { width: 100%; background: var(--navy); color: #fff; padding: 13px; border: none; border-radius: 8px; font-family: 'Poppins',sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; transition: background .18s; }
+.btn-inquire:hover { background: var(--navy-dark); }
+.btn-test-drive { width: 100%; background: var(--gold); color: var(--navy); padding: 13px; border: none; border-radius: 8px; font-family: 'Poppins',sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background .18s; }
+.btn-test-drive:hover { background: var(--gold-dark); }
+
+/* Quick Summary */
+.quick-summary { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
+.qs-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: .5px; margin-bottom: 10px; }
+.qs-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--bg); font-size: 13px; }
+.qs-row:last-child { border-bottom: none; }
+.qs-key { color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.qs-val { font-weight: 600; color: var(--navy); }
+
+/* Dealer Info */
+.dealer-info { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
+.dealer-info-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: .5px; margin-bottom: 12px; }
+.dealer-row { display: flex; align-items: center; gap: 12px; }
+.dealer-avatar { width: 40px; height: 40px; background: var(--navy); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-family: 'Poppins',sans-serif; font-weight: 800; font-size: 16px; flex-shrink: 0; }
+.dealer-name { font-weight: 700; font-size: 15px; color: var(--navy); }
+.dealer-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.dealer-meta i { color: var(--navy-mid); }
+
+/* Similar Cars */
+.similar-section { max-width: 1400px; margin: 0 auto; padding: 0 5% 60px; }
+.similar-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 20px; margin-top: 20px; }
+
+/* Test Drive Modal */
+.td-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9999; align-items: center; justify-content: center; }
+.td-modal.open { display: flex; }
+.td-modal-box { background: #fff; border-radius: 16px; padding: 32px; width: 100%; max-width: 400px; margin: 20px; }
+.td-modal-box h3 { font-family: 'Poppins',sans-serif; color: var(--navy); margin-bottom: 16px; font-size: 18px; }
+
+@media(max-width:1024px) { .detail-layout{grid-template-columns:1fr} .inquiry-card{position:static} .specs-icon-grid{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:600px) { .specs-icon-grid{grid-template-columns:1fr} .detail-info-block h2{font-size:22px} .detail-price-big{font-size:28px} }
+</style>
+{% endblock %}
+
+{% set img_base = '/static/images/uploads/' %}
+{% set default_img = '/static/images/defaults/default_car.jpg' %}
+
+{# Build image list at template scope so extra_js block can also access it #}
+{% set ns = namespace(imgs=[]) %}
+{% if vehicle.extra_images %}
+  {% for fname in vehicle.extra_images %}
+    {% if fname and fname != 'None' and fname != '' %}
+      {% set ns.imgs = ns.imgs + [img_base + fname] %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% if ns.imgs | length == 0 and vehicle.image_filename and vehicle.image_filename != 'None' and vehicle.image_filename != '' %}
+  {% set ns.imgs = [img_base + vehicle.image_filename] %}
+{% endif %}
+{% set all_imgs = ns.imgs %}
+
+{% block content %}
+
+<!-- Hidden data carrier for JS (Jinja vars don't cross block boundaries) -->
+<script id="galData" type="application/json">{{ all_imgs | tojson }}</script>
+
+<!-- Breadcrumb -->
+<div class="breadcrumb">
+  <a href="{{ url_for('user.home') }}">Home</a>
+  <span>›</span>
+  <a href="{{ url_for('user.listings') }}">Browse Cars</a>
+  <span>›</span>
+  <span>{{ vehicle.make }} {{ vehicle.model }}</span>
+</div>
+
+<!-- Main Detail Layout -->
+<div class="detail-layout">
+
+  <!-- ── LEFT COLUMN ── -->
+  <div>
+
+    <!-- Gallery -->
+    <div class="gallery-wrap" id="galleryWrap">
+      {% if all_imgs %}
+        <img class="gallery-main-img" id="mainImgEl"
+             src="{{ all_imgs[0] }}"
+             alt="{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}"
+             onerror="this.onerror=null;this.src='{{ default_img }}'">
+        {% if all_imgs | length > 1 %}
+          <button class="gallery-arr prev" onclick="galStep(-1)"><i class="fas fa-chevron-left"></i></button>
+          <button class="gallery-arr next" onclick="galStep(1)"><i class="fas fa-chevron-right"></i></button>
+        {% endif %}
+        <div class="gallery-counter">
+          <i class="fas fa-images"></i>
+          <span id="galCount">1 / {{ all_imgs | length }}</span>
+        </div>
+      {% else %}
+        <div class="gallery-placeholder">
+          <i class="fas fa-car"></i>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Thumbnails -->
+    {% if all_imgs | length > 1 %}
+    <div class="gallery-thumbs" id="thumbRow">
+      {% for img in all_imgs %}
+      <div class="g-thumb {{ 'active' if loop.first }}" onclick="galGoto({{ loop.index0 }})">
+        <img src="{{ img }}" alt="thumb {{ loop.index }}"
+             onerror="this.onerror=null;this.src='{{ default_img }}'">
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Info Block -->
+    <div class="detail-info-block">
+      <h2>{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}</h2>
+      <div class="detail-variant-row">
+        {% if vehicle.variant %}<span>{{ vehicle.variant }}</span><span>•</span>{% endif %}
+        <span style="text-transform:capitalize">{{ vehicle.condition or 'Used' }}</span>
+        <span class="fuel-badge">{{ vehicle.fuel_type }}</span>
+      </div>
+
+      <div class="detail-price-big">₹{{ '{:,.0f}'.format(vehicle.price) }}</div>
+      {% if vehicle.negotiable %}
+      <div class="detail-neg-tag"><i class="fas fa-check-circle"></i> Price Negotiable</div>
+      {% endif %}
+
+      <!-- Specs Grid with Icons -->
+      <div class="specs-icon-grid">
+        <div class="spec-cell">
+          <i class="fas fa-tachometer-alt"></i>
+          <div><div class="spec-cell-key">Mileage</div><div class="spec-cell-val">{{ '{:,}'.format(vehicle.mileage) }} km</div></div>
+        </div>
+        <div class="spec-cell">
+          <i class="fas fa-cog"></i>
+          <div><div class="spec-cell-key">Transmission</div><div class="spec-cell-val">{{ vehicle.transmission }}</div></div>
+        </div>
+        <div class="spec-cell">
+          <i class="fas fa-calendar-alt"></i>
+          <div><div class="spec-cell-key">Year</div><div class="spec-cell-val">{{ vehicle.year }}</div></div>
+        </div>
+        <div class="spec-cell">
+          <i class="fas fa-palette"></i>
+          <div><div class="spec-cell-key">Color</div><div class="spec-cell-val">{{ vehicle.color or '—' }}</div></div>
+        </div>
+        <div class="spec-cell">
+          <i class="fas fa-bolt"></i>
+          <div><div class="spec-cell-key">Engine</div><div class="spec-cell-val">{{ vehicle.engine_cc ~ ' cc' if vehicle.engine_cc else '—' }}</div></div>
+        </div>
+        <div class="spec-cell">
+          <i class="fas fa-tag"></i>
+          <div><div class="spec-cell-key">Condition</div><div class="spec-cell-val" style="text-transform:capitalize">{{ vehicle.condition or '—' }}</div></div>
+        </div>
+        {% if vehicle.registration_number %}
+        <div class="spec-cell">
+          <i class="fas fa-id-card"></i>
+          <div><div class="spec-cell-key">Reg. Number</div><div class="spec-cell-val">{{ vehicle.registration_number }}</div></div>
+        </div>
+        {% endif %}
+        <div class="spec-cell">
+          <i class="fas fa-file-alt"></i>
+          <div><div class="spec-cell-key">RC Available</div><div class="spec-cell-val">{{ 'Yes' if vehicle.rc_available else 'No' }}</div></div>
+        </div>
+        {% if vehicle.insurance_till %}
+        <div class="spec-cell">
+          <i class="fas fa-shield-alt"></i>
+          <div><div class="spec-cell-key">Insurance Till</div><div class="spec-cell-val">{{ vehicle.insurance_till }}</div></div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if vehicle.description %}
+      <div class="about-block">
+        <h3>About This Car</h3>
+        <p>{{ vehicle.description }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div><!-- /LEFT -->
+
+  <!-- ── RIGHT COLUMN ── -->
+  <div>
+    <div class="inquiry-card">
+      <div class="inquiry-title">Interested in this car?</div>
+      <div class="inquiry-sub">Contact the dealer directly — it's free!</div>
+
+      {# ── Auto-prefill: set default values from logged-in user & vehicle ── #}
+      {% set prefill_name    = logged_user.name  if logged_user else '' %}
+      {% set prefill_phone   = logged_user.phone if logged_user else '' %}
+      {% set prefill_email   = logged_user.email if logged_user else '' %}
+      {% set vehicle_label   = vehicle.make ~ ' ' ~ vehicle.model %}
+      {% if logged_user %}
+        {% set prefill_msg = prefill_name ~ ' is interested in ' ~ vehicle_label ~ ' and would like to be contacted with more details.' %}
+      {% else %}
+        {% set prefill_msg = '' %}
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('user.inquire', vid=vehicle.id) }}">
+        <input class="inq-input" type="text" name="name"
+               placeholder="Your Name *"
+               value="{{ prefill_name }}"
+               {% if logged_user %}readonly title="Logged-in as {{ prefill_name }}"{% endif %}
+               required>
+        <input class="inq-input" type="tel" name="phone"
+               placeholder="Phone Number *"
+               value="{{ prefill_phone }}"
+               {% if logged_user %}readonly title="Your registered mobile number"{% endif %}
+               required>
+        <input class="inq-input" type="email" name="email"
+               placeholder="Email (optional)"
+               value="{{ prefill_email }}"
+               {% if logged_user %}readonly title="Your registered email"{% endif %}>
+        <textarea class="inq-input" name="message" rows="3"
+                  placeholder="Message to dealer (optional)...">{{ prefill_msg }}</textarea>
+        <input type="hidden" name="inquiry_type" value="general">
+        {% if logged_user %}
+        <p style="font-size:11px;color:var(--text-muted);margin:-4px 0 10px;line-height:1.4">
+          <i class="fas fa-lock" style="margin-right:3px"></i>
+          Filled from your account &mdash; you may edit the message before sending.
+        </p>
+        {% endif %}
+        <button type="submit" class="btn-inquire"><i class="fas fa-paper-plane"></i> Send Inquiry</button>
+      </form>
+
+      <button type="button" class="btn-test-drive" onclick="openTD()">
+        <i class="fas fa-car-side"></i> Book Test Drive
+      </button>
+
+      <!-- Quick Summary -->
+      <div class="quick-summary">
+        <div class="qs-title">Quick Summary</div>
+        <div class="qs-row">
+          <span class="qs-key"><i class="fas fa-gas-pump"></i> Fuel</span>
+          <span class="qs-val">{{ vehicle.fuel_type }}</span>
+        </div>
+        <div class="qs-row">
+          <span class="qs-key"><i class="fas fa-cog"></i> Transmission</span>
+          <span class="qs-val">{{ vehicle.transmission }}</span>
+        </div>
+        <div class="qs-row">
+          <span class="qs-key"><i class="fas fa-calendar"></i> Year</span>
+          <span class="qs-val">{{ vehicle.year }}</span>
+        </div>
+        <div class="qs-row">
+          <span class="qs-key"><i class="fas fa-tachometer-alt"></i> Mileage</span>
+          <span class="qs-val">{{ '{:,}'.format(vehicle.mileage) }} km</span>
+        </div>
+      </div>
+
+      <!-- Dealer Info -->
+      {% if dealer %}
+      <div class="dealer-info">
+        <div class="dealer-info-title">Dealer Information</div>
+        <div class="dealer-row">
+          <div class="dealer-avatar">{{ (dealer.company or dealer.name or 'D')[0].upper() }}</div>
+          <div>
+            <div class="dealer-name">{{ dealer.company or dealer.name }}</div>
+            <div class="dealer-meta">
+              {% if dealer.city %}<span><i class="fas fa-map-marker-alt"></i> {{ dealer.city }}</span>{% endif %}
+              {% if dealer.phone %}<span style="margin-left:8px"><i class="fas fa-phone"></i> {{ dealer.phone }}</span>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div><!-- /inquiry-card -->
+  </div><!-- /RIGHT -->
+
+</div><!-- /detail-layout -->
+
+<!-- ── Similar Cars ── -->
+{% if similar %}
+<div class="similar-section">
+  <div class="section-head">
+    <div>
+      <div class="section-title">Similar Cars</div>
+      <div class="section-sub">More {{ vehicle.make }} vehicles you might like</div>
+    </div>
+    <a href="{{ url_for('user.listings', make=vehicle.make) }}" class="view-all">View all <i class="fas fa-arrow-right"></i></a>
+  </div>
+  <div class="similar-grid">
+    {% for car in similar %}
+    {% set car_img = img_base + car.image_filename if car.image_filename and car.image_filename != 'None' else '' %}
+    <a href="{{ url_for('user.car_detail', vid=car.id) }}" class="car-card">
+      <div class="car-img-wrap">
+        {% if car_img %}
+          <img src="{{ car_img }}" alt="{{ car.make }} {{ car.model }}" loading="lazy"
+               onerror="this.onerror=null;this.src='{{ default_img }}'">
+        {% else %}
+          <div class="car-img-placeholder"><i class="fas fa-car"></i></div>
+        {% endif %}
+        <span class="car-badge">{{ car.fuel_type }}</span>
+      </div>
+      <div class="car-body">
+        <div class="car-name">{{ car.year }} {{ car.make }} {{ car.model }}</div>
+        {% if car.variant %}<div class="car-variant">{{ car.variant }}</div>{% endif %}
+        <div class="car-specs">
+          <span class="spec"><i class="fas fa-tachometer-alt"></i> {{ '{:,}'.format(car.mileage) }} km</span>
+          <span class="spec"><i class="fas fa-cog"></i> {{ car.transmission }}</span>
+        </div>
+        <div class="car-footer">
+          <div class="car-price">₹{{ '{:,.0f}'.format(car.price) }}</div>
+          <span class="car-cta">View</span>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Test Drive Modal -->
+<div class="td-modal" id="tdModal">
+  <div class="td-modal-box">
+    <h3><i class="fas fa-car-side" style="color:var(--navy);margin-right:8px"></i>Book Test Drive</h3>
+    <form method="POST" action="{{ url_for('user.inquire', vid=vehicle.id) }}" id="tdForm">
+      <input class="inq-input" id="td_name" name="name" type="text"
+             placeholder="Your Name *"
+             value="{{ logged_user.name if logged_user else '' }}"
+             {% if logged_user %}readonly{% endif %} required>
+      <input class="inq-input" id="td_phone" name="phone" type="tel"
+             placeholder="Phone Number *"
+             value="{{ logged_user.phone if logged_user else '' }}"
+             {% if logged_user %}readonly{% endif %} required>
+      <input type="hidden" name="email" value="{{ logged_user.email if logged_user else '' }}">
+      <input type="hidden" name="inquiry_type" value="test_drive">
+      <input type="hidden" name="message" value="{% if logged_user %}{{ logged_user.name }}{% endif %} is interested in booking a test drive for the {{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}.">
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button type="button" onclick="closeTD()" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-weight:600;font-size:14px;">Cancel</button>
+        <button type="submit" style="flex:1;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;">Confirm</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Gallery ──
+const galImgs = JSON.parse(document.getElementById('galData').textContent || '[]');
+let galIdx = 0;
+
+function galGoto(idx) {
+  if (!galImgs.length) return;
+  galIdx = (idx + galImgs.length) % galImgs.length;
+  const el = document.getElementById('mainImgEl');
+  if (el) {
+    el.style.opacity = '.35';
+    setTimeout(() => { el.src = galImgs[galIdx]; el.style.opacity = '1'; }, 150);
+  }
+  const counter = document.getElementById('galCount');
+  if (counter) counter.textContent = (galIdx + 1) + ' / ' + galImgs.length;
+  document.querySelectorAll('.g-thumb').forEach((t, i) => t.classList.toggle('active', i === galIdx));
+  document.querySelectorAll('.g-thumb')[galIdx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+function galStep(dir) { galGoto(galIdx + dir); }
+
+// Touch swipe
+let tsX = 0;
+const gw = document.getElementById('galleryWrap');
+if (gw) {
+  gw.addEventListener('touchstart', e => tsX = e.touches[0].clientX, { passive: true });
+  gw.addEventListener('touchend', e => {
+    const diff = tsX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) galStep(diff > 0 ? 1 : -1);
+  }, { passive: true });
+}
+
+// ── Test Drive Modal ──
+function openTD() { document.getElementById('tdModal').classList.add('open'); }
+function closeTD() { document.getElementById('tdModal').classList.remove('open'); }
+document.getElementById('tdModal').addEventListener('click', function(e) {
+  if (e.target === this) closeTD();
+});
+</script>
+{% endblock %}

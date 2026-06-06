@@ -1,0 +1,93 @@
+{% extends "user/base.html" %}
+{% block title %}Contact Us — Caryanams{% endblock %}
+
+{% block content %}
+<div style="background:var(--navy);padding:40px 5%;text-align:center">
+  <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:white;margin-bottom:8px">Get In Touch</div>
+  <div style="font-size:15px;color:rgba(255,255,255,0.6)">We're here to help with all your automobile needs</div>
+</div>
+
+<div class="contact-grid">
+  <!-- Contact Form -->
+  <div class="contact-card">
+    <div class="contact-card-title"><i class="fas fa-envelope" style="color:var(--gold-accent);margin-right:8px"></i>Send a Message</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat, msg in messages %}
+        <div class="alert-box alert-{{ cat }}"><i class="fas fa-check-circle"></i> {{ msg }}</div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('user.contact') }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Name *</label>
+          <input type="text" name="name" class="inq-input" placeholder="Your full name" required style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Email *</label>
+          <input type="email" name="email" class="inq-input" placeholder="your@email.com" required style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Phone</label>
+          <input type="tel" name="phone" class="inq-input" placeholder="+91 XXXXX XXXXX" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Subject</label>
+          <select name="subject" class="inq-input" style="width:100%">
+            <option>General Inquiry</option>
+            <option>Buy a Car</option>
+            <option>Sell / Trade-in</option>
+            <option>Dealer Registration</option>
+            <option>Technical Support</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Message *</label>
+          <textarea name="message" class="inq-input" style="width:100%;min-height:120px;resize:none" placeholder="How can we help you?" required></textarea>
+        </div>
+        <button type="submit" class="btn-inquire">
+          <i class="fas fa-paper-plane"></i> Send Message
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Contact Info -->
+  <div style="display:flex;flex-direction:column;gap:20px">
+    <div class="contact-card">
+      <div class="contact-card-title"><i class="fas fa-info-circle" style="color:var(--gold-accent);margin-right:8px"></i>Contact Details</div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        {% for icon, label, val in [
+          ('envelope', 'Email', 'info@Caryanams.com'),
+          ('phone', 'Phone', '+91 1800 2022011'),
+          ('map-marker-alt', 'Address', 'Ahmedabad, Gujrat, India'),
+          ('clock', 'Working Hours', 'Mon–Sat: 10AM – 7PM'),
+        ] %}
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="width:36px;height:36px;background:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="fas fa-{{ icon }}" style="color:var(--navy);font-size:14px"></i>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted)">{{ label }}</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">{{ val }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="contact-card" style="background:var(--navy);border-color:var(--navy)">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:white;margin-bottom:8px">
+        <i class="fas fa-store" style="color:var(--gold-accent)"></i> Are You a Dealer?
+      </div>
+      <div style="font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:16px;line-height:1.6">
+        Join Caryanams DMS and manage your dealership with our complete platform — inventory, CRM, finance & more.
+      </div>
+      <a href="{{ url_for('auth.register') }}" style="display:block;padding:12px 20px;background:var(--gold);color:var(--navy);border-radius:8px;font-weight:700;font-size:14px;text-decoration:none;text-align:center">
+        Register as Dealer — Free
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
