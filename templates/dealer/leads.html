@@ -1,0 +1,150 @@
+{% extends "dealer/base.html" %}
+{% block title %}CRM Leads — Caryanams{% endblock %}
+{% block page_title %}CRM / Leads{% endblock %}
+
+{% block content %}
+<!-- Stage Tabs (scrollable on mobile) -->
+<div class="stage-tabs mb-16" style="overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
+  <a href="{{ url_for('dealer.leads') }}" class="stage-tab {% if not stage_filter %}active{% endif %}">
+    All <span class="count">{{ stage_counts.values() | sum }}</span>
+  </a>
+  {% for s in stages %}
+  <a href="{{ url_for('dealer.leads', stage=s) }}" class="stage-tab {% if stage_filter == s %}active{% endif %}">
+    {{ s.replace('_',' ').title() }}
+    <span class="count">{{ stage_counts[s] }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+<!-- Filter + Actions -->
+<form method="GET">
+  <input type="hidden" name="stage" value="{{ stage_filter }}">
+  <div class="filter-bar mb-16" style="flex-wrap:wrap;gap:8px;">
+    <div class="search-box" style="flex:1;min-width:160px;">
+      <i class="fas fa-search"></i>
+      <input type="text" name="search" placeholder="Search name, phone..." value="{{ search }}">
+    </div>
+    <button type="submit" class="btn btn-navy"><i class="fas fa-search"></i> Search</button>
+    <a href="{{ url_for('dealer.add_lead') }}" class="btn btn-primary"><i class="fas fa-user-plus"></i> Add Lead</a>
+  </div>
+</form>
+
+<!-- Leads Table -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      {% if stage_filter %}{{ stage_filter.replace('_',' ').title() }} Leads{% else %}All Leads{% endif %}
+      <span style="font-size:14px;font-weight:400;color:var(--text-secondary)">({{ total }})</span>
+    </div>
+    <span style="font-size:12px;color:var(--text-secondary)">Page {{ current_page }}/{{ total_pages }}</span>
+  </div>
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Customer</th><th>Vehicle Interest</th><th>Assigned Agent</th>
+          <th>Stage</th><th>Source</th><th>Budget</th><th>Follow-up</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in leads %}
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px;">#{{ lead['id'] }}</td>
+          <td>
+            <div style="font-weight:600;color:var(--navy)">{{ lead['customer_name'] }}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">{{ lead['customer_phone'] }}</div>
+            {% if lead['customer_email'] %}
+            <div style="font-size:11px;color:var(--text-muted)">{{ lead['customer_email'] }}</div>
+            {% endif %}
+          </td>
+          <td>
+            {% if lead.vehicle %}
+            <div style="font-size:13px;font-weight:600">{{ lead.vehicle.make }} {{ lead.vehicle.model }}</div>
+            <div style="font-size:11px;color:var(--text-secondary)">₹{{ "{:,.0f}".format(lead.vehicle.price) }}</div>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if lead.agent %}
+            <span class="badge badge-info">
+              <i class="fas fa-user-check"></i> {{ lead.agent.name }}
+            </span>
+            {% else %}
+            <span class="badge badge-warning">Unassigned</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {% if lead['stage'] == 'converted' %}badge-success{% elif lead['stage'] == 'lost' %}badge-danger{% elif lead['stage'] == 'new' %}badge-info{% elif lead['stage'] == 'negotiation' %}badge-warning{% elif lead['stage'] == 'connected' %}badge-success{% elif lead['stage'] == 'not_connected' %}badge-danger{% else %}badge-navy{% endif %}">
+              {{ lead['stage'].replace('_',' ') }}
+            </span>
+          </td>
+          <td>
+            <span class="badge badge-navy">{{ lead['source'] }}</span>
+            {% if lead['source'] == 'admin' %}
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Admin assigned</div>
+            {% endif %}
+          </td>
+          <td>{% if lead['budget'] %}<span style="font-weight:600">₹{{ "{:,.0f}".format(lead['budget']) }}</span>{% else %}—{% endif %}</td>
+          <td>
+            {% if lead['follow_up_date'] %}
+            <div style="font-size:12px">{{ lead['follow_up_date'].strftime('%d %b %Y') }}</div>
+            <div style="font-size:11px;color:var(--text-muted)">{{ lead['follow_up_date'].strftime('%H:%M') }}</div>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <a href="{{ url_for('dealer.edit_lead', lid=lead['id']) }}" class="btn btn-sm btn-primary">Edit</a>
+              <form method="POST" action="{{ url_for('dealer.delete_lead', lid=lead['id']) }}" id="del_l_{{ lead['id'] }}">
+                <button type="button" onclick="confirmDelete('del_l_{{ lead['id'] }}', 'Delete lead for {{ lead['customer_name'] }}?')" class="btn btn-sm btn-danger btn-icon"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9"><div class="empty-state"><i class="fas fa-user-slash"></i><h3>No leads found</h3><a href="{{ url_for('dealer.add_lead') }}" class="btn btn-primary mt-16">Add First Lead</a></div></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:16px;flex-wrap:wrap;">
+    {% if current_page > 1 %}
+    <a href="{{ url_for('dealer.leads', page=current_page-1, stage=stage_filter, search=search) }}"
+       class="btn btn-sm btn-navy">← Prev</a>
+    {% endif %}
+    {% for p in range(1, total_pages+1) %}
+      {% if p == current_page %}
+      <span style="padding:6px 12px;border-radius:8px;background:var(--navy);color:#fff;font-size:13px;font-weight:600;">{{ p }}</span>
+      {% elif (p <= 2 or p >= total_pages-1 or (p >= current_page-2 and p <= current_page+2)) %}
+      <a href="{{ url_for('dealer.leads', page=p, stage=stage_filter, search=search) }}"
+         style="padding:6px 12px;border-radius:8px;border:1px solid #e5e7eb;font-size:13px;color:var(--navy);text-decoration:none;">{{ p }}</a>
+      {% elif p == 3 and current_page > 5 %}
+      <span style="color:#9ca3af;">…</span>
+      {% elif p == total_pages-2 and current_page < total_pages-4 %}
+      <span style="color:#9ca3af;">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if current_page < total_pages %}
+    <a href="{{ url_for('dealer.leads', page=current_page+1, stage=stage_filter, search=search) }}"
+       class="btn btn-sm btn-navy">Next →</a>
+    {% endif %}
+    <span style="font-size:12px;color:var(--text-secondary);margin-left:8px;">
+      {{ (current_page-1)*20+1 }}–{{ [current_page*20, total]|min }} of {{ total }}
+    </span>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function confirmDelete(formId, msg) {
+  if (confirm(msg || 'Are you sure?')) {
+    document.getElementById(formId).submit();
+  }
+}
+</script>
+{% endblock %}

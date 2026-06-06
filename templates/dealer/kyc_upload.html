@@ -1,0 +1,207 @@
+{% extends "dealer/base.html" %}
+{% block title %}KYC Verification — CarYanams DMS{% endblock %}
+{% block page_title %}KYC Verification{% endblock %}
+
+{% block content %}
+<div style="max-width:760px;margin:0 auto;">
+
+  <!-- Warning Banner -->
+  <div style="background:rgba(255,153,68,0.1);border:1px solid rgba(255,153,68,0.35);border-radius:12px;padding:20px 24px;margin-bottom:28px;display:flex;align-items:flex-start;gap:16px;">
+    <div style="font-size:32px;line-height:1;">⚠️</div>
+    <div>
+      <div style="font-weight:700;font-size:16px;color:var(--navy);margin-bottom:4px;">KYC Verification Required</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
+        Complete your KYC verification to continue using the DMS.
+        Upload the required documents below. Your documents will be reviewed by our admin team.
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Summary -->
+  {% if kyc %}
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
+    {% for field, label in [('aadhaar_front','Aadhaar Front'),('aadhaar_back','Aadhaar Back'),('pan_card','PAN Card')] %}
+    {% set val = kyc|attr(field) %}
+    <div id="status_{{ field }}" style="background:var(--card-bg);border:1px solid {% if val %}rgba(34,197,94,0.3){% else %}rgba(239,68,68,0.3){% endif %};border-radius:10px;padding:14px 16px;text-align:center;">
+      <div style="font-size:22px;margin-bottom:6px;">{% if val %}✅{% else %}❌{% endif %}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--navy);">{{ label }}</div>
+      <div style="font-size:11px;color:{% if val %}#16a34a{% else %}#dc2626{% endif %};margin-top:2px;">
+        {% if val %}Uploaded{% else %}Missing{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if kyc.kyc_status == 'approved' %}
+  <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:16px 20px;margin-bottom:24px;font-size:14px;color:#15803d;font-weight:600;">
+    ✅ Your KYC has been approved! You have full access to the DMS.
+  </div>
+  {% elif kyc.kyc_status == 'rejected' %}
+  <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+    <div style="font-size:14px;color:#dc2626;font-weight:600;margin-bottom:4px;">❌ KYC Rejected — Please re-upload documents.</div>
+    {% if kyc.rejection_reason %}<div style="font-size:13px;color:var(--text-secondary);">Reason: {{ kyc.rejection_reason }}</div>{% endif %}
+  </div>
+  {% elif kyc.aadhaar_front and kyc.aadhaar_back and kyc.pan_card %}
+  <div style="background:rgba(255,153,68,0.08);border:1px solid rgba(255,153,68,0.25);border-radius:10px;padding:16px 20px;margin-bottom:24px;font-size:14px;color:#b45309;font-weight:600;">
+    ⏳ Documents uploaded — awaiting admin review.
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <!-- Upload Form -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-id-card" style="margin-right:8px;color:var(--gold-accent)"></i>Upload KYC Documents</div>
+    </div>
+    <div class="card-body" style="padding:24px;">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
+        Allowed formats: JPG, JPEG, PNG, WEBP &nbsp;·&nbsp; Max size: 10 MB per file
+      </p>
+
+      <form method="POST" action="{{ url_for('dealer.kyc_submit') }}" enctype="multipart/form-data">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:24px;">
+
+          {% for field, label, icon in [('aadhaar_front','Aadhaar Front','🪪'),('aadhaar_back','Aadhaar Back','🪪'),('pan_card','PAN Card','💳')] %}
+          {% set val = kyc|attr(field) if kyc else None %}
+          {% if val %}
+            {% set doc_url = url_for('static', filename='uploads/dealers/' ~ g.user['id'] ~ '/' ~ val) %}
+          {% else %}
+            {% set doc_url = '' %}
+          {% endif %}
+
+          <div class="form-group">
+
+            <!-- Title + badge -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <label style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;margin:0;">
+                {{ icon }} {{ label }}
+              </label>
+              <span id="badge_{{ field }}"
+                style="font-size:10px;font-weight:700;background:rgba(255,153,68,0.12);color:#b45309;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,153,68,0.35);{% if not val %}display:none;{% endif %}">
+                Pending Review
+              </span>
+            </div>
+
+            <!-- Preview box -->
+            <!-- If value exists (saved in DB = submitted) disable click, otherwise allow click to upload -->
+            <div id="preview_{{ field }}"
+                 style="width:100%;height:130px;border:2px solid var(--card-border);border-radius:10px;overflow:hidden;background:var(--bg-surface,#f9f9f9);position:relative;{% if not val %}cursor:pointer;{% endif %}"
+                 {% if not val %}onclick="document.getElementById('file_{{ field }}').click()"{% endif %}>
+              {% if val %}
+                <img src="{{ doc_url }}"
+                     style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" alt="{{ label }}"
+                     onerror="this.style.display='none'">
+              {% else %}
+                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#bbb;">
+                  <div style="font-size:28px;margin-bottom:6px;">📎</div>
+                  <div style="font-size:12px;font-weight:500;">Click to upload</div>
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Hidden file input -->
+            <input type="file"
+                   id="file_{{ field }}"
+                   name="{{ field }}"
+                   data-field="{{ field }}"
+                   accept=".jpg,.jpeg,.png,.webp"
+                   onchange="kycPreview(this)"
+                   style="display:none;">
+
+            <!-- Buttons wrapper -->
+            <div id="btns_{{ field }}" style="margin-top:10px;">
+              {% if val %}
+              <!-- Already saved in DB = submitted — show Download only, no Replace -->
+              <a href="{{ doc_url }}" download
+                 style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:50px;border:1.5px solid var(--card-border);background:#fff;font-size:13px;font-weight:600;color:var(--navy,#1a2e4a);text-decoration:none;cursor:pointer;"
+                 onclick="event.stopPropagation()">
+                ⬇ Download
+              </a>
+              {% else %}
+              <!-- Not yet uploaded — show Upload button -->
+              <button type="button"
+                 data-target="file_{{ field }}"
+                 onclick="document.getElementById(this.dataset.target).click()"
+                 style="width:100%;padding:10px;border-radius:50px;border:1.5px dashed var(--card-border);background:transparent;font-size:13px;font-weight:600;color:#888;cursor:pointer;">
+                📎 Upload {{ label }}
+              </button>
+              {% endif %}
+            </div>
+
+          </div>
+          {% endfor %}
+
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;padding:12px;">
+          <i class="fas fa-cloud-upload-alt"></i> &nbsp;Submit KYC Documents
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Logout -->
+  <div style="text-align:center;margin-top:20px;">
+    <a href="{{ url_for('auth.logout') }}" style="font-size:13px;color:var(--text-secondary);text-decoration:none;">← Logout</a>
+  </div>
+
+</div>
+
+<script>
+function kycPreview(input) {
+  var field = input.dataset.field;
+  var file = input.files[0];
+  if (!file) return;
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+
+    // 1. Show image in preview — keep preview box clickable (for replace)
+    var preview = document.getElementById('preview_' + field);
+    preview.style.cursor = 'pointer';
+    preview.onclick = function() { document.getElementById('file_' + field).click(); };
+
+    var img = document.createElement('img');
+    img.src = e.target.result;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;';
+    preview.innerHTML = '';
+    preview.appendChild(img);
+
+    // 2. Show both Download and Replace buttons (not yet submitted)
+    var blobUrl = URL.createObjectURL(file);
+
+    var dlLink = document.createElement('a');
+    dlLink.href = blobUrl;
+    dlLink.download = file.name;
+    dlLink.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:50px;border:1.5px solid var(--card-border);background:#fff;font-size:13px;font-weight:600;color:var(--navy,#1a2e4a);text-decoration:none;cursor:pointer;';
+    dlLink.textContent = '⬇ Download';
+    dlLink.onclick = function(ev) { ev.stopPropagation(); };
+
+    var rplBtn = document.createElement('button');
+    rplBtn.type = 'button';
+    rplBtn.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:50px;border:none;background:var(--navy,#1a2e4a);font-size:13px;font-weight:600;color:#fff;cursor:pointer;';
+    rplBtn.textContent = '↑ Replace';
+    rplBtn.onclick = function(ev) {
+      ev.stopPropagation();
+      document.getElementById('file_' + field).click();
+    };
+
+    var wrapper = document.createElement('div');
+    wrapper.style.cssText = 'display:flex;gap:8px;';
+    wrapper.appendChild(dlLink);
+    wrapper.appendChild(rplBtn);
+
+    var btnsDiv = document.getElementById('btns_' + field);
+    btnsDiv.innerHTML = '';
+    btnsDiv.appendChild(wrapper);
+
+    // 3. Show status badge
+    var badge = document.getElementById('badge_' + field);
+    if (badge) badge.style.display = '';
+  };
+
+  reader.readAsDataURL(file);
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "dealer/base.html" %}
+{% block title %}Subscription — Caryanams{% endblock %}
+{% block page_title %}Subscription Plans{% endblock %}
+
+{% block content %}
+<!-- Current Plan Banner -->
+<div class="card mb-24" style="background:linear-gradient(135deg,var(--navy-dark),var(--navy));color:white">
+  <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+    <div>
+      <div style="font-family:'Montserrat',sans-serif;font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:2px;opacity:0.7">Current Plan</div>
+      <div style="font-family:'Oswald',sans-serif;font-size:32px;font-weight:700;margin-top:4px">
+        {{ dealer.subscription_plan|title if dealer.subscription_plan else 'Starter' }}
+      </div>
+      {% if dealer.subscription_expiry %}
+      <div style="font-size:13px;opacity:0.7;margin-top:4px">
+        Valid until {{ dealer.subscription_expiry.strftime('%d %b %Y') }}
+      </div>
+      {% endif %}
+    </div>
+    <div>
+      <span class="badge badge-success" style="font-size:14px;padding:8px 16px">
+        <i class="fas fa-check-circle"></i> Active
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Plans Grid -->
+<div class="plans-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px">
+  {% for plan in plans %}
+  <div class="card" style="{% if plan.recommended %}border:2px solid var(--gold-accent);position:relative{% endif %}">
+    {% if plan.recommended %}
+    <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--gold-accent);color:white;padding:4px 16px;border-radius:20px;font-size:12px;font-weight:700">
+      <i class="fas fa-star"></i> RECOMMENDED
+    </div>
+    {% endif %}
+    
+    <div class="card-body" style="text-align:center">
+      <div style="font-family:'Montserrat',sans-serif;font-size:22px;font-weight:800;color:var(--navy)">{{ plan.name }}</div>
+      <div style="margin:20px 0">
+        <span style="font-family:'Oswald',sans-serif;font-size:48px;font-weight:800;color:var(--navy)">₹{{ plan.price }}</span>
+        <span style="font-size:14px;color:var(--text-muted)">/{{ plan.period }}</span>
+      </div>
+      
+      <ul style="list-style:none;text-align:left;margin:24px 0;padding:0">
+        {% for feature in plan.features %}
+        <li style="padding:8px 0;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--card-border)">
+          <i class="fas fa-check-circle" style="color:var(--success);font-size:14px"></i>
+          <span style="font-size:14px">{{ feature }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      
+      {% if dealer.subscription_plan == plan.name|lower %}
+      <button class="btn btn-success" style="width:100%" disabled>
+        <i class="fas fa-check"></i> Current Plan
+      </button>
+      {% else %}
+      <form method="POST" action="{{ url_for('dealer.upgrade_subscription', plan=plan.name|lower) }}">
+        <button type="submit" class="btn btn-primary" style="width:100%">
+          <i class="fas fa-crown"></i> Upgrade to {{ plan.name }}
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Features Comparison -->
+<div class="card mt-24">
+  <div class="card-header">
+    <div class="card-title"><i class="fas fa-chart-line"></i> Plan Comparison</div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th><th>Starter</th><th>Growth</th><th>Pro</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Listings</td><td>25</td><td>100</td><td>Unlimited</td></tr>
+        <tr><td>Leads / Month</td><td>50</td><td>500</td><td>Unlimited</td></tr>
+        <tr><td>CRM & Lead Assignment</td><td>Basic</td><td><i class="fas fa-check" style="color:var(--success)"></i> Full</td><td><i class="fas fa-check" style="color:var(--success)"></i> Full</td></tr>
+        <tr><td>EMI Calculator</td><td>-</td><td><i class="fas fa-check" style="color:var(--success)"></i></td><td><i class="fas fa-check" style="color:var(--success)"></i></td></tr>
+        <tr><td>Analytics Dashboard</td><td>-</td><td><i class="fas fa-check" style="color:var(--success)"></i></td><td><i class="fas fa-check" style="color:var(--success)"></i></td></tr>
+        <tr><td>Multi-Branch Support</td><td>-</td><td>-</td><td><i class="fas fa-check" style="color:var(--success)"></i></td></tr>
+        <tr><td>Staff Roles & Logs</td><td>-</td><td>-</td><td><i class="fas fa-check" style="color:var(--success)"></i></td></tr>
+        <tr><td>Priority Support</td><td>-</td><td><i class="fas fa-check" style="color:var(--success)"></i></td><td><i class="fas fa-check" style="color:var(--success)"></i></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

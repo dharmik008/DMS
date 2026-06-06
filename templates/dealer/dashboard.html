@@ -1,0 +1,227 @@
+{% extends "dealer/base.html" %}
+{% block title %}Dashboard — Caryanams{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-car-side"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ total_vehicles }}</div>
+      <div class="stat-label">Total Inventory</div>
+      <div class="stat-change up"><i class="fas fa-circle" style="font-size:8px"></i> {{ available }} available</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-user-tag"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ total_leads }}</div>
+      <div class="stat-label">Total Leads</div>
+      <div class="stat-change" style="color:var(--warning)"><i class="fas fa-circle" style="font-size:8px"></i> {{ new_leads }} new</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-handshake"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ total_deals }}</div>
+      <div class="stat-label">Total Deals</div>
+      <div class="stat-change up"><i class="fas fa-circle" style="font-size:8px"></i> {{ delivered }} delivered</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-rupee-sign"></i></div>
+    <div class="stat-info">
+      <div class="stat-value" style="font-size:18px">₹{{ "{:,.0f}".format(revenue) }}</div>
+      <div class="stat-label">Total Revenue</div>
+      <div class="stat-change up"><i class="fas fa-arrow-up"></i> From delivered deals</div>
+    </div>
+  </div>
+</div>
+
+<!-- Pipeline + Charts Row -->
+<div class="grid-2 mb-24">
+  <!-- Lead Pipeline -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-filter" style="margin-right:8px;color:var(--gold-accent)"></i>Lead Pipeline</div>
+      <a href="{{ url_for('dealer.leads') }}" class="btn btn-sm btn-outline">View All</a>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        {% for stage, count in lead_stages.items() %}
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:90px;font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:capitalize">{{ stage.replace('_',' ') }}</div>
+          <div style="flex:1;background:var(--bg);border-radius:20px;height:10px;overflow:hidden">
+            <div style="width:{% set tot = lead_stages.values()|list|sum %}{% if tot > 0 %}{{ (count / tot * 100)|round|int }}{% else %}0{% endif %}%;height:100%;background:{% if stage == 'converted' %}var(--success){% elif stage == 'lost' %}var(--danger){% else %}var(--navy-mid){% endif %};border-radius:20px;transition:width 0.8s"></div>
+          </div>
+          <div style="width:28px;text-align:right;font-size:13px;font-weight:700;color:var(--navy)">{{ count }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <canvas id="leadChart" width="0" height="0" style="display:none"></canvas>
+      <span id="leadData" style="display:none">{{ [lead_stages['new'], lead_stages['contacted'], lead_stages['interested'], lead_stages['test_drive'], lead_stages['negotiation'], lead_stages['converted']] | tojson }}</span>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-bolt" style="margin-right:8px;color:var(--gold-accent)"></i>Quick Actions</div>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <a href="{{ url_for('dealer.add_vehicle') }}" class="btn btn-primary" style="justify-content:center;padding:16px">
+          <i class="fas fa-plus-circle"></i> Add Vehicle
+        </a>
+        <a href="{{ url_for('dealer.add_lead') }}" class="btn btn-navy" style="justify-content:center;padding:16px">
+          <i class="fas fa-user-plus"></i> Add Lead
+        </a>
+        <a href="{{ url_for('dealer.add_deal') }}" class="btn btn-outline" style="justify-content:center;padding:16px">
+          <i class="fas fa-file-contract"></i> New Deal
+        </a>
+                <a href="{{ url_for('dealer.reports') }}" class="btn btn-outline" style="justify-content:center;padding:16px">
+          <i class="fas fa-chart-bar"></i> Reports
+        </a>
+      </div>
+      <!-- Caryanams Studio CTA -->
+      <a href="{{ url_for('background.background_removal') }}" style="display:flex;align-items:center;gap:14px;margin-top:16px;padding:18px 20px;background:linear-gradient(135deg,#0f2444 0%,#1e3a5f 60%,#2a5298 100%);border-radius:12px;text-decoration:none;border:1px solid rgba(255,215,0,.25);transition:.2s" onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+        <div style="width:46px;height:46px;background:gold;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas fa-magic" style="font-size:20px;color:#0f2444"></i>
+        </div>
+        <div>
+          <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;color:#fff;letter-spacing:.3px">Caryanams STUDIO</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px">AI Background Removal · Photo Compositor</div>
+        </div>
+        <i class="fas fa-arrow-right" style="margin-left:auto;color:gold;font-size:16px"></i>
+      </a>
+
+      <div style="margin-top:20px;padding:16px;background:var(--gold);border-radius:var(--radius);border:1px solid var(--gold-dark)">
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px">
+          <i class="fas fa-store"></i> Marketplace Status
+        </div>
+        <div style="font-size:13px;color:var(--text-secondary)">{{ available }} vehicles listed on Caryanams marketplace</div>
+        <a href="{{ url_for('user.home') }}" target="_blank" class="btn btn-sm btn-navy" style="margin-top:10px">
+          <i class="fas fa-external-link-alt"></i> View Marketplace
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Leads + Deals -->
+<div class="grid-2">
+  <!-- Recent Leads -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Recent Leads</div>
+      <a href="{{ url_for('dealer.leads') }}" class="btn btn-sm btn-outline">View All</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Customer</th><th>Stage</th><th>Source</th><th>Action</th></tr></thead>
+        <tbody>
+          {% for lead in recent_leads %}
+          <tr>
+            <td>
+              <div style="font-weight:600;color:var(--navy)">{{ lead['customer_name'] }}</div>
+              <div style="font-size:12px;color:var(--text-secondary)">{{ lead['customer_phone'] }}</div>
+            </td>
+            <td>
+              <span class="badge {% if lead['stage'] == 'converted' %}badge-success{% elif lead['stage'] == 'lost' %}badge-danger{% elif lead['stage'] == 'new' %}badge-info{% else %}badge-warning{% endif %}">
+                {{ lead['stage'].replace('_',' ') }}
+              </span>
+            </td>
+            <td><span class="badge badge-navy">{{ lead['source'] }}</span></td>
+            <td><a href="{{ url_for('dealer.edit_lead', lid=lead['id']) }}" class="btn btn-sm btn-primary">Edit</a></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted" style="padding:20px">No leads yet. <a href="{{ url_for('dealer.add_lead') }}">Add one</a></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Deals -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Recent Deals</div>
+      <a href="{{ url_for('dealer.deals') }}" class="btn btn-sm btn-outline">View All</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Customer</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for deal in recent_deals %}
+          <tr>
+            <td>
+              <div style="font-weight:600;color:var(--navy)">{{ deal['customer_name'] }}</div>
+              <div style="font-size:12px;color:var(--text-secondary)">{{ deal['payment_mode'] }}</div>
+            </td>
+            <td style="font-weight:700;color:var(--navy)">₹{{ "{:,.0f}".format(deal['final_price']) }}</td>
+            <td>
+              <span class="badge {% if deal['status'] == 'delivered' %}badge-success{% elif deal['status'] == 'cancelled' %}badge-danger{% elif deal['status'] == 'finalized' %}badge-info{% else %}badge-warning{% endif %}">
+                {{ deal['status'] }}
+              </span>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3" class="text-center text-muted" style="padding:20px">No deals yet</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# ── FIXED: Recent Inquiries Widget ──────────────────────────────────────────
+   inquiries_get_by_dealer() is already called in the dashboard route.
+   We use bracket notation (inq['key']) because the route returns plain dicts,
+   not ORM objects.
+#}
+{% if recent_inquiries %}
+<div class="card mt-24">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fas fa-bell" style="margin-right:8px;color:var(--gold-accent)"></i>
+      Recent Inquiries
+      {% if pending_inquiries %}
+      <span class="badge badge-warning" style="margin-left:8px">{{ pending_inquiries }} pending</span>
+      {% endif %}
+    </div>
+    <a href="{{ url_for('dealer.inquiries') }}" class="btn btn-sm btn-outline">View All</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Customer</th><th>Vehicle</th><th>Type</th><th>Status</th><th>Date</th></tr>
+      </thead>
+      <tbody>
+        {% for inq in recent_inquiries %}
+        <tr>
+          <td>
+            <div style="font-weight:600;color:var(--navy)">{{ inq['name'] }}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">{{ inq['phone'] }}</div>
+          </td>
+          <td>
+            {% if inq['vehicle'] %}
+            <div style="font-size:13px;font-weight:600">{{ inq['vehicle']['make'] }} {{ inq['vehicle']['model'] }}</div>
+            <div style="font-size:11px;color:var(--text-secondary)">{{ inq['vehicle']['year'] }}</div>
+            {% else %}—{% endif %}
+          </td>
+          <td><span class="badge badge-navy">{{ inq['inquiry_type'].replace('_',' ').title() }}</span></td>
+          <td>
+            <span class="badge {% if inq['status'] == 'responded' %}badge-success{% else %}badge-warning{% endif %}">
+              {{ inq['status'] }}
+            </span>
+          </td>
+          <td style="font-size:12px;color:var(--text-secondary)">{{ inq['created_at'].strftime('%d %b') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

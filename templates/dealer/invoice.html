@@ -1,0 +1,170 @@
+{% extends "dealer/base.html" %}
+{% block title %}Invoice #{{ deal['id'] }} — Caryanams DMS{% endblock %}
+{% block page_title %}Invoice #{{ deal['id'] }}{% endblock %}
+
+{% block extra_head %}
+<style>
+@media print {
+  .sidebar, .topbar, .flash-container, .no-print { display: none !important; }
+  .main-content { margin-left: 0 !important; }
+  .page-content { padding: 0 !important; }
+  .invoice-wrapper { max-width: 100% !important; }
+  body { background: white !important; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="invoice-wrapper" style="max-width:820px">
+  <div class="no-print" style="display:flex;gap:12px;margin-bottom:24px">
+    <a href="{{ url_for('dealer.deals') }}" class="btn btn-outline btn-lg"><i class="fas fa-arrow-left"></i> Back to Deals</a>
+  </div>
+
+  <div class="card">
+    <!-- Invoice Header -->
+    <div style="background:var(--navy);padding:32px;border-radius:12px 12px 0 0">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Caryanams" style="height:48px;object-fit:contain;margin-bottom:8px;display:block;">
+          <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--gold);letter-spacing:2px">Caryanams</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:4px">Automobile Sales Invoice</div>
+          {% if dealer['company'] %}
+          <div style="color:var(--white);font-weight:600;margin-top:12px;font-size:15px">{{ dealer['company'] }}</div>
+          {% endif %}
+          {% if dealer['gst'] %}
+          <div style="color:rgba(255,255,255,0.6);font-size:12px">GSTIN: {{ dealer['gst'] }}</div>
+          {% endif %}
+          <div style="color:rgba(255,255,255,0.6);font-size:12px">{{ dealer['city'] or '' }}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:12px">{{ dealer['phone'] or '' }}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--gold)">INVOICE</div>
+          <div style="color:var(--white);font-size:20px;font-weight:800;margin-top:4px">#INV-{{ "%04d"|format(deal['id']) }}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:8px">Date: {{ deal['created_at']|fmtdate('%d %B %Y') }}</div>
+          <div style="margin-top:8px">
+            <span style="background:{% if deal['status'] == 'delivered' %}#1A8A4A{% else %}#B8860B{% endif %};color:white;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;text-transform:uppercase">
+              {{ deal['status'] }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:32px">
+      <!-- Customer & Vehicle Info -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:8px">Bill To</div>
+          <div style="font-size:17px;font-weight:700;color:var(--navy)">{{ deal['customer_name'] }}</div>
+          {% if deal['customer_phone'] %}<div style="color:var(--text-secondary);font-size:13px;margin-top:4px"><i class="fas fa-phone"></i> {{ deal['customer_phone'] }}</div>{% endif %}
+          {% if deal['customer_email'] %}<div style="color:var(--text-secondary);font-size:13px"><i class="fas fa-envelope"></i> {{ deal['customer_email'] }}</div>{% endif %}
+        </div>
+        {% if vehicle %}
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:8px">Vehicle Details</div>
+          <div style="font-size:17px;font-weight:700;color:var(--navy)">{{ vehicle['year'] }} {{ vehicle['make'] }} {{ vehicle['model'] }}</div>
+          <div style="color:var(--text-secondary);font-size:13px;margin-top:4px">{{ vehicle['variant'] or '' }}</div>
+          {% if vehicle['registration_number'] %}<div style="color:var(--text-secondary);font-size:13px">Reg: {{ vehicle['registration_number'] }}</div>{% endif %}
+          {% if vehicle['vin_number'] %}<div style="color:var(--text-secondary);font-size:12px">VIN: {{ vehicle['vin_number'] }}</div>{% endif %}
+          <div style="color:var(--text-secondary);font-size:13px">{{ vehicle['fuel_type'] }} | {{ vehicle['transmission'] }} | {{ vehicle['color'] }}</div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Price Breakdown Table -->
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+        <thead>
+          <tr>
+            <th style="background:var(--navy);color:var(--gold);padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Description</th>
+            <th style="background:var(--navy);color:var(--gold);padding:12px 16px;text-align:right;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--card-border)">
+            <td style="padding:14px 16px">
+              <div style="font-weight:600;color:var(--navy)">Vehicle Sale — {{ vehicle['year'] if vehicle else '' }} {{ vehicle['make'] if vehicle else '' }} {{ vehicle['model'] if vehicle else '' }}</div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">{{ vehicle['variant'] or '' }} | {{ vehicle['fuel_type'] if vehicle else '' }}</div>
+            </td>
+            <td style="padding:14px 16px;text-align:right;font-weight:700;color:var(--navy);font-size:16px">₹{{ "{:,.2f}".format(deal['final_price']) }}</td>
+          </tr>
+          {% if deal['booking_amount'] and deal['booking_amount'] > 0 %}
+          <tr style="border-bottom:1px solid var(--card-border)">
+            <td style="padding:12px 16px;color:var(--text-secondary)">Booking Amount (Advance Paid)</td>
+            <td style="padding:12px 16px;text-align:right;color:var(--text-secondary)">— ₹{{ "{:,.2f}".format(deal['booking_amount']) }}</td>
+          </tr>
+          {% endif %}
+          <tr style="border-bottom:1px solid var(--card-border)">
+            <td style="padding:12px 16px;color:var(--text-secondary)">CGST @ 9%</td>
+            <td style="padding:12px 16px;text-align:right;color:var(--text-secondary)">₹{{ "{:,.2f}".format(deal['gst_amount'] / 2) }}</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--card-border)">
+            <td style="padding:12px 16px;color:var(--text-secondary)">SGST @ 9%</td>
+            <td style="padding:12px 16px;text-align:right;color:var(--text-secondary)">₹{{ "{:,.2f}".format(deal['gst_amount'] / 2) }}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--gold)">
+            <td style="padding:16px;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--navy)">TOTAL AMOUNT</td>
+            <td style="padding:16px;text-align:right;font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--navy)">₹{{ "{:,.2f}".format(deal['total_amount'] or deal['final_price']) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- Payment Mode -->
+      <div style="background:var(--bg);border-radius:var(--radius);padding:20px;margin-bottom:24px">
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);margin-bottom:12px">Payment Details</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted)">Payment Mode</div>
+            <div style="font-weight:700;color:var(--navy)">{{ deal['payment_mode'].title() }}</div>
+          </div>
+          {% if deal['payment_mode'] in ['loan','emi'] %}
+          <div>
+            <div style="font-size:11px;color:var(--text-muted)">Loan Amount</div>
+            <div style="font-weight:700;color:var(--navy)">₹{{ "{:,.0f}".format(deal['loan_amount'] or 0) }}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted)">Down Payment</div>
+            <div style="font-weight:700;color:var(--navy)">₹{{ "{:,.0f}".format(deal['down_payment'] or 0) }}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted)">Monthly EMI</div>
+            <div style="font-weight:700;color:var(--navy)">₹{{ "{:,.0f}".format(deal['emi_amount'] or 0) }} × {{ deal['emi_months'] }} months</div>
+          </div>
+          {% if deal['bank_name'] %}
+          <div>
+            <div style="font-size:11px;color:var(--text-muted)">Finance Partner</div>
+            <div style="font-weight:700;color:var(--navy)">{{ deal['bank_name'] }}</div>
+          </div>
+          {% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+      {% if deal['notes'] %}
+      <div style="margin-bottom:24px">
+        <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">NOTES</div>
+        <div style="font-size:13px;color:var(--text-primary);background:var(--bg);padding:12px;border-radius:8px;border-left:3px solid var(--navy)">{{ deal['notes'] }}</div>
+      </div>
+      {% endif %}
+
+      <!-- Footer -->
+      <div style="border-top:2px solid var(--card-border);padding-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:32px">Customer Signature</div>
+          <div style="border-top:1px solid var(--navy);padding-top:8px;font-size:12px;font-weight:600;color:var(--navy)">{{ deal['customer_name'] }}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:32px">Authorized Signatory</div>
+          <div style="border-top:1px solid var(--navy);padding-top:8px;font-size:12px;font-weight:600;color:var(--navy)">{{ dealer['name'] }} — {{ dealer['company'] or 'Dealer' }}</div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:24px;font-size:11px;color:var(--text-muted)">
+        Thank you for your purchase! • Generated by Caryanams<br>
+        This document is system generated and cannot be used for GST return or tax credit purposes; hence, it is not subject to GST compliance requirements.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

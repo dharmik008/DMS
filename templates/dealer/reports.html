@@ -1,0 +1,145 @@
+{% extends "dealer/base.html" %}
+{% block title %}Reports — Caryanams{% endblock %}
+{% block page_title %}Reports & Analytics{% endblock %}
+
+{% block content %}
+<!-- KPI Row -->
+<div class="stats-grid mb-24">
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-rupee-sign"></i></div>
+    <div class="stat-info">
+      <div class="stat-value" style="font-size:16px">₹{{ "{:,.0f}".format(total_revenue) }}</div>
+      <div class="stat-label">Total Revenue</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-car"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ total_inventory }}</div>
+      <div class="stat-label">Total Inventory</div>
+      <div class="stat-change up">{{ available_count }} available • {{ sold_count }} sold</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-user-check"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ conversion_rate }}%</div>
+      <div class="stat-label">Lead Conversion</div>
+      <div class="stat-change up">{{ converted }}/{{ total_leads }} leads converted</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ all_deals|length }}</div>
+      <div class="stat-label">Total Deals</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2 mb-24">
+  <!-- Monthly Revenue Chart -->
+  <div class="chart-container">
+    <div class="chart-title"><i class="fas fa-chart-bar" style="margin-right:8px;color:var(--gold-accent)"></i>Monthly Revenue (Last 6 Months)</div>
+    <canvas id="revenueChart" width="480" height="220"></canvas>
+    <span id="revenueLabels" style="display:none">{{ monthly | map(attribute='month') | list | tojson }}</span>
+    <span id="revenueValues" style="display:none">{{ monthly | map(attribute='revenue') | list | tojson }}</span>
+  </div>
+
+  <!-- Lead Sources -->
+  <div class="chart-container">
+    <div class="chart-title"><i class="fas fa-chart-pie" style="margin-right:8px;color:var(--gold-accent)"></i>Lead Sources</div>
+    {% if sources %}
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+      {% set total_leads_for_pct = sources | sum(attribute='cnt') %}
+      {% for s in sources %}{% set source=s['source'] %}{% set count=s['cnt'] %}
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:80px;font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:capitalize">{{ source }}</div>
+        <div style="flex:1;background:var(--bg);border-radius:20px;height:12px;overflow:hidden">
+          <div style="width:{{ (count/total_leads_for_pct*100)|round }}%;height:100%;background:var(--navy-mid);border-radius:20px"></div>
+        </div>
+        <div style="width:30px;text-align:right;font-size:13px;font-weight:700;color:var(--navy)">{{ count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:30px"><i class="fas fa-chart-pie"></i><p>No lead data</p></div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2 mb-24">
+  <!-- Fuel Type Breakdown -->
+  <div class="chart-container">
+    <div class="chart-title"><i class="fas fa-gas-pump" style="margin-right:8px;color:var(--gold-accent)"></i>Inventory by Fuel Type</div>
+    {% if fuels %}
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+      {% set total_fuel = fuels | sum(attribute='cnt') %}
+      {% for f2 in fuels %}{% set fuel=f2['fuel_type'] %}{% set count=f2['cnt'] %}
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:70px;font-size:12px;font-weight:600;color:var(--text-secondary)">{{ fuel }}</div>
+        <div style="flex:1;background:var(--bg);border-radius:20px;height:12px;overflow:hidden">
+          <div style="width:{{ (count/total_fuel*100)|round }}%;height:100%;background:{% if fuel == 'Electric' %}#1A8A4A{% elif fuel == 'Diesel' %}#002366{% elif fuel == 'CNG' %}#1565C0{% else %}#C8A96E{% endif %};border-radius:20px"></div>
+        </div>
+        <div style="width:30px;text-align:right;font-size:13px;font-weight:700;color:var(--navy)">{{ count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:30px"><i class="fas fa-gas-pump"></i><p>No inventory data</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Inventory Aging -->
+  <div class="chart-container">
+    <div class="chart-title"><i class="fas fa-clock" style="margin-right:8px;color:var(--gold-accent)"></i>Inventory Summary</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+      <div style="background:var(--success-bg);border-radius:var(--radius);padding:16px;text-align:center;border:1px solid #A8D5BC">
+        <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--success)">{{ available_count }}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--success)">Available</div>
+      </div>
+      <div style="background:var(--danger-bg);border-radius:var(--radius);padding:16px;text-align:center;border:1px solid #F0B9B5">
+        <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--danger)">{{ sold_count }}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--danger)">Sold</div>
+      </div>
+      <div style="background:var(--warning-bg);border-radius:var(--radius);padding:16px;text-align:center;border:1px solid #FFD54F;grid-column:1/-1">
+        <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--warning)">{{ total_inventory - available_count - sold_count }}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--warning)">Other (Reserved / Trade-In)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Deal History Table -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Deal History</div>
+    <a href="{{ url_for('dealer.deals') }}" class="btn btn-sm btn-outline">View All</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Customer</th><th>Vehicle</th><th>Amount</th><th>Mode</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for deal in all_deals %}
+        <tr>
+          <td style="font-size:12px;color:var(--text-secondary)">{{ deal['created_at']|fmtdate('%d %b %Y') }}</td>
+          <td style="font-weight:600;color:var(--navy)">{{ deal['customer_name'] }}</td>
+          <td>{% if deal.vehicle %}{{ deal.vehicle.make }} {{ deal.vehicle.model }}{% endif %}</td>
+          <td style="font-weight:700">₹{{ "{:,.0f}".format(deal['final_price']) }}</td>
+          <td><span class="badge badge-navy">{{ deal['payment_mode'] }}</span></td>
+          <td>
+            <span class="badge {% if deal['status'] == 'delivered' %}badge-success{% elif deal['status'] == 'cancelled' %}badge-danger{% else %}badge-warning{% endif %}">
+              {{ deal['status'] }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted" style="padding:20px">No deals recorded yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

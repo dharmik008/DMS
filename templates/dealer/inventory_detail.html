@@ -1,0 +1,1043 @@
+{% extends "dealer/base.html" %}
+{% block title %}{{ vehicle['year'] }} {{ vehicle['make'] }} {{ vehicle['model'] }} — Caryanams{% endblock %}
+{% block page_title %}Vehicle Details{% endblock %}
+
+{% block content %}
+
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# Build image list: typed mandatory images ordered front-first, then gallery #}
+{# Falls back gracefully to old extra_images list for legacy vehicles         #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{% set primary_img = vehicle.get('image_filename') %}
+{% set typed_imgs  = vehicle.get('extra_images_typed') or [] %}
+
+{# Build label map for typed images #}
+{% set TYPE_LABELS = {
+  'front':      'Front',
+  'rear':       'Rear',
+  'right_side': 'Right Side',
+  'left_side':  'Left Side',
+  'engine':     'Engine',
+  'boot':       'Boot',
+  'interior':   'Interior',
+  'gallery':    ''
+} %}
+
+{# If we have typed data, build ordered list: front first, then others, then gallery #}
+{% if typed_imgs %}
+  {# Collect by type in display order #}
+  {% set ordered_types = ['front','rear','right_side','left_side','engine','boot','interior','gallery'] %}
+  {% set all_imgs_typed = [] %}
+  {% for t in ordered_types %}
+    {% for item in typed_imgs %}
+      {% if item.image_type == t %}
+        {% set _ = all_imgs_typed.append(item) %}
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+  {# If front image exists in typed set it becomes main; otherwise prepend primary_img #}
+  {% set has_front = all_imgs_typed | selectattr('image_type','equalto','front') | list | length > 0 %}
+  {% if not has_front and primary_img and primary_img not in ['default_car.jpg','None',''] %}
+    {# Prepend primary as untyped entry #}
+    {% set _ = all_imgs_typed.insert(0, {'filename': primary_img, 'image_type': 'primary'}) %}
+  {% endif %}
+  {% set all_imgs = all_imgs_typed | map(attribute='filename') | list %}
+{% else %}
+  {# Legacy fallback: plain extra_images list #}
+  {% set extra_imgs = vehicle.get('extra_images') or [] %}
+  {% set all_imgs   = ([primary_img] + extra_imgs) | select | list %}
+  {% set all_imgs_typed = [] %}
+  {% for f in all_imgs %}
+    {% set _ = all_imgs_typed.append({'filename': f, 'image_type': 'gallery'}) %}
+  {% endfor %}
+{% endif %}
+
+<div class="cy-detail-wrap">
+
+  {# ── Breadcrumb ──────────────────────────────────────────────────────────── #}
+  <nav class="cy-breadcrumb mb-16">
+    <a href="{{ url_for('dealer.inventory') }}"><i class="fas fa-arrow-left"></i> Inventory</a>
+    <span>/</span>
+    <span>{{ vehicle['year'] }} {{ vehicle['make'] }} {{ vehicle['model'] }}</span>
+  </nav>
+
+  <div class="cy-detail-grid">
+
+    {# ════════════════════════════════════════════════════════════════════════ #}
+    {# LEFT — GALLERY COLUMN                                                    #}
+    {# ════════════════════════════════════════════════════════════════════════ #}
+    <div class="cy-gallery-col">
+
+      {# ── UPDATED: gallery-container wraps the full gallery (mirrors static structure) #}
+      <div class="gallery-container">
+
+        {# ── Main Image ──────────────────────────────────────────────────────── #}
+        <div class="main-image cy-main-image-wrap" id="cyMainWrap">
+
+          {# UPDATED: left arrow — dynamic, calls shiftMain(-1) #}
+          <span class="arrow left" onclick="event.stopPropagation(); shiftMain(-1)">&#10094;</span>
+
+          {# UPDATED: src is first image from dynamic list; click opens lightbox #}
+          <img
+            id="mainImage"
+            src="{% if all_imgs and all_imgs[0] %}
+                    {{ url_for('static', filename='images/uploads/' + all_imgs[0]) }}
+                {% else %}
+                    {{ url_for('static', filename='images/defaults/default_car.jpg') }}
+                {% endif %}"
+            alt="{{ vehicle['make'] }} {{ vehicle['model'] }}"
+            class="cy-main-image"
+            data-index="0"
+            onclick="openLightbox(parseInt(this.dataset.index))"
+            onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/defaults/default_car.jpg') }}'" 
+          >
+
+          {# UPDATED: right arrow — dynamic, calls shiftMain(1) #}
+          <span class="arrow right" onclick="event.stopPropagation(); shiftMain(1)">&#10095;</span>
+
+          {# ADDED: image counter badge (1 / N) #}
+          <div class="cy-img-counter" id="cyCounter">
+            <i class="fas fa-images"></i>
+            <span id="cyCounterText">1 / {{ all_imgs|length }}</span>
+          </div>
+
+          {# ADDED: zoom hint on hover #}
+          <div class="cy-zoom-hint"><i class="fas fa-expand"></i> Click to expand</div>
+
+          {# ADDED: Mask Edit button on main image #}
+          {% if all_imgs_typed and all_imgs_typed[0].get('id') %}
+          <button id="cyMaskEditBtn"
+            onclick="event.stopPropagation(); cyOpenCurrentMaskEdit()"
+            title="Mask Edit — Remove BG + Number Plate"
+            style="position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#ff6b35,#f7c948);border:none;cursor:pointer;font-size:12px;padding:6px 11px;border-radius:8px;color:#111;font-weight:800;z-index:5;box-shadow:0 2px 8px rgba(0,0,0,0.4);">
+            🎨 Mask Edit
+          </button>
+          {% endif %}
+
+        </div>{# /.main-image #}
+
+        {# ── NO thumbnail strip — images navigated via Swap / arrows only ── #}
+        <div id="cyThumbStrip" style="display:none"></div>
+
+        {# ── Single Swap Bar — shows current image label + swap button ────── #}
+        {% if all_imgs|length > 0 %}
+        <div id="cySwapBar" style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;background:var(--card-bg,#151d2e);border:1.5px solid var(--card-border,rgba(255,255,255,.1));border-radius:10px;padding:8px 14px;">
+
+          {# Left: image type label + counter #}
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span id="cySwapLabel" style="font-size:13px;font-weight:800;color:var(--gold-accent,#ffd700);letter-spacing:.04em;">Front</span>
+            <span id="cySwapCounter" style="font-size:11px;color:var(--text-secondary,#8899aa);font-weight:600;">1 / {{ all_imgs|length }}</span>
+          </div>
+
+          {# Right: action buttons — Swap (cycle), Mask Edit, Replace #}
+          <div style="display:flex;align-items:center;gap:8px;">
+
+            {# Mask Edit button #}
+            {% if all_imgs_typed and all_imgs_typed[0].get('id') %}
+            <button id="cySwapMaskBtn"
+              onclick="cySwapMaskEdit()"
+              title="Mask Edit"
+              style="background:linear-gradient(135deg,#ff6b35,#f7c948);border:none;cursor:pointer;font-size:11px;padding:5px 10px;border-radius:7px;color:#111;font-weight:900;display:flex;align-items:center;gap:4px;">
+              🎨 Edit
+            </button>
+            {% endif %}
+
+            {# Replace button #}
+            {% if all_imgs_typed and all_imgs_typed[0].get('id') %}
+            <label id="cySwapReplaceBtn"
+              title="Replace this image"
+              style="background:rgba(30,30,60,0.9);border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:11px;padding:5px 10px;border-radius:7px;color:#adf;font-weight:900;display:flex;align-items:center;gap:4px;"
+              onclick="event.stopPropagation();">
+              🔄 Replace
+              <input type="file" accept="image/*" style="display:none;" id="cySwapReplaceInput"
+                onchange="cySwapReplace(this)">
+            </label>
+            {% endif %}
+
+            {# SWAP / Next Image button #}
+            <button
+              onclick="swapNextImage()"
+              title="Next Image"
+              style="background:linear-gradient(135deg,#1e3a5f,#0f2444);border:1.5px solid rgba(255,215,0,.35);cursor:pointer;font-size:13px;padding:6px 14px;border-radius:8px;color:#ffd700;font-weight:900;display:flex;align-items:center;gap:6px;transition:all .2s;"
+              onmouseover="this.style.background='linear-gradient(135deg,#2a4f80,#1e3a5f)'"
+              onmouseout="this.style.background='linear-gradient(135deg,#1e3a5f,#0f2444)'">
+              ⇄ Swap
+            </button>
+
+          </div>
+        </div>
+        {% endif %}
+
+        {# ── Multi-Image Upload (dealer only) ───────────────────────────────── #}
+        <div class="cy-upload-section card">
+          <div class="card-header" style="padding:12px 16px">
+            <div class="card-title" style="font-size:13px">
+              <i class="fas fa-images" style="color:var(--gold-accent);margin-right:6px"></i>
+              Manage Photos
+            </div>
+          </div>
+          <div class="card-body" style="padding:14px 16px">
+            <form id="cyUploadForm" onsubmit="uploadExtraImages(event)">
+              <input type="hidden" name="vehicle_id" value="{{ vehicle['id'] }}">
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <button type="submit" class="btn btn-primary btn-sm" id="cyUploadBtn" style="display:none">
+                  <i class="fas fa-upload"></i> Upload
+                </button>
+                <a href="{{ url_for('background.background_removal') }}?vehicle_id={{ vehicle['id'] }}"
+                   target="_blank" class="btn btn-sm"
+                   style="background:linear-gradient(135deg,#0f2444,#1e3a5f);color:#fff;border:1px solid rgba(255,215,0,.3)">
+                  <i class="fas fa-magic" style="color:gold"></i> Studio
+                </a>
+              </div>
+              <div id="cyFilePreview" class="cy-file-preview" style="display:none"></div>
+            </form>
+          </div>
+        </div>
+
+      </div>{# /.gallery-container #}
+    </div>{# /.cy-gallery-col #}
+
+    {# ════════════════════════════════════════════════════════════════════════ #}
+    {# RIGHT — DETAILS COLUMN (unchanged)                                       #}
+    {# ════════════════════════════════════════════════════════════════════════ #}
+    <div class="cy-info-col">
+
+      {# Header #}
+      <div class="cy-vehicle-header mb-16">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <h1 class="cy-vehicle-title">{{ vehicle['year'] }} {{ vehicle['make'] }} {{ vehicle['model'] }}</h1>
+            {% if vehicle.get('variant') %}
+            <div class="cy-vehicle-variant">{{ vehicle['variant'] }}</div>
+            {% endif %}
+          </div>
+          <span class="badge badge-{{ 'success' if vehicle['status'] == 'available' else 'warning' if vehicle['status'] == 'reserved' else 'secondary' }}">
+            {{ vehicle['status']|title }}
+          </span>
+        </div>
+
+        <div class="cy-price-row mt-12">
+          <span class="cy-price">₹{{ "{:,.0f}".format(vehicle['price']) }}</span>
+          {% if vehicle.get('negotiable') %}
+          <span class="cy-negotiable"><i class="fas fa-handshake"></i> Negotiable</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Key Specs Pills #}
+      <div class="cy-specs-pills mb-20">
+        {% if vehicle.get('fuel_type') %}
+        <div class="cy-spec-pill">
+          <i class="fas fa-gas-pump"></i>
+          <span>{{ vehicle['fuel_type'] }}</span>
+        </div>
+        {% endif %}
+        {% if vehicle.get('transmission') %}
+        <div class="cy-spec-pill">
+          <i class="fas fa-cog"></i>
+          <span>{{ vehicle['transmission'] }}</span>
+        </div>
+        {% endif %}
+        {% if vehicle.get('mileage') %}
+        <div class="cy-spec-pill">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>{{ "{:,}".format(vehicle['mileage']) }} km</span>
+        </div>
+        {% endif %}
+        {% if vehicle.get('engine_cc') %}
+        <div class="cy-spec-pill">
+          <i class="fas fa-bolt"></i>
+          <span>{{ vehicle['engine_cc'] }} cc</span>
+        </div>
+        {% endif %}
+        <div class="cy-spec-pill">
+          <i class="fas fa-car"></i>
+          <span>{{ vehicle.get('condition','used')|title }}</span>
+        </div>
+      </div>
+
+      {# Details Table #}
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title"><i class="fas fa-list" style="color:var(--gold-accent);margin-right:8px"></i>Specifications</div></div>
+        <div class="card-body" style="padding:0">
+          <table class="cy-spec-table">
+            <tbody>
+              <tr><td>Make</td><td>{{ vehicle.get('make','-') }}</td></tr>
+              <tr><td>Model</td><td>{{ vehicle.get('model','-') }}</td></tr>
+              {% if vehicle.get('variant') %}<tr><td>Variant</td><td>{{ vehicle['variant'] }}</td></tr>{% endif %}
+              <tr><td>Year</td><td>{{ vehicle.get('year','-') }}</td></tr>
+              <tr><td>Color</td><td>{{ vehicle.get('color','-') }}</td></tr>
+              <tr><td>Fuel Type</td><td>{{ vehicle.get('fuel_type','-') }}</td></tr>
+              <tr><td>Transmission</td><td>{{ vehicle.get('transmission','-') }}</td></tr>
+              <tr><td>Mileage</td><td>{% if vehicle.get('mileage') %}{{ "{:,}".format(vehicle['mileage']) }} km{% else %}—{% endif %}</td></tr>
+              <tr><td>Engine</td><td>{% if vehicle.get('engine_cc') %}{{ vehicle['engine_cc'] }} cc{% else %}—{% endif %}</td></tr>
+              <tr><td>Condition</td><td>{{ vehicle.get('condition','used')|title }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# Documents #}
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title"><i class="fas fa-file-alt" style="color:var(--gold-accent);margin-right:8px"></i>Documents & Registration</div></div>
+        <div class="card-body" style="padding:0">
+          <table class="cy-spec-table">
+            <tbody>
+              {% if vehicle.get('registration_number') %}
+              <tr><td>Registration No.</td><td>{{ vehicle['registration_number'] }}</td></tr>
+              {% endif %}
+              {% if vehicle.get('vin_number') %}
+              <tr><td>VIN / Chassis</td><td style="font-family:monospace;font-size:13px">{{ vehicle['vin_number'] }}</td></tr>
+              {% endif %}
+              {% if vehicle.get('insurance_valid_till') %}
+              <tr><td>Insurance Till</td><td>{{ vehicle['insurance_valid_till'] }}</td></tr>
+              {% endif %}
+              <tr>
+                <td>RC Available</td>
+                <td>
+                  {% if vehicle.get('rc_available') %}
+                  <span style="color:var(--success)"><i class="fas fa-check-circle"></i> Yes</span>
+                  {% else %}
+                  <span style="color:var(--danger)"><i class="fas fa-times-circle"></i> No</span>
+                  {% endif %}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# Description #}
+      {% if vehicle.get('description') %}
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title"><i class="fas fa-align-left" style="color:var(--gold-accent);margin-right:8px"></i>Description</div></div>
+        <div class="card-body">
+          <p style="line-height:1.7;color:var(--text-secondary);font-size:14px;margin:0">{{ vehicle['description'] }}</p>
+        </div>
+      </div>
+      {% endif %}
+
+      {# Action Buttons #}
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="{{ url_for('dealer.edit_vehicle', vid=vehicle['id']) }}" class="btn btn-primary">
+          <i class="fas fa-edit"></i> Edit Vehicle
+        </a>
+        <a href="{{ url_for('dealer.inventory') }}" class="btn btn-outline">
+          <i class="fas fa-arrow-left"></i> Back to Inventory
+        </a>
+        <form method="POST" action="{{ url_for('dealer.delete_vehicle', vid=vehicle['id']) }}"
+              onsubmit="return confirm('Delete this vehicle permanently?')" style="margin:0">
+          <button type="submit" class="btn" style="background:rgba(220,53,69,.1);color:var(--danger);border:1px solid rgba(220,53,69,.3)">
+            <i class="fas fa-trash"></i> Delete
+          </button>
+        </form>
+      </div>
+
+    </div>{# /.cy-info-col #}
+  </div>{# /.cy-detail-grid #}
+</div>{# /.cy-detail-wrap #}
+
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# LIGHTBOX / FULL-SCREEN GALLERY MODAL                                        #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+<div id="cyLightbox" class="cy-lightbox" role="dialog" aria-modal="true" aria-label="Image gallery" onclick="closeLightboxOnBg(event)">
+  <button class="cy-lb-close" onclick="closeLightbox()" aria-label="Close gallery"><i class="fas fa-times"></i></button>
+
+  <button class="cy-lb-arrow cy-lb-prev" onclick="lbNavigate(-1)" aria-label="Previous image"><i class="fas fa-chevron-left"></i></button>
+  <button class="cy-lb-arrow cy-lb-next" onclick="lbNavigate(1)"  aria-label="Next image"><i class="fas fa-chevron-right"></i></button>
+
+  <div class="cy-lb-stage">
+    <img id="cyLbImage" src="" alt="" class="cy-lb-img" onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/defaults/default_car.jpg') }}'" >
+  </div>
+
+  <div class="cy-lb-footer">
+    <span id="cyLbCounter" class="cy-lb-count"></span>
+    <div class="cy-lb-thumbs" id="cyLbThumbs"></div>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# STYLES — original static gallery styles KEPT + extended with CY styles     #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+<style>
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* ORIGINAL STATIC GALLERY STYLES (kept intact, scoped inside .gallery-container) */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+/* UPDATED: width adapts to column instead of fixed 600px */
+.gallery-container {
+  width: 100%;
+}
+
+/* Main Image */
+.main-image {
+  position: relative;
+}
+.main-image img {
+  width: 100%;
+  border-radius: 10px;
+}
+
+/* UPDATED: Arrows — kept same style; now also inherit cy-arrow positioning */
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 50%;
+  z-index: 3;
+  user-select: none;
+  font-size: 16px;
+  line-height: 1;
+  transition: background 0.2s, transform 0.2s;
+}
+.arrow:hover {
+  background: rgba(0,0,0,0.75);
+  transform: translateY(-50%) scale(1.1);
+}
+.arrow.left  { left: 10px; }
+.arrow.right { right: 10px; }
+
+/* UPDATED: Thumbnails — flex row, now using cy-thumb-strip for scroll */
+.thumbnails {
+  display: flex;
+  flex-wrap: nowrap;
+  margin-top: 10px;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scroll-behavior: smooth;
+}
+/* UPDATED: thumbnail images — kept original sizing, added active style */
+.thumbnails img {
+  width: 100px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.3s, border 0.2s;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.thumbnails img.active {
+  border: 2px solid #002366;
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* EXTENDED CY STYLES — layout, sticky gallery, counter, zoom hint, lightbox  */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+/* Layout */
+.cy-detail-wrap { max-width: 1200px; }
+.cy-breadcrumb  { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary); }
+.cy-breadcrumb a{ color:var(--gold-accent); text-decoration:none; }
+.cy-breadcrumb a:hover { text-decoration:underline; }
+.cy-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }
+@media(max-width:860px){ .cy-detail-grid{ grid-template-columns:1fr; } }
+
+/* Gallery column */
+.cy-gallery-col { position:sticky; top:20px; }
+@media(max-width:860px){ .cy-gallery-col{ position:static; } }
+
+/* ADDED: Main image wrap — FIXED height so screen never resizes regardless of image count */
+.cy-main-image-wrap {
+  position:relative; border-radius:14px; overflow:hidden;
+  background:var(--bg); cursor:pointer;
+  box-shadow:0 4px 24px rgba(0,0,0,.18);
+  aspect-ratio:4/3;
+  max-height:480px;
+  height:480px;
+}
+.cy-main-image {
+  width:100%; height:100%; object-fit:cover;
+  transition:transform .35s ease, opacity .25s ease;
+  display:block;
+}
+.cy-main-image-wrap:hover .cy-main-image { transform:scale(1.03); }
+.cy-main-image-wrap:hover .cy-zoom-hint  { opacity:1; }
+
+/* ADDED: zoom hint */
+.cy-zoom-hint {
+  position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,.55); color:#fff; font-size:12px; padding:5px 12px;
+  border-radius:20px; pointer-events:none; opacity:0;
+  transition:opacity .2s; white-space:nowrap;
+}
+
+/* ADDED: image counter badge */
+.cy-img-counter {
+  position:absolute; top:10px; right:10px;
+  background:rgba(0,0,0,.6); color:#fff; font-size:12px; font-weight:600;
+  padding:4px 10px; border-radius:20px; display:flex; align-items:center; gap:5px;
+}
+
+/* ADDED: thumbnail strip scroll container */
+.cy-thumb-strip {
+  display:flex; gap:8px; margin-top:10px;
+  overflow-x:auto; padding-bottom:4px; scroll-behavior:smooth;
+}
+.cy-thumb-strip::-webkit-scrollbar { height:4px; }
+.cy-thumb-strip::-webkit-scrollbar-thumb { background:var(--card-border,#ddd); border-radius:2px; }
+
+/* ADDED: individual thumbnail wrapper */
+.cy-thumb {
+  flex-shrink:0; width:100px; height:70px; border-radius:8px; overflow:hidden;
+  border:2.5px solid transparent; cursor:pointer;
+  transition:border-color .2s, transform .15s, box-shadow .2s;
+}
+.cy-thumb:hover      { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.22); }
+.cy-thumb-active     { border-color:var(--gold-accent,#ffd700); box-shadow:0 0 0 3px rgba(255,193,7,.25); }
+.cy-thumb-active img { border:none; opacity:1; }
+
+/* Upload section */
+.cy-upload-section { margin-top:12px; }
+.cy-file-label {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 14px; background:var(--navy-mid,#1e3a5f); color:#fff;
+  border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;
+  border:1px solid rgba(255,215,0,.2); transition:background .2s;
+}
+.cy-file-label:hover { background:var(--navy,#0f2444); }
+.cy-file-label input[type=file] { display:none; }
+.cy-file-preview {
+  display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
+}
+.cy-file-preview img { width:56px; height:42px; object-fit:cover; border-radius:6px; border:1px solid var(--card-border,#ddd); }
+
+/* Info column */
+.cy-vehicle-title   { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:var(--navy,#0f2444); margin:0; line-height:1.2; }
+.cy-vehicle-variant { font-size:13px; color:var(--text-secondary); margin-top:4px; }
+.cy-price-row       { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.cy-price           { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:var(--navy,#0f2444); }
+.cy-negotiable      { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600;
+                      color:var(--success,#28a745); background:rgba(40,167,69,.1); padding:4px 10px; border-radius:20px; }
+
+/* Spec pills */
+.cy-specs-pills { display:flex; flex-wrap:wrap; gap:8px; }
+.cy-spec-pill {
+  display:inline-flex; align-items:center; gap:7px;
+  background:var(--bg,#f5f6f8); border:1px solid var(--card-border,#ddd);
+  border-radius:20px; padding:6px 14px; font-size:13px; font-weight:600; color:var(--navy,#0f2444);
+}
+.cy-spec-pill i { color:var(--gold-accent,#ffd700); font-size:12px; }
+
+/* Spec table */
+.cy-spec-table { width:100%; border-collapse:collapse; font-size:13.5px; }
+.cy-spec-table td { padding:10px 16px; border-bottom:1px solid var(--card-border,#ddd); vertical-align:top; }
+.cy-spec-table tr:last-child td { border-bottom:none; }
+.cy-spec-table td:first-child { color:var(--text-secondary); font-weight:600; width:42%; }
+.cy-spec-table td:last-child  { color:var(--navy,#0f2444); font-weight:500; }
+
+/* ── LIGHTBOX ──────────────────────────────────────────────────────────────── */
+.cy-lightbox {
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:rgba(0,0,0,.94); flex-direction:column;
+  align-items:center; justify-content:center;
+  animation:cyFadeIn .22s ease;
+}
+.cy-lightbox.cy-lb-open { display:flex; }
+@keyframes cyFadeIn { from{opacity:0} to{opacity:1} }
+
+.cy-lb-close {
+  position:absolute; top:16px; right:20px;
+  background:rgba(255,255,255,.12); border:none; color:#fff;
+  width:42px; height:42px; border-radius:50%; font-size:18px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:background .2s; z-index:10;
+}
+.cy-lb-close:hover { background:rgba(255,255,255,.26); }
+
+.cy-lb-arrow {
+  position:absolute; top:50%; transform:translateY(-50%);
+  background:rgba(255,255,255,.12); border:none; color:#fff;
+  width:50px; height:50px; border-radius:50%; font-size:20px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:background .2s, transform .15s; z-index:10;
+}
+.cy-lb-arrow:hover  { background:rgba(255,255,255,.25); }
+.cy-lb-prev { left:20px; }
+.cy-lb-next { right:20px; }
+.cy-lb-arrow:hover.cy-lb-prev { transform:translateY(-50%) translateX(-3px); }
+.cy-lb-arrow:hover.cy-lb-next { transform:translateY(-50%) translateX(3px); }
+
+.cy-lb-stage {
+  display:flex; align-items:center; justify-content:center;
+  width:100%; flex:1; overflow:hidden; padding:70px 80px 10px;
+}
+.cy-lb-img {
+  max-width:100%; max-height:100%; object-fit:contain;
+  border-radius:8px; transition:opacity .2s, transform .25s;
+  box-shadow:0 8px 40px rgba(0,0,0,.5);
+}
+/* ADDED: slide animations for lightbox navigation */
+.cy-lb-img.cy-lb-slide-left  { animation:lbSlideLeft  .25s ease both; }
+.cy-lb-img.cy-lb-slide-right { animation:lbSlideRight .25s ease both; }
+@keyframes lbSlideLeft  { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:none} }
+@keyframes lbSlideRight { from{opacity:0;transform:translateX(-40px)} to{opacity:1;transform:none} }
+
+.cy-lb-footer {
+  width:100%; padding:12px 80px 20px;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+}
+.cy-lb-count {
+  color:rgba(255,255,255,.7); font-size:13px; font-weight:600;
+}
+.cy-lb-thumbs {
+  display:flex; gap:8px; overflow-x:auto; max-width:100%; padding-bottom:4px;
+}
+.cy-lb-thumbs::-webkit-scrollbar { height:3px; }
+.cy-lb-thumbs::-webkit-scrollbar-thumb { background:rgba(255,255,255,.2); border-radius:2px; }
+.cy-lb-thumb {
+  flex-shrink:0; width:56px; height:40px; border-radius:6px; overflow:hidden;
+  border:2px solid transparent; cursor:pointer; opacity:.6; transition:opacity .2s, border-color .2s;
+}
+.cy-lb-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.cy-lb-thumb:hover    { opacity:.85; }
+.cy-lb-thumb.cy-lb-thumb-active { border-color:#ffd700; opacity:1; }
+
+/* ADDED: responsive adjustments */
+@media(max-width:600px){
+  .cy-lb-arrow { width:38px; height:38px; font-size:15px; }
+  .cy-lb-prev  { left:8px; }
+  .cy-lb-next  { right:8px; }
+  .cy-lb-stage { padding:60px 56px 8px; }
+  .cy-lb-footer{ padding:10px 12px 16px; }
+  .cy-thumb    { width:70px; height:52px; }
+}
+</style>
+
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# JAVASCRIPT                                                                   #}
+{# UPDATED: static array replaced with dynamic Jinja-injected list             #}
+{# Original function names (showImage, nextImage, prevImage, setImage) KEPT   #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+<script>
+
+// ── VEHICLE_ID — used by mask editor and image upload ────────────────────────
+const VEHICLE_ID = {{ vehicle['id'] }};
+
+// ── images array — dynamically injected by Jinja ─────────────────────────
+const images = {{ all_imgs | select | list | tojson }};
+
+// Image type labels for lightbox caption
+const imageLabels = {{ all_imgs_typed | map(attribute='image_type') | list | tojson }};
+const TYPE_LABEL_MAP = {
+  front:'Front View', rear:'Rear / Tail', right_side:'Right Side',
+  left_side:'Left Side', engine:'Engine Bay', boot:'Boot / Trunk',
+  interior:'Interior', gallery:'', primary:''
+};
+
+// ADDED: base URL for static uploads folder
+const CY_UPLOAD_BASE = "{{ url_for('static', filename='images/uploads/') }}";
+const CY_FALLBACK    = "{{ url_for('static', filename='images/defaults/default_car.jpg') }}";
+
+// UPDATED: currentIndex — same variable name as original, kept at 0
+let currentIndex = 0;
+
+// ADDED: alias so extended CY functions also use same state
+let cyCurrentIndex = currentIndex;
+
+// ── ADDED: helper to build full image URL ────────────────────────────────────
+function imgUrl(filename) {
+  return CY_UPLOAD_BASE + filename;
+}
+
+function showImage(index) {
+  const mainImg = document.getElementById("mainImage");
+
+  mainImg.style.opacity = "0";
+  setTimeout(() => {
+    mainImg.src           = imgUrl(images[index]);
+    mainImg.dataset.index = index;
+    mainImg.style.opacity = "1";
+  }, 180);
+
+  const counter = document.getElementById("cyCounterText");
+  if (counter) counter.textContent = `${index + 1} / ${images.length}`;
+
+  currentIndex   = index;
+  cyCurrentIndex = index;
+  updateSwapBar(index);
+}
+
+// ── KEPT: nextImage — same as original, loops to first ───────────────────────
+function nextImage() {
+  let next = (currentIndex + 1) % images.length;
+  showImage(next);
+}
+
+// ── KEPT: prevImage — same as original, loops to last ────────────────────────
+function prevImage() {
+  let prev = (currentIndex - 1 + images.length) % images.length;
+  showImage(prev);
+}
+
+// ── KEPT: setImage — same as original, called by thumbnail click ─────────────
+function setImage(index) {
+  showImage(index);
+  updateSwapBar(index);
+}
+
+// ── ADDED: updateSwapBar — updates label + counter in the swap bar ───────────
+function updateSwapBar(index) {
+  const labelEl   = document.getElementById('cySwapLabel');
+  const counterEl = document.getElementById('cySwapCounter');
+  if (labelEl) {
+    const rawType = imageLabels[index] || '';
+    const friendly = TYPE_LABEL_MAP[rawType] || rawType || ('Photo ' + (index + 1));
+    // Show only short label (Front, Rear, etc.)
+    const shortLabels = {
+      'Front View':'Front','Rear / Tail':'Rear','Right Side':'Right Side',
+      'Left Side':'Left Side','Engine Bay':'Engine','Boot / Trunk':'Boot','Interior':'Interior'
+    };
+    labelEl.textContent = shortLabels[friendly] || friendly || ('Photo ' + (index + 1));
+  }
+  if (counterEl) counterEl.textContent = (index + 1) + ' / ' + images.length;
+
+  // Update mask edit + replace buttons with current image data
+  const imgMeta = allImgsMeta[index];
+  if (imgMeta) {
+    const maskBtn = document.getElementById('cySwapMaskBtn');
+    if (maskBtn) maskBtn.onclick = () => openMaskEditor(imgMeta.id, CY_UPLOAD_BASE + imgMeta.filename, imgMeta.filename, imgMeta.imgType || 'gallery');
+    const replaceInput = document.getElementById('cySwapReplaceInput');
+    if (replaceInput) replaceInput._imgId = imgMeta.id;
+    if (replaceInput) replaceInput._imgType = imgMeta.imgType;
+  }
+}
+
+// ── ADDED: swapNextImage — cycles to next image (swap button click) ──────────
+function swapNextImage() {
+  const next = (currentIndex + 1) % images.length;
+  showImage(next);
+  updateSwapBar(next);
+}
+
+// ── ADDED: cySwapMaskEdit — opens mask editor for current image ───────────────
+function cySwapMaskEdit() {
+  const meta = allImgsMeta[currentIndex];
+  if (meta && meta.id) {
+    openMaskEditor(meta.id, CY_UPLOAD_BASE + meta.filename, meta.filename, meta.imgType || 'gallery');
+  }
+}
+
+// ── ADDED: cySwapReplace — replaces current image ────────────────────────────
+function cySwapReplace(input) {
+  const imgId   = input._imgId;
+  const imgType = input._imgType;
+  if (imgId) cyReplaceImage(input, imgId, imgType || 'gallery');
+}
+
+// ── ADDED: shiftMain — alias called by the arrow span elements ───────────────
+function shiftMain(dir) {
+  const newIndex = (currentIndex + dir + images.length) % images.length;
+  showImage(newIndex);
+}
+
+// ── ADDED: switchImage — alias for compatibility with upload refresh ──────────
+function switchImage(index) {
+  showImage(index);
+}
+
+// ════════════════════════════════════════════════════════════════════════════ //
+// ADDED: Lightbox / fullscreen gallery                                        //
+// ════════════════════════════════════════════════════════════════════════════ //
+let lbIndex = 0;
+
+function buildLbThumbs() {
+  const strip = document.getElementById("cyLbThumbs");
+  if (!strip) return;
+  strip.innerHTML = "";
+  images.forEach((img, i) => {
+    const div = document.createElement("div");
+    div.className = "cy-lb-thumb" + (i === lbIndex ? " cy-lb-thumb-active" : "");
+    div.onclick   = () => lbNavigateTo(i);
+    const im      = document.createElement("img");
+    im.src         = imgUrl(img);
+    im.onerror     = () => { im.src = CY_FALLBACK; };
+    div.appendChild(im);
+    strip.appendChild(div);
+  });
+}
+
+function openLightbox(index) {
+  lbIndex = index;
+  const lb  = document.getElementById("cyLightbox");
+  const img = document.getElementById("cyLbImage");
+  img.src   = imgUrl(images[lbIndex]);
+  lb.classList.add("cy-lb-open");
+  document.body.style.overflow = "hidden";
+  updateLbCounter();
+  buildLbThumbs();
+}
+
+function closeLightbox() {
+  document.getElementById("cyLightbox").classList.remove("cy-lb-open");
+  document.body.style.overflow = "";
+}
+
+function closeLightboxOnBg(e) {
+  if (e.target === document.getElementById("cyLightbox")) closeLightbox();
+}
+
+function lbNavigate(dir) {
+  lbNavigateTo((lbIndex + dir + images.length) % images.length, dir);
+}
+
+function lbNavigateTo(index, dir) {
+  const img = document.getElementById("cyLbImage");
+  dir = dir || (index > lbIndex ? 1 : -1);
+  img.classList.remove("cy-lb-slide-left", "cy-lb-slide-right");
+  void img.offsetWidth; // force reflow for animation restart
+  img.classList.add(dir > 0 ? "cy-lb-slide-left" : "cy-lb-slide-right");
+
+  lbIndex    = index;
+  img.src    = imgUrl(images[lbIndex]);
+  img.onerror = () => { img.src = CY_FALLBACK; };
+  updateLbCounter();
+
+  // Sync main gallery
+  showImage(lbIndex);
+
+  // Update lightbox thumbnail strip
+  document.querySelectorAll(".cy-lb-thumb").forEach((t, i) => {
+    t.classList.toggle("cy-lb-thumb-active", i === lbIndex);
+  });
+  const activLbThumb = document.querySelector(".cy-lb-thumb.cy-lb-thumb-active");
+  if (activLbThumb) activLbThumb.scrollIntoView({ behavior:"smooth", inline:"center" });
+}
+
+function updateLbCounter() {
+  const el = document.getElementById("cyLbCounter");
+  if (!el) return;
+  const label = TYPE_LABEL_MAP[imageLabels[lbIndex]] || '';
+  el.textContent = `${lbIndex + 1} / ${images.length}${label ? '  ·  ' + label : ''}`;
+}
+
+// ADDED: keyboard navigation (arrow keys + Escape)
+document.addEventListener("keydown", e => {
+  const lb = document.getElementById("cyLightbox");
+  if (!lb.classList.contains("cy-lb-open")) return;
+  if (e.key === "ArrowRight") lbNavigate(1);
+  if (e.key === "ArrowLeft")  lbNavigate(-1);
+  if (e.key === "Escape")     closeLightbox();
+});
+
+// ADDED: touch/swipe support for both main image and lightbox
+(function() {
+  let startX = 0, startY = 0;
+
+  function onTouchStart(e) {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }
+  function onTouchEnd(e, fn) {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) fn(dx < 0 ? 1 : -1);
+  }
+
+  // Lightbox swipe
+  const lb = document.getElementById("cyLightbox");
+  lb.addEventListener("touchstart", onTouchStart, { passive: true });
+  lb.addEventListener("touchend",   e => onTouchEnd(e, lbNavigate));
+
+  // Main image swipe
+  const wrap = document.getElementById("cyMainWrap");
+  if (wrap) {
+    wrap.addEventListener("touchstart", onTouchStart, { passive: true });
+    wrap.addEventListener("touchend",   e => onTouchEnd(e, shiftMain));
+  }
+})();
+
+// File selected — just show upload button, no preview strip
+function previewFiles(input) {
+  const btn = document.getElementById("cyUploadBtn");
+  if (!input.files.length) { if(btn) btn.style.display="none"; return; }
+  if (btn) btn.style.display = "inline-flex";
+  // No image preview grid — keep UI clean
+}
+
+// FIXED: create thumbnail strip DOM node if Jinja didn't render it.
+// The Jinja template only outputs <div id="cyThumbStrip"> when all_imgs|length > 1.
+// When a vehicle starts with only 1 photo, the element is absent. After the user
+// uploads additional images via AJAX, refreshThumbnailStrip() would find null and
+// silently return — thumbnails never appeared without a full page reload.
+// This function creates the strip on-the-fly before refreshThumbnailStrip() is called.
+function ensureThumbStripExists() {
+  // Thumbnail strip permanently hidden — no-op
+}
+
+// FIXED: AJAX upload for extra images
+// Root cause of "Unexpected token '<'" error:
+//   The original called `await res.json()` unconditionally. When the server
+//   returned an HTML error page (500, 302 redirect, etc.) instead of JSON,
+//   the browser tried to parse "<!doctype html>" as JSON and crashed.
+// Fix: check Content-Type header first; if not JSON, read as text and throw
+//   a descriptive error instead of a cryptic parse exception.
+async function uploadExtraImages(e) {
+  e.preventDefault();
+  const btn       = document.getElementById("cyUploadBtn");
+  const fileInput = document.getElementById("cyFileInput");
+  if (!fileInput.files.length) return;
+
+  btn.disabled    = true;
+  btn.innerHTML   = '<i class="fas fa-spinner fa-spin"></i> Uploading…';
+
+  const fd = new FormData(document.getElementById("cyUploadForm"));
+
+  try {
+    const res = await fetch("/dealer/inventory/upload-images", { method:"POST", body:fd });
+
+    // FIXED: validate Content-Type before calling .json()
+    // If the server returns an HTML error page, this prevents the
+    // "Unexpected token '<'" JSON parse crash.
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const text = await res.text();
+      console.error("Non-JSON response from server:", text.slice(0, 300));
+      throw new Error("Server returned an unexpected response. Please check server logs.");
+    }
+
+    const data = await res.json();
+    if (data.success) {
+      data.filenames.forEach(fn => { if (!images.includes(fn)) images.push(fn); });
+      ensureThumbStripExists();  // FIXED: create strip first if vehicle had only 1 image
+      refreshThumbnailStrip();
+      btn.innerHTML         = '<i class="fas fa-check"></i> Done!';
+      btn.style.background  = "var(--success,#28a745)";
+      document.getElementById("cyFilePreview").innerHTML   = "";
+      document.getElementById("cyFilePreview").style.display = "none";
+      fileInput.value       = "";
+      setTimeout(() => {
+        btn.style.display   = "none";
+        btn.disabled        = false;
+        btn.innerHTML       = '<i class="fas fa-upload"></i> Upload';
+        btn.style.background = "";
+      }, 2000);
+    } else {
+      alert(data.error || "Upload failed");
+      btn.disabled  = false;
+      btn.innerHTML = '<i class="fas fa-upload"></i> Upload';
+    }
+  } catch (err) {
+    alert("Upload error: " + err.message);
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fas fa-upload"></i> Upload';
+  }
+}
+
+// Thumbnail strip permanently hidden — navigation via Swap/arrows only
+function refreshThumbnailStrip() {
+  const counter = document.getElementById("cyCounterText");
+  if (counter) counter.textContent = `${currentIndex + 1} / ${images.length}`;
+}
+
+// ── Mask Editor integration ──────────────────────────────────────────────────
+// Build a map of index → {id, filename, url} from Jinja-rendered data
+const _cyImgMeta = [
+  {% for item in all_imgs_typed %}
+  {% if item.get('id') %}
+  { idx: {{ loop.index0 }}, id: {{ item.id }}, filename: "{{ item.filename }}", url: "{{ url_for('static', filename='images/uploads/' + item.filename) }}", imgType: "{{ item.image_type }}" },
+  {% endif %}
+  {% endfor %}
+];
+
+// Alias so updateSwapBar can use allImgsMeta[index]
+const allImgsMeta = _cyImgMeta;
+
+function cyOpenCurrentMaskEdit() {
+  // Find meta for current displayed image index
+  const meta = _cyImgMeta.find(m => m.idx === currentIndex);
+  if (!meta) { alert('No editable image selected.'); return; }
+  openMaskEditor(meta.id, meta.url, meta.filename, meta.imgType || 'gallery');
+}
+
+/* ── Replace existing image (dealer) ──────────────────────── */
+async function cyReplaceImage(input, viId, imgType) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!confirm('Replace this image? The current image will be overwritten.')) { input.value=''; return; }
+
+  const fd = new FormData();
+  fd.append('vehicle_id', VEHICLE_ID || 0);
+  fd.append('images', file);
+  fd.append('image_types', imgType || 'gallery');
+  fd.append('replace_vi_id', viId);  // tell server which VehicleImage to replace
+
+  const status = document.createElement('div');
+  status.style = 'position:fixed;bottom:20px;right:20px;background:#1a1740;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+  status.textContent = '⏳ Replacing image...';
+  document.body.appendChild(status);
+
+  try {
+    const res = await fetch('/dealer/inventory/replace-image', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.success) {
+      status.style.background = '#064e3b';
+      status.textContent = '✅ Image replaced!';
+      setTimeout(() => { status.remove(); location.reload(); }, 1200);
+    } else {
+      status.style.background = '#7f1d1d';
+      status.textContent = '❌ ' + (data.error || 'Replace failed');
+      setTimeout(() => status.remove(), 3000);
+    }
+  } catch(e) {
+    status.style.background = '#7f1d1d';
+    status.textContent = '❌ Network error';
+    setTimeout(() => status.remove(), 3000);
+  }
+  input.value = '';
+}
+
+// After mask editor saves, update the displayed image src
+function maskEditorOnSave(viId, newImageUrl) {
+  // Find the meta entry
+  const meta = _cyImgMeta.find(m => m.id === parseInt(viId));
+  if (meta) {
+    // Update images array used by the gallery
+    const imgBaseUrl = newImageUrl.split('?')[0];
+    const busted = imgBaseUrl + '?t=' + Date.now();
+    if (images[meta.idx]) images[meta.idx] = busted.replace('/static/images/uploads/', '');
+    setImage(meta.idx);
+    // Also update thumbnail
+    const strip = document.getElementById('cyThumbStrip');
+    if (strip) {
+      const thumbDiv = strip.querySelector(`[data-index="${meta.idx}"] img`);
+      if (thumbDiv) thumbDiv.src = busted;
+    }
+  }
+
+  // ── Auto set as primary image after background removal ──────────────────
+  fetch('/dealer/inventory/set-primary-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vi_id: viId, vehicle_id: VEHICLE_ID })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      console.log('Auto set primary: image updated after mask edit');
+    }
+  })
+  .catch(() => {});  // silent fail — not critical
+
+  // Close modal after short delay
+  setTimeout(() => { closeMaskEditor(); }, 1000);
+}
+// ── Page load init ────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  if (images.length > 0) {
+    updateSwapBar(0);
+  }
+});
+</script>
+
+{% include 'mask_editor_modal.html' %}
+{% endblock %}

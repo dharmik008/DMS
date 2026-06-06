@@ -1,0 +1,228 @@
+{% extends "dealer/base.html" %}
+{% block title %}{{ 'Edit' if deal else 'New' }} Deal — Caryanams{% endblock %}
+{% block page_title %}{{ 'Edit' if deal else 'New' }} Deal{% endblock %}
+
+{% block content %}
+<div style="max-width:900px">
+  <form method="POST" id="dealForm">
+    <div class="grid-2 mb-24">
+      <!-- Left: Deal Details -->
+      <div style="display:flex;flex-direction:column;gap:24px">
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i class="fas fa-user" style="margin-right:8px;color:var(--gold-accent)"></i>Customer Info</div></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>Customer Name *</label>
+                <input type="text" name="customer_name" value="{{ deal['customer_name'] if deal else '' }}" required>
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input type="tel" name="customer_phone" value="{{ deal['customer_phone'] if deal else '' }}">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="customer_email" value="{{ deal['customer_email'] if deal else '' }}">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i class="fas fa-car" style="margin-right:8px;color:var(--gold-accent)"></i>Vehicle & Pricing</div></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>Vehicle *</label>
+                <select name="vehicle_id" required>
+                  <option value="">Select Vehicle</option>
+                  {% for v in vehicles %}
+                  <option value="{{ v['id'] }}" {% if deal and deal['vehicle_id'] == v['id'] %}selected{% endif %}>
+                    {{ v['year'] }} {{ v['make'] }} {{ v['model'] }} — ₹{{ "{:,.0f}".format(v['price']) }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Asking Price (₹)</label>
+                <input type="number" name="asking_price" value="{{ deal['asking_price'] if deal and deal['asking_price'] else '' }}" placeholder="Original asking price">
+              </div>
+              <div class="form-group">
+                <label>Final Price (₹) *</label>
+                <input type="number" name="final_price" id="final_price" value="{{ deal['final_price'] if deal else '' }}" required oninput="updateGST()">
+              </div>
+              <div class="form-group">
+                <label>Booking Amount (₹)</label>
+                <input type="number" name="booking_amount" value="{{ deal['booking_amount'] if deal and deal['booking_amount'] else '' }}">
+              </div>
+              <div class="form-group">
+                <label>Status</label>
+                <select name="status">
+                  {% for s in ['negotiation','booked','finalized','delivered','cancelled'] %}
+                  <option value="{{ s }}" {% if deal and deal['status'] == s %}selected{% endif %}>{{ s.title() }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <!-- GST Preview -->
+            <div id="gstPreview" style="margin-top:16px;padding:16px;background:var(--gold);border-radius:var(--radius);border:1px solid var(--gold-dark);display:none">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center">
+                <div>
+                  <div style="font-size:11px;color:var(--text-secondary);font-weight:600">FINAL PRICE</div>
+                  <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--navy)" id="preview_price">—</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--text-secondary);font-weight:600">GST 18%</div>
+                  <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--navy)" id="preview_gst">—</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--text-secondary);font-weight:600">TOTAL</div>
+                  <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--success)" id="preview_total">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i class="fas fa-sticky-note" style="margin-right:8px;color:var(--gold-accent)"></i>Notes</div></div>
+          <div class="card-body">
+            <div class="form-group">
+              <textarea name="notes" placeholder="Deal notes, special conditions...">{{ deal['notes'] if deal else '' }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Payment & EMI -->
+      <div style="display:flex;flex-direction:column;gap:24px">
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i class="fas fa-credit-card" style="margin-right:8px;color:var(--gold-accent)"></i>Payment Details</div></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>Payment Mode</label>
+                <select name="payment_mode" id="payment_mode" onchange="toggleLoanFields()">
+                  <option value="cash" {% if deal and deal['payment_mode'] == 'cash' %}selected{% endif %}>Cash</option>
+                  <option value="loan" {% if deal and deal['payment_mode'] == 'loan' %}selected{% endif %}>Bank Loan</option>
+                  <option value="emi" {% if deal and deal['payment_mode'] == 'emi' %}selected{% endif %}>EMI</option>
+                </select>
+              </div>
+              <div id="loanFields" style="display:none;grid-column:1/-1">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Loan Amount (₹)</label>
+                    <input type="number" name="loan_amount" id="loan_amount" value="{{ deal['loan_amount'] if deal and deal['loan_amount'] else '' }}">
+                  </div>
+                  <div class="form-group">
+                    <label>Down Payment (₹)</label>
+                    <input type="number" name="down_payment" value="{{ deal['down_payment'] if deal and deal['down_payment'] else '' }}">
+                  </div>
+                  <div class="form-group">
+                    <label>Bank / NBFC Name</label>
+                    <input type="text" name="bank_name" value="{{ deal['bank_name'] if deal and deal['bank_name'] else '' }}" placeholder="e.g. HDFC Bank">
+                  </div>
+                  <div class="form-group">
+                    <label>EMI Months</label>
+                    <select name="emi_months" id="emi_months_select">
+                      {% for m in [12, 24, 36, 48, 60, 72, 84] %}
+                      <option value="{{ m }}" {% if deal and deal['emi_months'] == m %}selected{% endif %}>{{ m }} months</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>EMI Amount (₹)</label>
+                    <input type="number" name="emi_amount" id="emi_amount_field" value="{{ deal['emi_amount'] if deal and deal['emi_amount'] else '' }}" placeholder="Monthly EMI">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMI Calculator -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="fas fa-calculator" style="margin-right:8px;color:var(--gold-accent)"></i>EMI Calculator</div>
+            <span style="font-size:12px;color:var(--text-muted)">Helper Tool</span>
+          </div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Loan Amount (₹)</label>
+                <input type="number" id="emi_principal" placeholder="e.g. 800000" oninput="calculateEMI()">
+              </div>
+              <div class="form-group">
+                <label>Interest Rate (% p.a.)</label>
+                <input type="number" id="emi_rate" placeholder="e.g. 9.5" step="0.1" oninput="calculateEMI()">
+              </div>
+              <div class="form-group full">
+                <label>Tenure (Months)</label>
+                <input type="number" id="emi_months" placeholder="e.g. 60" oninput="calculateEMI()">
+              </div>
+            </div>
+            <div id="emi_result" class="emi-result">
+              <p class="text-muted" style="font-size:13px">Enter values above to calculate EMI</p>
+            </div>
+            <button type="button" onclick="fillEMIValues()" class="btn btn-sm btn-outline mt-16" style="width:100%">
+              <i class="fas fa-arrow-down"></i> Use These Values in Deal
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px">
+      <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Save Deal</button>
+      <a href="{{ url_for('dealer.deals') }}" class="btn btn-outline btn-lg"><i class="fas fa-times"></i> Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleLoanFields() {
+  const mode = document.getElementById('payment_mode').value;
+  const fields = document.getElementById('loanFields');
+  fields.style.display = (mode === 'loan' || mode === 'emi') ? 'block' : 'none';
+}
+
+function updateGST() {
+  const price = parseFloat(document.getElementById('final_price').value || 0);
+  const preview = document.getElementById('gstPreview');
+  if (price > 0) {
+    const gst = price * 0.18;
+    const total = price + gst;
+    document.getElementById('preview_price').textContent = '₹' + price.toLocaleString('en-IN');
+    document.getElementById('preview_gst').textContent = '₹' + Math.round(gst).toLocaleString('en-IN');
+    document.getElementById('preview_total').textContent = '₹' + Math.round(total).toLocaleString('en-IN');
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+function fillEMIValues() {
+  const principal = document.getElementById('emi_principal').value;
+  const months = document.getElementById('emi_months').value;
+  const rate = document.getElementById('emi_rate').value;
+  if (principal) document.querySelector('[name="loan_amount"]').value = principal;
+  const emiField = document.getElementById('emi_amount_field');
+  const monthlyRate = parseFloat(rate) / (12 * 100);
+  const m = parseInt(months);
+  const p = parseFloat(principal);
+  if (p && m && monthlyRate) {
+    const emi = (p * monthlyRate * Math.pow(1 + monthlyRate, m)) / (Math.pow(1 + monthlyRate, m) - 1);
+    emiField.value = Math.round(emi);
+  }
+  document.getElementById('payment_mode').value = 'emi';
+  toggleLoanFields();
+}
+
+// Init
+toggleLoanFields();
+updateGST();
+</script>
+{% endblock %}

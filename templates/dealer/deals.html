@@ -1,0 +1,64 @@
+{% extends "dealer/base.html" %}
+{% block title %}Deals — Caryanams{% endblock %}
+{% block page_title %}Deals & Sales{% endblock %}
+
+{% block content %}
+<!-- Status Tabs -->
+<div class="stage-tabs mb-16">
+  <a href="{{ url_for('dealer.deals') }}" class="stage-tab {% if not status_filter %}active{% endif %}">All <span class="count">{{ status_counts.values()|sum }}</span></a>
+  {% for s in statuses %}
+  <a href="{{ url_for('dealer.deals', status=s) }}" class="stage-tab {% if status_filter == s %}active{% endif %}">
+    {{ s.title() }} <span class="count">{{ status_counts[s] }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+<div class="section-header mb-16">
+  <div></div>
+  <a href="{{ url_for('dealer.add_deal') }}" class="btn btn-primary"><i class="fas fa-plus"></i> New Deal</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Customer</th><th>Vehicle</th><th>Final Price</th><th>Payment</th><th>GST</th><th>Total</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for deal in deals %}
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px">#{{ deal['id'] }}</td>
+          <td>
+            <div style="font-weight:600;color:var(--navy)">{{ deal['customer_name'] }}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">{{ deal['customer_phone'] }}</div>
+          </td>
+          <td>
+            {% if deal.vehicle %}
+            <div style="font-size:13px;font-weight:600">{{ deal.vehicle.make }} {{ deal.vehicle.model }}</div>
+            <div style="font-size:11px;color:var(--text-secondary)">{{ deal.vehicle.year }}</div>
+            {% endif %}
+          </td>
+          <td style="font-weight:700;color:var(--navy)">₹{{ "{:,.0f}".format(deal['final_price']) }}</td>
+          <td><span class="badge badge-navy">{{ deal['payment_mode'].title() }}</span></td>
+          <td style="color:var(--text-secondary)">₹{{ "{:,.0f}".format(deal['gst_amount']) }}</td>
+          <td style="font-weight:700;color:var(--success)">₹{{ "{:,.0f}".format(deal['total_amount'] or deal['final_price']) }}</td>
+          <td>
+            <span class="badge {% if deal['status'] == 'delivered' %}badge-success{% elif deal['status'] == 'cancelled' %}badge-danger{% elif deal['status'] == 'booked' %}badge-info{% else %}badge-warning{% endif %}">
+              {{ deal['status'] }}
+            </span>
+          </td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <a href="{{ url_for('dealer.edit_deal', did_=deal['id']) }}" class="btn btn-sm btn-primary">Edit</a>
+              <a href="{{ url_for('dealer.invoice', did_=deal['id']) }}" class="btn btn-sm btn-outline" target="_blank"><i class="fas fa-file-invoice"></i></a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9"><div class="empty-state"><i class="fas fa-handshake"></i><h3>No deals found</h3><a href="{{ url_for('dealer.add_deal') }}" class="btn btn-primary mt-16">Create First Deal</a></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

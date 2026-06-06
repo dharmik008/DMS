@@ -1,0 +1,123 @@
+{% extends "dealer/base.html" %}
+{% block title %}{{ 'Edit' if lead else 'Add' }} Lead — Caryanams{% endblock %}
+{% block page_title %}{{ 'Edit' if lead else 'Add' }} Lead{% endblock %}
+
+{% block content %}
+<div style="max-width:760px">
+  <form method="POST">
+    <div class="card mb-24">
+      <div class="card-header"><div class="card-title"><i class="fas fa-user" style="margin-right:8px;color:var(--gold-accent)"></i>Customer Details</div></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Customer Name *</label>
+            <input type="text" name="customer_name" value="{{ lead['customer_name'] if lead else '' }}" placeholder="Full name" required>
+          </div>
+          <div class="form-group">
+            <label>Phone *</label>
+            <input type="tel" name="customer_phone" value="{{ lead['customer_phone'] if lead else '' }}" placeholder="+91 XXXXX XXXXX" required>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="customer_email" value="{{ lead['customer_email'] if lead else '' }}" placeholder="email@example.com">
+          </div>
+          <div class="form-group">
+            <label>City</label>
+            <input type="text" name="customer_city" value="{{ lead['customer_city'] if lead else '' }}" placeholder="City">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-24">
+      <div class="card-header"><div class="card-title"><i class="fas fa-funnel-dollar" style="margin-right:8px;color:var(--gold-accent)"></i>Lead Details</div></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Assign Agent</label>
+            <select name="agent_id">
+              <option value="">-- Unassigned --</option>
+              {% for agent in agents %}
+              <option value="{{ agent['id'] }}" {% if lead and lead['agent_id'] == agent['id'] %}selected{% endif %}>
+                {{ agent['name'] }} ({{ agent['status'] }})
+              </option>
+              {% endfor %}
+            </select>
+            <small style="font-size:11px;color:var(--text-muted)">Assign this lead to a specific agent</small>
+          </div>
+          <div class="form-group">
+            <label>Interested Vehicle</label>
+            <select name="vehicle_id">
+              <option value="">Not specified</option>
+              {% for v in vehicles %}
+              <option value="{{ v['id'] }}" {% if lead and lead['vehicle_id'] == v['id'] %}selected{% endif %}>
+                {{ v['year'] }} {{ v['make'] }} {{ v['model'] }} — ₹{{ "{:,.0f}".format(v['price']) }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Budget (₹)</label>
+            <input type="number" name="budget" value="{{ lead['budget'] if lead and lead['budget'] else '' }}" placeholder="Max budget">
+          </div>
+          <div class="form-group">
+            <label>Source</label>
+            <select name="source">
+              {% for s in ['website','walk-in','referral','phone','social'] %}
+              <option value="{{ s }}" {% if lead and lead['source'] == s %}selected{% endif %}>{{ s.title() }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Stage</label>
+            <select name="stage" id="stageSelect" onchange="handleStageChange(this.value)">
+              {% for s in ['new','interested','test_drive','negotiation','lost','connected','not_connected'] %}
+              <option value="{{ s }}" {% if lead and lead['stage'] == s %}selected{% endif %}>{{ s.replace('_',' ').title() }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group" id="followUpDateGroup" style="display:none;">
+            <label>Follow-up Date *</label>
+            <input type="datetime-local" name="follow_up_date" id="followUpDateInput" value="{{ lead['follow_up_date'] if lead and lead.follow_up_date else '' }}">
+            <small style="font-size:11px;color:var(--text-muted)">Required when stage is Connected</small>
+          </div>
+          <div class="form-group">
+            <label>Assigned To (Text)</label>
+            <input type="text" name="assigned_to" value="{{ lead['assigned_to'] if lead else '' }}" placeholder="Sales person name (legacy)">
+          </div>
+          <div class="form-group full">
+            <label>Notes</label>
+            <textarea name="notes" placeholder="Add notes about this lead...">{{ lead['notes'] if lead else '' }}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px">
+      <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Save Lead</button>
+      <a href="{{ url_for('dealer.leads') }}" class="btn btn-outline btn-lg"><i class="fas fa-times"></i> Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+function handleStageChange(stage) {
+  var group = document.getElementById('followUpDateGroup');
+  var input = document.getElementById('followUpDateInput');
+  if (stage === 'connected') {
+    group.style.display = '';
+    input.required = true;
+  } else {
+    group.style.display = 'none';
+    input.required = false;
+    input.value = '';
+  }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  var stageSelect = document.getElementById('stageSelect');
+  handleStageChange(stageSelect.value);
+});
+</script>
+{% endblock %}

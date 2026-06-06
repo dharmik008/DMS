@@ -1,0 +1,58 @@
+{% extends "dealer/base.html" %}
+{% block title %}Inquiries — Caryanams{% endblock %}
+{% block page_title %}Customer Inquiries{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Marketplace Inquiries</div>
+    <span class="badge badge-info">{{ inquiries|length }} total</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Customer</th><th>Vehicle</th><th>Type</th><th>Message</th><th>Status</th><th>Date</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for inq in inquiries %}
+        <tr>
+          <td style="color:var(--text-muted)">#{{ inq['id'] }}</td>
+          <td>
+            <div style="font-weight:600;color:var(--navy)">{{ inq['name'] }}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">{{ inq['phone'] }}</div>
+            {% if inq['email'] %}<div style="font-size:11px;color:var(--text-muted)">{{ inq['email'] }}</div>{% endif %}
+          </td>
+          <td>
+            {# FIXED: inq['vehicle'] is a dict returned by vehicle_get(), not an ORM object.
+               Dot notation (inq.vehicle.make) causes TypeError. Use bracket notation. #}
+            {% if inq['vehicle'] %}
+            <div style="font-size:13px;font-weight:600">{{ inq['vehicle']['make'] }} {{ inq['vehicle']['model'] }}</div>
+            <div style="font-size:11px;color:var(--text-secondary)">{{ inq['vehicle']['year'] }}</div>
+            {% else %}—{% endif %}
+          </td>
+          <td><span class="badge badge-navy">{{ inq['inquiry_type'].replace('_',' ').title() }}</span></td>
+          <td style="max-width:200px;font-size:13px;color:var(--text-secondary)">{{ (inq['message'] or '—')[:80] }}{% if inq['message'] and inq['message']|length > 80 %}...{% endif %}</td>
+          <td>
+            <span class="badge {% if inq['status'] == 'responded' %}badge-success{% elif inq['status'] == 'converted' %}badge-info{% else %}badge-warning{% endif %}">
+              {{ inq['status'] }}
+            </span>
+          </td>
+          <td style="font-size:12px;color:var(--text-secondary)">{{ inq['created_at'].strftime('%d %b %Y') }}</td>
+          <td>
+            {% if inq['status'] == 'pending' %}
+            <form method="POST" action="{{ url_for('dealer.respond_inquiry', iid=inq['id']) }}">
+              <button type="submit" class="btn btn-sm btn-primary">Mark Responded</button>
+            </form>
+            {% else %}
+            <span style="font-size:12px;color:var(--success)"><i class="fas fa-check"></i> Done</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8"><div class="empty-state"><i class="fas fa-bell"></i><h3>No inquiries yet</h3><p>Inquiries from the marketplace will appear here.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

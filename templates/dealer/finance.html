@@ -1,0 +1,463 @@
+{% extends "dealer/base.html" %}
+{% block title %}Finance — Caryanams{% endblock %}
+{% block page_title %}Finance & Billing{% endblock %}
+
+{% block content %}
+<div class="stats-grid mb-24">
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-rupee-sign"></i></div>
+    <div class="stat-info">
+      <div class="stat-value" style="font-size:18px">₹{{ "{:,.0f}".format(total_revenue) }}</div>
+      <div class="stat-label">Total Revenue</div>
+      <div class="stat-change up">Delivered deals only</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ total_deals }}</div>
+      <div class="stat-label">Closed Deals</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-university"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ loan_deals }}</div>
+      <div class="stat-label">Loan Deals</div>
+      <div class="stat-change">{{ cash_deals }} cash deals</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+    <div class="stat-info">
+      <div class="stat-value" style="font-size:18px">₹{{ "{:,.0f}".format(total_gst) }}</div>
+      <div class="stat-label">GST Collected</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2 mb-24">
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- EMI CALCULATOR WITH SLIDERS                   -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-calculator" style="margin-right:8px;color:var(--gold-accent)"></i>EMI Calculator</div>
+    </div>
+    <div class="card-body">
+
+      <!-- Loan Amount Slider -->
+      <div class="form-group" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="margin:0;font-size:13px;font-weight:600">Vehicle / Loan Amount</label>
+          <span style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--navy)" id="lbl_principal">₹5,00,000</span>
+        </div>
+        <input type="range" id="sl_principal" min="50000" max="5000000" step="10000" value="500000"
+               oninput="syncInput('principal',this.value)" class="cy-slider">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin-top:2px">
+          <span>₹50K</span><span>₹50L</span>
+        </div>
+        <input type="number" id="in_principal" placeholder="or type amount" min="50000" max="5000000"
+               oninput="syncSlider('principal',this.value)" style="margin-top:8px;padding:7px 10px;font-size:13px;border:1px solid var(--card-border);border-radius:8px;width:100%;background:var(--card-bg);color:var(--text-primary)">
+      </div>
+
+      <!-- Interest Rate Slider -->
+      <div class="form-group" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="margin:0;font-size:13px;font-weight:600">Annual Interest Rate</label>
+          <span style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--navy)" id="lbl_rate">9.0%</span>
+        </div>
+        <input type="range" id="sl_rate" min="5" max="24" step="0.5" value="9"
+               oninput="syncInput('rate',this.value)" class="cy-slider">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin-top:2px">
+          <span>5%</span><span>24%</span>
+        </div>
+      </div>
+
+      <!-- Tenure — Month & Year mode -->
+      <div class="form-group" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="margin:0;font-size:13px;font-weight:600">Loan Tenure</label>
+          <div style="display:flex;gap:6px">
+            <button type="button" id="modeMonthBtn" onclick="setTenureMode('month')"
+                    style="padding:3px 12px;border-radius:50px;font-size:12px;font-weight:700;border:1px solid var(--gold-accent);cursor:pointer;background:var(--gold-accent);color:var(--navy)">Months</button>
+            <button type="button" id="modeYearBtn" onclick="setTenureMode('year')"
+                    style="padding:3px 12px;border-radius:50px;font-size:12px;font-weight:700;border:1px solid var(--card-border);cursor:pointer;background:transparent;color:var(--text-secondary)">Years</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="range" id="sl_tenure" min="6" max="84" step="6" value="60"
+                 oninput="syncInput('tenure',this.value)" class="cy-slider" style="flex:1">
+          <span style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--navy);min-width:60px;text-align:right" id="lbl_tenure">60 mo</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin-top:2px">
+          <span id="tenure_min_lbl">6 months</span>
+          <span id="tenure_max_lbl">84 months</span>
+        </div>
+        <!-- Custom month/year input -->
+        <div style="display:flex;gap:10px;margin-top:10px">
+          <div style="flex:1">
+            <label style="font-size:11px;color:var(--text-secondary)">Custom Months</label>
+            <input type="number" id="in_months" min="1" max="360" placeholder="e.g. 60"
+                   oninput="setCustomTenure('month',this.value)"
+                   style="padding:6px 10px;font-size:13px;border:1px solid var(--card-border);border-radius:8px;width:100%;background:var(--card-bg);color:var(--text-primary)">
+          </div>
+          <div style="flex:1">
+            <label style="font-size:11px;color:var(--text-secondary)">Custom Years</label>
+            <input type="number" id="in_years" min="1" max="30" placeholder="e.g. 5"
+                   oninput="setCustomTenure('year',this.value)"
+                   style="padding:6px 10px;font-size:13px;border:1px solid var(--card-border);border-radius:8px;width:100%;background:var(--card-bg);color:var(--text-primary)">
+          </div>
+        </div>
+      </div>
+
+      <!-- Result Box -->
+      <div id="emi_result" style="background:linear-gradient(135deg,var(--navy,#0f2444),#1e3a5f);border-radius:12px;padding:16px 20px;margin-top:4px;color:#fff">
+        <div style="text-align:center;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.7">Monthly EMI</div>
+          <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:900;color:var(--gold-accent,#f5c518)" id="emi_monthly">₹—</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;border-top:1px solid rgba(255,255,255,.15);padding-top:12px">
+          <div>
+            <div style="font-size:10px;opacity:.7;font-weight:600;text-transform:uppercase">Principal</div>
+            <div style="font-size:14px;font-weight:700;margin-top:2px" id="emi_principal_disp">—</div>
+          </div>
+          <div>
+            <div style="font-size:10px;opacity:.7;font-weight:600;text-transform:uppercase">Total Interest</div>
+            <div style="font-size:14px;font-weight:700;margin-top:2px;color:#f9a825" id="emi_interest">—</div>
+          </div>
+          <div>
+            <div style="font-size:10px;opacity:.7;font-weight:600;text-transform:uppercase">Total Payable</div>
+            <div style="font-size:14px;font-weight:700;margin-top:2px;color:#4caf50" id="emi_total">—</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- GST Calculator -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-percent" style="margin-right:8px;color:var(--gold-accent)"></i>GST Calculator</div>
+    </div>
+    <div class="card-body">
+
+      <!-- Price Slider -->
+      <div class="form-group" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="margin:0;font-size:13px;font-weight:600">Vehicle Sale Price</label>
+          <span style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--navy)" id="lbl_gst_price">₹8,00,000</span>
+        </div>
+        <input type="range" id="sl_gst_price" min="10000" max="10000000" step="10000" value="800000"
+               oninput="syncGstPrice(this.value)" class="cy-slider">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin-top:2px">
+          <span>₹10K</span><span>₹1Cr</span>
+        </div>
+        <input type="number" id="in_gst_price" placeholder="or type price" min="0"
+               oninput="syncGstPriceInput(this.value)"
+               style="margin-top:8px;padding:7px 10px;font-size:13px;border:1px solid var(--card-border);border-radius:8px;width:100%;background:var(--card-bg);color:var(--text-primary)">
+      </div>
+
+      <div class="form-group" style="margin-bottom:20px">
+        <label>GST Rate</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px" id="gstRateBtns">
+          {% for rate, label in [(5,'5% Electric'),(12,'12% Used Cars'),(18,'18% Standard'),(28,'28% Luxury')] %}
+          <button type="button" class="gst-rate-btn {% if rate==18 %}active{% endif %}"
+                  data-rate="{{ rate }}"
+                  onclick="selectGSTRate({{ rate }},this)"
+                  style="padding:10px;border:2px solid {% if rate==18 %}var(--gold-accent){% else %}var(--card-border){% endif %};border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;background:{% if rate==18 %}rgba(245,197,24,.12){% else %}transparent{% endif %};color:var(--text-primary);transition:all .2s">
+            {{ label }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div id="gst_result" style="background:var(--gold,#fff8dc);border-radius:12px;padding:16px;border:1px solid var(--gold-dark,#e6c300)">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text-secondary)">CGST</div>
+            <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--navy)" id="cgst_val">₹72,000</div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text-secondary)">SGST</div>
+            <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--navy)" id="sgst_val">₹72,000</div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text-secondary)">TOTAL</div>
+            <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--success,#2ecc71)" id="total_with_gst">₹9,44,000</div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.1)">
+          <span style="font-size:12px;color:var(--text-secondary)">GST Rate: </span>
+          <span style="font-size:13px;font-weight:700;color:var(--navy)" id="gst_rate_disp">18%</span>
+          <span style="font-size:12px;color:var(--text-secondary)"> · Total GST: </span>
+          <span style="font-size:13px;font-weight:700;color:#e67e22" id="gst_total_disp">₹1,44,000</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Transactions Table -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Payment Transactions</div>
+    <a href="{{ url_for('dealer.add_deal') }}" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> New Deal</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Deal #</th><th>Customer</th><th>Vehicle</th><th>Final Price</th><th>GST</th><th>Total</th><th>Mode</th><th>Status</th><th>Invoice</th></tr>
+      </thead>
+      <tbody>
+        {% for deal in recent_deals %}
+        <tr>
+          <td style="color:var(--text-muted)">#{{ deal['id'] }}</td>
+          <td style="font-weight:600;color:var(--navy)">{{ deal['customer_name'] }}</td>
+          <td>{% if deal.vehicle %}{{ deal.vehicle.make }} {{ deal.vehicle.model }}{% endif %}</td>
+          <td>₹{{ "{:,.0f}".format(deal['final_price']) }}</td>
+          <td style="color:var(--text-secondary)">₹{{ "{:,.0f}".format(deal['gst_amount']) }}</td>
+          <td style="font-weight:700;color:var(--success)">₹{{ "{:,.0f}".format(deal['total_amount'] or deal['final_price']) }}</td>
+          <td><span class="badge badge-navy">{{ deal['payment_mode'].title() }}</span></td>
+          <td>
+            <span class="badge {% if deal['status'] == 'delivered' %}badge-success{% elif deal['status'] == 'cancelled' %}badge-danger{% else %}badge-warning{% endif %}">
+              {{ deal['status'] }}
+            </span>
+          </td>
+          <td><a href="{{ url_for('dealer.invoice', did_=deal['id']) }}" class="btn btn-sm btn-outline" target="_blank"><i class="fas fa-file-invoice"></i></a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center text-muted" style="padding:20px">No transactions yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.cy-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--gold-accent,#f5c518) 0%, var(--gold-accent,#f5c518) 50%, var(--card-border,#ddd) 50%);
+  outline: none;
+  cursor: pointer;
+}
+.cy-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--gold-accent,#f5c518);
+  border: 2px solid var(--navy,#0f2444);
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  cursor: pointer;
+  transition: transform .15s;
+}
+.cy-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.cy-slider::-moz-range-thumb {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--gold-accent,#f5c518);
+  border: 2px solid var(--navy,#0f2444);
+  cursor: pointer;
+}
+</style>
+<script>
+// ─── Helpers ───────────────────────────────────────────
+function fmt(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function pct(n) { return n.toFixed(1) + '%'; }
+function updateSliderGradient(el) {
+  const min = +el.min, max = +el.max, val = +el.value;
+  const p = ((val - min) / (max - min)) * 100;
+  el.style.background = `linear-gradient(to right,var(--gold-accent,#f5c518) 0%,var(--gold-accent,#f5c518) ${p}%,var(--card-border,#ddd) ${p}%)`;
+}
+
+// ─── EMI Calculator ────────────────────────────────────
+let tenureMode = 'month'; // 'month' | 'year'
+let currentTenureMonths = 60;
+
+function syncInput(field, val) {
+  const n = +val;
+  if (field === 'principal') {
+    document.getElementById('lbl_principal').textContent = fmt(n);
+    document.getElementById('in_principal').value = n;
+    updateSliderGradient(document.getElementById('sl_principal'));
+  } else if (field === 'rate') {
+    document.getElementById('lbl_rate').textContent = pct(n);
+    updateSliderGradient(document.getElementById('sl_rate'));
+  } else if (field === 'tenure') {
+    currentTenureMonths = +val;
+    updateTenureLabel(currentTenureMonths);
+    updateSliderGradient(document.getElementById('sl_tenure'));
+    document.getElementById('in_months').value = currentTenureMonths;
+    document.getElementById('in_years').value = (currentTenureMonths / 12).toFixed(1);
+  }
+  calcEMI();
+}
+
+function syncSlider(field, val) {
+  const n = +val;
+  if (field === 'principal') {
+    document.getElementById('sl_principal').value = Math.min(5000000, Math.max(50000, n));
+    document.getElementById('lbl_principal').textContent = fmt(n);
+    updateSliderGradient(document.getElementById('sl_principal'));
+  }
+  calcEMI();
+}
+
+function setTenureMode(mode) {
+  tenureMode = mode;
+  const sl = document.getElementById('sl_tenure');
+  const minL = document.getElementById('tenure_min_lbl');
+  const maxL = document.getElementById('tenure_max_lbl');
+  const mb = document.getElementById('modeMonthBtn');
+  const yb = document.getElementById('modeYearBtn');
+
+  if (mode === 'month') {
+    sl.min = 6; sl.max = 84; sl.step = 6;
+    sl.value = currentTenureMonths;
+    minL.textContent = '6 months'; maxL.textContent = '84 months';
+    mb.style.background = 'var(--gold-accent)'; mb.style.color = 'var(--navy)'; mb.style.borderColor = 'var(--gold-accent)';
+    yb.style.background = 'transparent'; yb.style.color = 'var(--text-secondary)'; yb.style.borderColor = 'var(--card-border)';
+  } else {
+    sl.min = 1; sl.max = 30; sl.step = 1;
+    const yrs = Math.round(currentTenureMonths / 12) || 1;
+    sl.value = yrs;
+    minL.textContent = '1 year'; maxL.textContent = '30 years';
+    yb.style.background = 'var(--gold-accent)'; yb.style.color = 'var(--navy)'; yb.style.borderColor = 'var(--gold-accent)';
+    mb.style.background = 'transparent'; mb.style.color = 'var(--text-secondary)'; mb.style.borderColor = 'var(--card-border)';
+  }
+  updateSliderGradient(sl);
+  updateTenureLabel(currentTenureMonths);
+  calcEMI();
+}
+
+function updateTenureLabel(months) {
+  const lbl = document.getElementById('lbl_tenure');
+  const yrs = Math.floor(months / 12);
+  const mo = months % 12;
+  if (tenureMode === 'month') {
+    lbl.textContent = months + ' mo';
+  } else {
+    lbl.textContent = yrs + (mo > 0 ? 'y ' + mo + 'm' : ' yr' + (yrs !== 1 ? 's' : ''));
+  }
+}
+
+function setCustomTenure(type, val) {
+  val = +val;
+  if (!val || val <= 0) return;
+  if (type === 'month') {
+    currentTenureMonths = Math.round(val);
+  } else {
+    currentTenureMonths = Math.round(val * 12);
+  }
+  const sl = document.getElementById('sl_tenure');
+  if (tenureMode === 'month') {
+    sl.value = Math.min(84, Math.max(6, currentTenureMonths));
+  } else {
+    sl.value = Math.min(30, Math.max(1, val));
+  }
+  document.getElementById('in_months').value = currentTenureMonths;
+  document.getElementById('in_years').value = (currentTenureMonths / 12).toFixed(1);
+  updateTenureLabel(currentTenureMonths);
+  updateSliderGradient(sl);
+  calcEMI();
+}
+
+// Slider change for tenure (raw value differs by mode)
+document.getElementById('sl_tenure').addEventListener('input', function() {
+  if (tenureMode === 'month') {
+    currentTenureMonths = +this.value;
+  } else {
+    currentTenureMonths = +this.value * 12;
+  }
+  updateTenureLabel(currentTenureMonths);
+  updateSliderGradient(this);
+  document.getElementById('in_months').value = currentTenureMonths;
+  document.getElementById('in_years').value = (+this.value * (tenureMode === 'year' ? 1 : 1/12)).toFixed(tenureMode === 'year' ? 0 : 1);
+  calcEMI();
+});
+
+function calcEMI() {
+  const P = +document.getElementById('sl_principal').value || +document.getElementById('in_principal').value || 0;
+  const annualRate = +document.getElementById('sl_rate').value || 0;
+  const N = currentTenureMonths;
+
+  const monthly_el = document.getElementById('emi_monthly');
+  const principal_el = document.getElementById('emi_principal_disp');
+  const interest_el = document.getElementById('emi_interest');
+  const total_el = document.getElementById('emi_total');
+
+  if (!P || !annualRate || !N) {
+    monthly_el.textContent = '₹—';
+    principal_el.textContent = '—'; interest_el.textContent = '—'; total_el.textContent = '—';
+    return;
+  }
+
+  const r = annualRate / 12 / 100;
+  const emi = P * r * Math.pow(1 + r, N) / (Math.pow(1 + r, N) - 1);
+  const totalPay = emi * N;
+  const totalInterest = totalPay - P;
+
+  monthly_el.textContent = fmt(emi);
+  principal_el.textContent = fmt(P);
+  interest_el.textContent = fmt(totalInterest);
+  total_el.textContent = fmt(totalPay);
+}
+
+// ─── GST Calculator ────────────────────────────────────
+let currentGSTRate = 18;
+
+function selectGSTRate(rate, btn) {
+  currentGSTRate = rate;
+  document.querySelectorAll('.gst-rate-btn').forEach(b => {
+    b.style.borderColor = 'var(--card-border)';
+    b.style.background = 'transparent';
+  });
+  btn.style.borderColor = 'var(--gold-accent)';
+  btn.style.background = 'rgba(245,197,24,.12)';
+  calcGST();
+}
+
+function syncGstPrice(val) {
+  document.getElementById('lbl_gst_price').textContent = fmt(val);
+  document.getElementById('in_gst_price').value = val;
+  updateSliderGradient(document.getElementById('sl_gst_price'));
+  calcGST();
+}
+
+function syncGstPriceInput(val) {
+  const n = +val;
+  document.getElementById('sl_gst_price').value = Math.min(10000000, Math.max(10000, n));
+  document.getElementById('lbl_gst_price').textContent = fmt(n || 0);
+  updateSliderGradient(document.getElementById('sl_gst_price'));
+  calcGST();
+}
+
+function calcGST() {
+  const price = +document.getElementById('sl_gst_price').value || 0;
+  if (!price) return;
+  const totalGST = price * currentGSTRate / 100;
+  const half = totalGST / 2;
+  document.getElementById('cgst_val').textContent = fmt(half);
+  document.getElementById('sgst_val').textContent = fmt(half);
+  document.getElementById('total_with_gst').textContent = fmt(price + totalGST);
+  document.getElementById('gst_rate_disp').textContent = currentGSTRate + '%';
+  document.getElementById('gst_total_disp').textContent = fmt(totalGST);
+}
+
+// ─── Init ───────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  [document.getElementById('sl_principal'),
+   document.getElementById('sl_rate'),
+   document.getElementById('sl_tenure'),
+   document.getElementById('sl_gst_price')].forEach(el => el && updateSliderGradient(el));
+  calcEMI();
+  calcGST();
+});
+</script>
+{% endblock %}

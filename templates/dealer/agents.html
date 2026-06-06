@@ -1,0 +1,186 @@
+{% extends "dealer/base.html" %}
+{% block title %}Agents — Caryanams{% endblock %}
+{% block page_title %}Agent Management{% endblock %}
+
+{% block content %}
+<div class="grid-2 mb-24">
+  <!-- Add Agent Form -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-user-plus" style="margin-right:8px;color:var(--gold-accent)"></i>Add New Agent</div>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('dealer.add_agent') }}">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" name="name" placeholder="Enter agent name" required>
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" placeholder="agent@example.com" required>
+          </div>
+          <div class="form-group">
+            <label>Phone *</label>
+            <input type="tel" name="phone" placeholder="+91 XXXXX XXXXX" required>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select name="status">
+              <option value="available">Available</option>
+              <option value="not_available">Not Available</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">
+          <i class="fas fa-save"></i> Add Agent
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-chart-line" style="margin-right:8px;color:var(--gold-accent)"></i>Agent Stats</div>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div style="background:var(--success-bg);border-radius:var(--radius);padding:20px;text-align:center">
+          <div style="font-family:'Oswald',sans-serif;font-size:32px;font-weight:700;color:var(--success)">
+            {{ agents|selectattr('status', 'equalto', 'available')|list|length }}
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary)">Available Agents</div>
+        </div>
+        <div style="background:var(--warning-bg);border-radius:var(--radius);padding:20px;text-align:center">
+          <div style="font-family:'Oswald',sans-serif;font-size:32px;font-weight:700;color:var(--warning)">
+            {{ agents|selectattr('status', 'equalto', 'not_available')|list|length }}
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary)">Not Available</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Agents List -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fas fa-users" style="margin-right:8px;color:var(--gold-accent)"></i>All Agents</div>
+    <span class="badge badge-navy">{{ agents|length }} Total</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Leads Assigned</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for agent in agents %}
+        <tr>
+          <td style="color:var(--text-muted)">#{{ agent['id'] }}</td>
+          <td style="font-weight:600;color:var(--navy)">{{ agent['name'] }}</td>
+          <td>{{ agent['email'] }}</td>
+          <td>{{ agent['phone'] }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('dealer.update_agent_status', agent_id=agent['id']) }}" style="display:inline">
+              <select name="status" onchange="this.form.submit()" style="width:auto;padding:4px 8px;font-size:12px">
+                <option value="available" {% if agent['status'] == 'available' %}selected{% endif %}>Available</option>
+                <option value="not_available" {% if agent['status'] == 'not_available' %}selected{% endif %}>Not Available</option>
+              </select>
+            </form>
+          </td>
+          <td style="text-align:center">
+            <span class="badge badge-info">{{ agent_leads_count.get(agent['id'], 0) }}</span>
+          </td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm btn-primary" onclick="openEditModal({{ agent|tojson }})">
+                <i class="fas fa-edit"></i> Edit
+              </button>
+              <form method="POST" action="{{ url_for('dealer.delete_agent', agent_id=agent['id']) }}" id="del_agent_{{ agent['id'] }}" style="display:inline">
+                <button type="button" onclick="confirmDelete('del_agent_{{ agent['id'] }}', 'Delete agent {{ agent['name'] }}? This will unassign their leads.')" class="btn btn-sm btn-danger btn-icon">
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted" style="padding:40px">
+            <i class="fas fa-users" style="font-size:40px;display:block;margin-bottom:12px"></i>
+            No agents added yet. Add your first agent above.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Edit Agent Modal -->
+<div id="editAgentModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Agent</div>
+      <button class="modal-close" onclick="closeModal('editAgentModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <form method="POST" id="editAgentForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" name="name" id="edit_name" required>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email" id="edit_email" required>
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" name="phone" id="edit_phone" required>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status" id="edit_status">
+            <option value="available">Available</option>
+            <option value="not_available">Not Available</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('editAgentModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+function openEditModal(agent) {
+  document.getElementById('edit_name').value = agent.name;
+  document.getElementById('edit_email').value = agent.email;
+  document.getElementById('edit_phone').value = agent.phone;
+  document.getElementById('edit_status').value = agent.status;
+  document.getElementById('editAgentForm').action = "{{ url_for('dealer.edit_agent', agent_id=0) }}".replace('0', agent.id);
+  openModal('editAgentModal');
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function confirmDelete(formId, msg) {
+  if (confirm(msg || 'Are you sure you want to delete this?')) {
+    document.getElementById(formId).submit();
+  }
+}
+</script>
+{% endblock %}
+{% endblock %}

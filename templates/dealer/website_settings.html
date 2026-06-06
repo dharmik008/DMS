@@ -1,0 +1,162 @@
+{% extends 'dealer/base.html' %}
+{% block title %}My Website Settings — Caryanams DMS{% endblock %}
+{% block page_title %}My Website Settings{% endblock %}
+
+{% block content %}
+<style>
+  .ws-layout{display:grid;grid-template-columns:1fr 380px;gap:28px;align-items:start}
+  .ws-card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 16px rgba(0,0,0,.06);margin-bottom:20px}
+  .ws-card h3{font-size:17px;font-weight:700;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;color:#0f172a}
+  .ws-card h3 i{color:#1a73e8}
+  .form-group{margin-bottom:18px}
+  .form-group label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:7px}
+  .form-group input,.form-group textarea{width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;font-family:inherit;transition:border .18s}
+  .form-group input:focus,.form-group textarea:focus{border-color:#1a73e8}
+  .form-group small{font-size:12px;color:#94a3b8;margin-top:5px;display:block}
+  .btn-save{padding:12px 28px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:background .18s;display:inline-flex;align-items:center;gap:8px}
+  .btn-save:hover{background:#0f5cc7}
+  .preview-card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 16px rgba(0,0,0,.06);position:sticky;top:90px}
+  .logo-preview{width:80px;height:80px;border-radius:14px;object-fit:contain;border:2px solid #e2e8f0}
+  .letter-avatar{width:80px;height:80px;border-radius:14px;background:linear-gradient(135deg,#1a73e8,#0f5cc7);color:#fff;font-size:36px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .preview-url{background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 14px;font-size:13px;color:#64748b;word-break:break-all;margin-top:12px}
+  .preview-url a{color:#1a73e8;font-weight:600}
+  @media(max-width:900px){.ws-layout{grid-template-columns:1fr}.preview-card{position:static}}
+</style>
+
+<div class="ws-layout">
+  <!-- FORM -->
+  <div>
+    <form method="POST" enctype="multipart/form-data">
+
+      <!-- Identity -->
+      <div class="ws-card">
+        <h3><i class="fas fa-id-card"></i> Website Identity</h3>
+
+        <div class="form-group">
+          <label>Website Name <span style="color:#ef4444">*</span></label>
+          <input type="text" name="website_name" value="{{ dealer.website_name or '' }}" placeholder="e.g. ramcars, rajmotors" maxlength="100" />
+          <small>This becomes your URL: yoursite.com/dealer/<strong>websitename</strong></small>
+        </div>
+
+        <div class="form-group">
+          <label>Website Logo (optional)</label>
+          {% if dealer.website_logo %}
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+            <img src="{{ url_for('static', filename='images/uploads/' ~ dealer.website_logo) }}" class="logo-preview" alt="Current Logo" />
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#0f172a">Current logo</div>
+              <div style="font-size:12px;color:#94a3b8">Upload a new one to replace</div>
+            </div>
+          </div>
+          {% endif %}
+          <input type="file" name="website_logo" accept=".jpg,.jpeg,.png" style="padding:8px" />
+          <small>Upload your dealership logo — JPG, JPEG, or PNG. If none, your initial letter is shown.</small>
+        </div>
+      </div>
+
+      <!-- Contact Info -->
+      <div class="ws-card">
+        <h3><i class="fas fa-phone-alt"></i> Contact Information</h3>
+
+        <div class="form-group">
+          <label>WhatsApp Number</label>
+          <input type="tel" name="whatsapp_number" value="{{ dealer.whatsapp_number or '' }}" placeholder="9876543210" />
+          <small>Used for the WhatsApp button on your website (mandatory for lead capture)</small>
+        </div>
+
+        <div class="form-group">
+          <label>Business Address</label>
+          <input type="text" name="address" value="{{ dealer.address or '' }}" placeholder="Plot 12, Main Bazaar, Mumbai 400001" />
+        </div>
+
+        <div class="form-group">
+          <label>Business Hours</label>
+          <input type="text" name="business_hours" value="{{ dealer.business_hours or '' }}" placeholder="Mon–Sat: 9 AM – 7 PM" />
+        </div>
+
+        <div class="form-group">
+          <label>Years in Business</label>
+          <input type="number" name="years_in_business" value="{{ dealer.years_in_business or '' }}" placeholder="5" min="0" max="100" />
+        </div>
+      </div>
+
+      <!-- Maps -->
+      <div class="ws-card">
+        <h3><i class="fas fa-map-marked-alt"></i> Google Maps Embed</h3>
+        <div class="form-group">
+          <label>Google Maps Embed URL</label>
+          <input type="url" name="google_maps_url" value="{{ dealer.google_maps_url or '' }}" placeholder="https://www.google.com/maps/embed?pb=..." />
+          <small>
+            Go to <a href="https://maps.google.com" target="_blank" style="color:#1a73e8">Google Maps</a> → search your location → Share → Embed a map → copy the <code>src</code> URL.
+          </small>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-save">
+        <i class="fas fa-save"></i> Save Settings
+      </button>
+    </form>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:#0f172a">
+      <i class="fas fa-eye" style="color:#1a73e8;margin-right:8px"></i>Live Preview
+    </h3>
+
+    <!-- Logo Preview -->
+    {% set wname = dealer.website_name or dealer.name %}
+    <div style="display:flex;align-items:center;gap:14px;padding:16px;background:#f8fafc;border-radius:12px;margin-bottom:16px">
+      {% if dealer.website_logo %}
+        <img src="{{ url_for('static', filename='images/uploads/' ~ dealer.website_logo) }}" class="logo-preview" alt="Logo" />
+      {% else %}
+        <div class="letter-avatar">{{ wname[0].upper() }}</div>
+      {% endif %}
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#0f172a">{{ wname }}</div>
+        {% if dealer.city %}<div style="font-size:13px;color:#64748b"><i class="fas fa-map-marker-alt"></i> {{ dealer.city }}</div>{% endif %}
+      </div>
+    </div>
+
+    <!-- URL -->
+    <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">Your Website URL</div>
+    <div class="preview-url">
+      <a href="{{ url_for('minisite.home', website_name=wname) }}" target="_blank">
+        /dealer/{{ wname }}
+      </a>
+    </div>
+
+    <a href="{{ url_for('minisite.home', website_name=wname) }}" target="_blank"
+       class="btn-save" style="width:100%;justify-content:center;margin-top:16px;text-decoration:none">
+      <i class="fas fa-external-link-alt"></i> Open My Website
+    </a>
+
+    <!-- Checklist -->
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0">
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Setup Checklist</div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+        <div style="color:{{ '#16a34a' if dealer.website_name else '#94a3b8' }}">
+          <i class="fas fa-{{ 'check-circle' if dealer.website_name else 'circle' }}"></i>
+          Website name set
+        </div>
+        <div style="color:{{ '#16a34a' if dealer.website_logo else '#94a3b8' }}">
+          <i class="fas fa-{{ 'check-circle' if dealer.website_logo else 'circle' }}"></i>
+          Logo uploaded
+        </div>
+        <div style="color:{{ '#16a34a' if dealer.whatsapp_number else '#94a3b8' }}">
+          <i class="fas fa-{{ 'check-circle' if dealer.whatsapp_number else 'circle' }}"></i>
+          WhatsApp number added
+        </div>
+        <div style="color:{{ '#16a34a' if dealer.address else '#94a3b8' }}">
+          <i class="fas fa-{{ 'check-circle' if dealer.address else 'circle' }}"></i>
+          Address filled
+        </div>
+        <div style="color:{{ '#16a34a' if dealer.google_maps_url else '#94a3b8' }}">
+          <i class="fas fa-{{ 'check-circle' if dealer.google_maps_url else 'circle' }}"></i>
+          Google Maps added
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
