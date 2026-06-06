@@ -1,0 +1,493 @@
+/* ========== Caryanams Auth Styles ========== */
+/* Typography: Poppins for headings, Inter for body */
+:root {
+    --navy: #002366;
+    --navy-dark: #001A4D;
+    --navy-mid: #003399;
+    --gold: #F7E7CE;
+    --gold-dark: #E5D3B3;
+    --gold-accent: #C8A96E;
+    --white: #FFFFFF;
+    --bg: #F5F5F5;
+    --text-primary: #1E293B;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --border: #E2E8F0;
+    --success: #1A8A4A;
+    --success-bg: #E8F5E9;
+    --danger: #DC2626;
+    --danger-bg: #FEF2F2;
+    --radius: 12px;
+    --radius-lg: 20px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: var(--bg);
+}
+
+/* ========== Auth Layout ========== */
+.auth-layout {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Left Panel */
+.auth-panel {
+    background: linear-gradient(135deg, #001A4D 0%, #002366 50%, #003399 100%);
+    padding: 48px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 60px;
+}
+
+.brand-logo {
+    width: 48px;
+    height: 48px;
+    background: var(--gold);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-login {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.brand-name {
+    font-family: 'Poppins', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    color: white;
+    letter-spacing: 2px;
+}
+
+.auth-hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.hero-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 42px;
+    font-weight: 800;
+    color: white;
+    line-height: 1.2;
+    margin-bottom: 16px;
+}
+
+.hero-sub {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 32px;
+}
+
+.hero-features {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.feat {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.feat i {
+    color: var(--gold-accent);
+}
+
+/* Floating Cars */
+.auth-panel-cars {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+.floating-car {
+    position: absolute;
+    font-size: 80px;
+    color: rgba(255, 255, 255, 0.05);
+}
+
+.floating-car.c1 {
+    bottom: 20px;
+    left: 20px;
+    font-size: 120px;
+}
+
+.floating-car.c2 {
+    bottom: 80px;
+    right: 40px;
+    font-size: 90px;
+}
+
+.floating-car.c3 {
+    bottom: -20px;
+    right: 120px;
+    font-size: 100px;
+}
+
+/* Right Panel */
+.auth-form-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+    background: white;
+}
+
+.auth-form-wrap {
+    max-width: 420px;
+    width: 100%;
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.form-header h1 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--navy);
+    margin-bottom: 8px;
+}
+
+.form-header p {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.form-group label i {
+    margin-right: 6px;
+    font-size: 12px;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(0, 35, 102, 0.1);
+}
+
+.pass-wrap {
+    position: relative;
+}
+
+.pass-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+/* Role Selector */
+.role-selector {
+    margin-bottom: 20px;
+}
+
+.role-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.role-btns {
+    display: flex;
+    gap: 12px;
+}
+
+.role-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+}
+
+.role-btn.active {
+    border-color: var(--gold-accent);
+    background: var(--gold);
+}
+
+.role-btn input {
+    display: none;
+}
+
+/* Auth Button */
+.btn-auth {
+    width: 100%;
+    background: var(--navy);
+    color: white;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s;
+}
+
+.btn-auth:hover {
+    background: var(--navy-mid);
+    transform: translateY(-1px);
+}
+
+/* Divider */
+.auth-divider {
+    text-align: center;
+    margin: 24px 0;
+    position: relative;
+}
+
+.auth-divider::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+}
+
+.auth-divider span {
+    background: white;
+    padding: 0 12px;
+    position: relative;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Demo Accounts */
+.demo-accounts {
+    margin-top: 20px;
+}
+
+.demo-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.demo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.demo-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--bg);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--border);
+}
+
+.demo-card:hover {
+    background: var(--gold);
+    border-color: var(--gold-dark);
+}
+
+.demo-card i {
+    font-size: 20px;
+    color: var(--navy);
+}
+
+.demo-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.demo-cred {
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+/* Alert */
+.alert {
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.alert-success {
+    background: var(--success-bg);
+    color: var(--success);
+}
+
+.alert-error {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+/* Footer */
+.auth-footer {
+    text-align: center;
+    margin-top: 32px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.auth-footer a {
+    color: var(--navy);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.auth-footer a:hover {
+    color: var(--gold-accent);
+}
+
+/* Role Preview */
+.role-preview {
+    display: flex;
+    gap: 16px;
+    margin-top: 32px;
+}
+
+.role-card-prev {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.role-card-prev i {
+    font-size: 28px;
+    color: var(--gold-accent);
+}
+
+.role-card-prev strong {
+    font-size: 14px;
+    display: block;
+}
+
+.role-card-prev span {
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .auth-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-panel {
+        display: none;
+    }
+
+    .auth-form-panel {
+        padding: 32px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .demo-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .role-btns {
+        flex-direction: column;
+    }
+}
+
+.nav-item.logout:hover {
+    background: rgba(255, 77, 79, 0.1);
+    border-radius: 8px;
+}
+.nav-item.logout i {
+    transition: 0.2s;
+}
+
+.nav-item.logout:hover i {
+    transform: translateX(3px);
+}

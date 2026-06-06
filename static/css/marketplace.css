@@ -1,0 +1,1056 @@
+/* ========== Caryanams Marketplace Styles ========== */
+/* Typography: Poppins for headings, Inter for body */
+:root {
+    --navy: #002366;
+    --navy-dark: #001A4D;
+    --navy-mid: #003399;
+    --gold: #F7E7CE;
+    --gold-dark: #E5D3B3;
+    --gold-accent: #C8A96E;
+    --white: #FFFFFF;
+    --bg: #F8F9FC;
+    --text-primary: #1E293B;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --border: #E2E8F0;
+    --card-border: #E2E8F0;
+    --shadow: rgba(0, 0, 0, 0.05);
+    --success: #1A8A4A;
+    --success-bg: #E8F5E9;
+    --danger: #DC2626;
+    --danger-bg: #FEF2F2;
+    --warning: #D97706;
+    --warning-bg: #FFFBEB;
+    --info: #2563EB;
+    --info-bg: #EFF6FF;
+    --radius: 12px;
+    --radius-lg: 16px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: var(--bg);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.section-title,
+.hero-title,
+.car-name,
+.detail-title {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+}
+
+/* ========== Logo Styles ========== */
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+.nav-logo-box {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-nav {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.nav-brand-text {
+    font-family: 'Poppins', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: white;
+    letter-spacing: 1px;
+}
+
+/* ========== Navbar ========== */
+.navbar {
+    background: var(--navy);
+    padding: 12px 5%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    flex-wrap: wrap;
+}
+
+.nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+}
+
+.nav-links a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    color: var(--gold-accent);
+}
+
+.nav-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.btn-nav-dealer {
+    background: transparent;
+    border: 1px solid var(--gold-accent);
+    color: var(--gold-accent);
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-nav-dealer:hover {
+    background: var(--gold-accent);
+    color: var(--navy);
+}
+
+.btn-nav-login {
+    background: var(--gold);
+    color: var(--navy);
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    transition: all 0.2s;
+}
+
+.btn-nav-login:hover {
+    background: var(--gold-dark);
+}
+
+.nav-mobile-toggle {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    display: none;
+}
+
+/* ========== Hero Section ========== */
+.hero {
+    background: linear-gradient(135deg, #001A4D 0%, #002366 100%);
+    padding: 60px 5%;
+    color: white;
+}
+
+.hero-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: center;
+}
+
+.hero-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 20px;
+}
+
+.hero-title span {
+    color: var(--gold-accent);
+}
+
+.hero-sub {
+    font-size: 16px;
+    opacity: 0.8;
+    margin-bottom: 32px;
+    max-width: 500px;
+}
+
+.hero-stats {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 32px;
+}
+
+.hero-stat-val {
+    font-family: 'Poppins', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--gold-accent);
+}
+
+.hero-stat-label {
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+.btn-search {
+    background: var(--gold);
+    color: var(--navy);
+    padding: 12px 28px;
+    border-radius: 40px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-search:hover {
+    background: var(--gold-dark);
+    transform: translateY(-2px);
+}
+
+/* ========== Hero Search Widget ========== */
+.hero-search {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    color: var(--text-primary);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.hero-search-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hero-search-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.search-input-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.search-input-wrap label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.search-input-wrap input,
+.search-input-wrap select {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+}
+
+/* ========== Brands Section ========== */
+.brands-section {
+    padding: 32px 5%;
+    background: white;
+    border-bottom: 1px solid var(--border);
+}
+
+.brands-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.brands-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+.brand-chip {
+    background: var(--bg);
+    padding: 8px 18px;
+    border-radius: 40px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.brand-chip:hover {
+    background: var(--gold);
+    color: var(--navy);
+}
+
+/* ========== Section ========== */
+.section {
+    padding: 48px 5%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.section-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--navy);
+}
+
+.section-title span {
+    color: var(--gold-accent);
+}
+
+.section-sub {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.view-all {
+    color: var(--navy);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.view-all:hover {
+    color: var(--gold-accent);
+}
+
+/* ========== Cars Grid ========== */
+.cars-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.car-card {
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--card-border);
+    overflow: hidden;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.car-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+.car-img-wrap {
+    position: relative;
+    height: 180px;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.car-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.car-img-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 48px;
+    color: var(--border);
+}
+
+.car-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--navy);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.car-badge.gold-badge {
+    background: var(--gold);
+    color: var(--navy);
+}
+
+.car-body {
+    padding: 16px;
+}
+
+.car-name {
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+}
+
+.car-variant {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.car-specs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.car-specs .spec {
+    font-size: 11px;
+    background: var(--bg);
+    padding: 4px 8px;
+    border-radius: 20px;
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.car-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.car-price {
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--navy);
+}
+
+.car-cta {
+    background: var(--gold);
+    color: var(--navy);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* ========== Why Section ========== */
+.why-section {
+    background: var(--navy);
+    padding: 60px 5%;
+    color: white;
+}
+
+.why-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 32px;
+}
+
+.why-card {
+    text-align: center;
+}
+
+.why-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 24px;
+    color: var(--navy);
+}
+
+.why-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.why-desc {
+    font-size: 14px;
+    opacity: 0.7;
+    line-height: 1.6;
+}
+
+/* ========== Footer ========== */
+.footer {
+    background: #001A4D;
+    color: white;
+    padding: 48px 5% 24px;
+}
+
+.footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 40px;
+    margin-bottom: 32px;
+}
+
+.footer-brand-name {
+    font-family: 'Poppins', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.footer-tagline {
+    font-size: 13px;
+    opacity: 0.6;
+    margin-bottom: 12px;
+}
+
+.footer-col-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.footer-links {
+    list-style: none;
+}
+
+.footer-links li {
+    margin-bottom: 8px;
+}
+
+.footer-links a {
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.footer-links a:hover {
+    color: var(--gold-accent);
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* ========== Listings Layout ========== */
+.listings-layout {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px 5%;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 32px;
+}
+
+.filters-sidebar {
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--card-border);
+    padding: 20px;
+    align-self: start;
+    position: sticky;
+    top: 80px;
+}
+
+.filter-section-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.filter-group {
+    margin-bottom: 20px;
+}
+
+.filter-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.filter-group input,
+.filter-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+}
+
+.price-range {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.btn-filter-apply {
+    width: 100%;
+    background: var(--navy);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.btn-filter-reset {
+    display: block;
+    text-align: center;
+    padding: 9px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    font-size: 13px;
+    text-decoration: none;
+    margin-top: 8px;
+}
+
+.listings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.listings-count {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.sort-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+}
+
+/* ========== Detail Page ========== */
+.breadcrumb {
+    padding: 16px 5%;
+    background: white;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.breadcrumb a {
+    color: var(--navy);
+    text-decoration: none;
+}
+
+.breadcrumb span {
+    color: var(--text-muted);
+}
+
+.detail-layout {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px 5%;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 32px;
+}
+
+.detail-img-main {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    aspect-ratio: 16/10;
+    object-fit: cover;
+}
+
+.detail-img-placeholder {
+    width: 100%;
+    aspect-ratio: 16/10;
+    background: var(--bg);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+    color: var(--border);
+}
+
+.detail-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--navy);
+}
+
+.detail-variant {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.detail-price {
+    font-family: 'Poppins', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--navy);
+    margin-bottom: 4px;
+}
+
+.detail-negotiable {
+    font-size: 13px;
+    color: var(--success);
+    margin-bottom: 20px;
+}
+
+.specs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.spec-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.spec-item i {
+    width: 32px;
+    height: 32px;
+    background: var(--bg);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--navy-mid);
+}
+
+.spec-key {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.spec-val {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--navy);
+}
+
+/* ========== Inquiry Card ========== */
+.inquiry-card {
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--card-border);
+    padding: 24px;
+    position: sticky;
+    top: 80px;
+}
+
+.inquiry-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+}
+
+.inquiry-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+.inq-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.btn-inquire {
+    width: 100%;
+    background: var(--navy);
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-test-drive {
+    width: 100%;
+    background: var(--gold);
+    color: var(--navy);
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.dealer-info {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.dealer-info-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.dealer-name {
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.dealer-city {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ========== Contact Page ========== */
+.contact-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 5%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+}
+
+.contact-card {
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--card-border);
+    padding: 28px;
+}
+
+.contact-card-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 20px;
+}
+
+.alert-box {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.alert-success {
+    background: var(--success-bg);
+    color: var(--success);
+}
+
+.alert-error {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+/* ========== Pagination ========== */
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 32px;
+}
+
+.page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.page-btn:hover {
+    background: var(--gold);
+    border-color: var(--gold-dark);
+}
+
+.page-btn.active {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: white;
+}
+
+.page-btn.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* ========== Flash Bar ========== */
+.flash-bar {
+    background: var(--success-bg);
+    color: var(--success);
+    padding: 12px 5%;
+    text-align: center;
+    font-size: 14px;
+}
+
+.flash-bar.error {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 1024px) {
+    .hero-inner {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .listings-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .filters-sidebar {
+        position: static;
+    }
+
+    .contact-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+
+    .nav-mobile-toggle {
+        display: block;
+    }
+
+    .hero-title {
+        font-size: 32px;
+    }
+
+    .section-title {
+        font-size: 24px;
+    }
+
+    .cars-grid {
+        grid-template-columns: 1fr;
+    }
+}
