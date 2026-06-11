@@ -5,28 +5,43 @@
 <div class="page-header">
   <div class="page-header-left"><h1>Reports</h1><p>Generate and export live DMS data reports</p></div>
 </div>
-<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+<div style="display:grid;grid-template-columns:1fr;gap:16px;max-width:720px;">
   {% set report_types = [
-    ('dealer','Dealer Report','All registered dealers with status and subscription info'),
-    ('vehicle','Vehicle Report','Full inventory report across all dealers'),
-    ('lead','Lead Report','All leads with stage and source breakdown'),
-    ('sales','Sales / Deals Report','All deal transactions and revenue data'),
+    ('dealer','Dealer Report','All registered dealers with status and subscription info','fa-store','#6366f1'),
+    ('vehicle','Vehicle Report','Full inventory report across all dealers','fa-car','#0891b2'),
+    ('lead','Lead Report','All leads with stage and source breakdown','fa-user-tag','#f97316'),
+    ('sales','Sales / Deals Report','All deal transactions and revenue data','fa-handshake','#22c55e'),
   ] %}
-  {% for rtype, label, desc in report_types %}
-  <div class="card">
-    <div class="card-header"><span class="card-title">{{ label }}</span></div>
-    <div style="padding:20px;">
-      <p style="color:var(--text-2);font-size:13px;margin-bottom:16px;">{{ desc }}</p>
-      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-        <div>
-          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px;">From</label>
-          <input type="date" id="from_{{ rtype }}" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+  {% for rtype, label, desc, icon, color in report_types %}
+  <div class="card" style="border-left:4px solid {{ color }};">
+    <div class="card-header" style="padding:16px 20px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:{{ color }}1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="fas {{ icon }}" style="color:{{ color }};font-size:15px;"></i>
         </div>
         <div>
-          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px;">To</label>
-          <input type="date" id="to_{{ rtype }}" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
+          <div class="card-title" style="margin:0;">{{ label }}</div>
+          <div style="font-size:12px;color:var(--text-2);margin-top:2px;">{{ desc }}</div>
         </div>
-        <button onclick="downloadReport('{{ rtype }}')" class="btn btn-primary btn-sm">⬇ Download CSV</button>
+      </div>
+    </div>
+    <div style="padding:16px 20px;border-top:1px solid var(--border);">
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="flex:1;min-width:130px;">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px;font-weight:600;">From</label>
+          <input type="date" id="from_{{ rtype }}"
+            style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;box-sizing:border-box;">
+        </div>
+        <div style="flex:1;min-width:130px;">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px;font-weight:600;">To</label>
+          <input type="date" id="to_{{ rtype }}"
+            style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;box-sizing:border-box;">
+        </div>
+        <button onclick="downloadReport('{{ rtype }}')"
+          class="btn btn-primary btn-sm"
+          style="background:{{ color }};border-color:{{ color }};white-space:nowrap;align-self:flex-end;">
+          <i class="fas fa-download"></i> Download CSV
+        </button>
       </div>
     </div>
   </div>
