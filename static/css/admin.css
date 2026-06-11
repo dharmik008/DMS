@@ -39,7 +39,7 @@
 
 html {
   font-size: 15px;
-  overflow-x: auto; /* html is the true scrollable root */
+  overflow-x: hidden;
 }
 
 body {
@@ -49,7 +49,7 @@ body {
   display: flex;
   min-height: 100vh;
   overflow-x: hidden; /* body itself hidden; html element handles page scroll */
-  min-width: 900px;   /* triggers html-level horizontal scroll when window < 900px */
+  /* min-width removed — handled by responsive.css for proper mobile support */
 }
 
 /* ── Heading hierarchy ── */
