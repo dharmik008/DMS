@@ -102,6 +102,47 @@
       {% if dealer.google_maps_url %}
       <iframe src="{{ dealer.google_maps_url }}" width="100%" height="260" style="border:none;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1)" allowfullscreen loading="lazy"></iframe>
       {% endif %}
+
+      <!-- Business Hours Calendar -->
+      <div style="background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,.07);margin-top:20px">
+        <h3 style="font-size:17px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:#0f172a">
+          <i class="fas fa-calendar-alt" style="color:#1a73e8"></i> Business Hours
+        </h3>
+        <div style="display:flex;flex-direction:column;gap:6px" id="biz-hours-rows">
+          <div class="bh-row" data-day="1" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #f1f5f9"><div style="display:flex;align-items:center;gap:8px"><span class="bh-dot" style="width:8px;height:8px;border-radius:50%;background:#e2e8f0;display:inline-block"></span><span class="bh-day-label" style="font-size:14px;font-weight:500;color:#334155">Monday</span></div><div style="display:flex;align-items:center;gap:6px"><i class="fas fa-clock" style="font-size:11px;color:#64748b"></i><span style="font-size:13px;font-weight:600;color:#334155">09:00 AM – 07:00 PM</span></div></div>
+          <div class="bh-row" data-day="2" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #f1f5f9"><div style="display:flex;align-items:center;gap:8px"><span class="bh-dot" style="width:8px;height:8px;border-radius:50%;background:#e2e8f0;display:inline-block"></span><span class="bh-day-label" style="font-size:14px;font-weight:500;color:#334155">Tuesday</span></div><div style="display:flex;align-items:center;gap:6px"><i class="fas fa-clock" style="font-size:11px;color:#64748b"></i><span style="font-size:13px;font-weight:600;color:#334155">09:00 AM – 07:00 PM</span></div></div>
+          <div class="bh-row" data-day="3" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #f1f5f9"><div style="display:flex;align-items:center;gap:8px"><span class="bh-dot" style="width:8px;height:8px;border-radius:50%;background:#e2e8f0;display:inline-block"></span><span class="bh-day-label" style="font-size:14px;font-weight:500;color:#334155">Wednesday</span></div><div style="display:flex;align-items:center;gap:6px"><i class="fas fa-clock" style="font-size:11px;color:#64748b"></i><span style="font-size:13px;font-weight:600;color:#334155">09:00 AM – 07:00 PM</span></div></div>
+          <div class="bh-row" data-day="4" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #f1f5f9"><div style="display:flex;align-items:center;gap:8px"><span class="bh-dot" style="width:8px;height:8px;border-radius:50%;background:#e2e8f0;display:inline-block"></span><span class="bh-day-label" style="font-size:14px;font-weight:500;color:#334155">Thursday</span></div><div style="display:flex;align-items:center;gap:6px"><i class="fas fa-clock" style="font-size:11px;color:#64748b"></i><span style="font-size:13px;font-weight:600;color:#334155">09:00 AM – 07:00 PM</span></div></div>
+          <div class="bh-row" data-day="5" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #f1f5f9"><div style="display:flex;align-items:center;gap:8px"><span class="bh-dot" style="width:8px;height:8px;border-radius:50%;background:#e2e8f0;display:inline-block"></span><span class="bh-day-label" style="font-size:14px;font-weight:500;color:#334155">Friday</span></div><div style="display:flex;align-items:center;gap:6px"><i class="fas fa-clock" style="font-size:11px;color:#64748b"></i><span style="font-size:13px;font-weight:600;color:#334155">09:00 AM – 07:00 PM</span></div></div>
+          <div class="bh-row" data-day="6" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #f1f5f9"><div style="display:flex;align-items:center;gap:8px"><span class="bh-dot" style="width:8px;height:8px;border-radius:50%;background:#e2e8f0;display:inline-block"></span><span class="bh-day-label" style="font-size:14px;font-weight:500;color:#334155">Saturday</span></div><div style="display:flex;align-items:center;gap:6px"><i class="fas fa-clock" style="font-size:11px;color:#64748b"></i><span style="font-size:13px;font-weight:600;color:#334155">10:00 AM – 06:00 PM</span></div></div>
+          <div class="bh-row" data-day="0" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #f1f5f9"><div style="display:flex;align-items:center;gap:8px"><span class="bh-dot" style="width:8px;height:8px;border-radius:50%;background:#e2e8f0;display:inline-block"></span><span class="bh-day-label" style="font-size:14px;font-weight:500;color:#334155">Sunday</span></div><span style="font-size:13px;font-weight:600;color:#ef4444">Closed</span></div>
+        </div>
+        <div style="margin-top:14px;padding:10px 14px;background:#f0fdf4;border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:#166534">
+          <i class="fas fa-info-circle"></i>
+          {% if dealer.business_hours %}{{ dealer.business_hours }}{% else %}Walk-ins welcome during business hours. Call ahead for test drives.{% endif %}
+        </div>
+        <script>
+          (function(){
+            var today = new Date().getDay(); // 0=Sun, 1=Mon ...
+            var rows = document.querySelectorAll('#biz-hours-rows .bh-row');
+            rows.forEach(function(row) {
+              if (parseInt(row.dataset.day) === today) {
+                row.style.background = '#eff6ff';
+                row.style.border = '1.5px solid #1a73e8';
+                var dot = row.querySelector('.bh-dot');
+                if (dot) dot.style.background = '#1a73e8';
+                var label = row.querySelector('.bh-day-label');
+                if (label) { label.style.fontWeight = '700'; label.style.color = '#1a73e8'; }
+                // Add Today badge
+                var badge = document.createElement('span');
+                badge.textContent = 'Today';
+                badge.style.cssText = 'font-size:10px;background:#1a73e8;color:#fff;padding:1px 7px;border-radius:10px;font-weight:600';
+                label.after(badge);
+              }
+            });
+          })();
+        </script>
+      </div>
     </div>
   </div>
 </div>
