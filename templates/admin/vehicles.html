@@ -19,11 +19,13 @@
 </div>
 
 <!-- Filter tabs -->
-<div style="display:flex;gap:8px;margin-bottom:16px;">
+<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;scrollbar-width:none;">
+<div style="display:flex;gap:8px;min-width:max-content;padding-bottom:2px;">
   <button onclick="filterApproval('all',this)" class="btn btn-primary btn-sm filter-tab active-tab">All</button>
   <button onclick="filterApproval('pending',this)" class="btn btn-outline btn-sm filter-tab">⏳ Pending ({{ pending|length }})</button>
   <button onclick="filterApproval('approved',this)" class="btn btn-outline btn-sm filter-tab">✅ Approved</button>
   <button onclick="filterApproval('rejected',this)" class="btn btn-outline btn-sm filter-tab">❌ Rejected</button>
+</div>
 </div>
 
 <div class="card">
@@ -32,6 +34,7 @@
     <input type="text" placeholder="Search vehicles..." oninput="filterTable(this,'vTable')"
       style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
   </div>
+  <div class="table-wrapper">
   <table class="table" id="vTable">
     <thead>
       <tr><th>ID</th><th>Image</th><th>Vehicle</th><th>Year</th><th>Fuel</th><th>Price</th><th>Approval</th><th>Status</th><th>Dealer</th><th>Added</th><th>Actions</th></tr>
@@ -112,6 +115,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% endblock %}
 
