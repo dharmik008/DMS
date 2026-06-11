@@ -4,7 +4,7 @@
 
 {% block content %}
 <!-- Stage Tabs (scrollable on mobile) -->
-<div class="stage-tabs mb-16" style="overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
+<div class="stage-tabs mb-16">
   <a href="{{ url_for('dealer.leads') }}" class="stage-tab {% if not stage_filter %}active{% endif %}">
     All <span class="count">{{ stage_counts.values() | sum }}</span>
   </a>
