@@ -23,6 +23,10 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/dms.css') }}"
     />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/responsive.css') }}"
+    />
     {% block extra_head %}{% endblock %}
   </head>
   <body>
@@ -169,6 +173,29 @@
               {{ current_user.get('name','D')[0].upper() }}
             </div>
             <span>{{ current_user.get('name','Dealer').split()[0] }}</span>
+            <!-- My Account dropdown -->
+            <div style="position:relative;margin-left:4px">
+              <button onclick="var d=document.getElementById('topbarUserDrop');d.style.display=(d.style.display==='none'||!d.style.display)?'block':'none'"
+                style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px;font-size:12px">
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <div id="topbarUserDrop" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);min-width:200px;padding:8px;z-index:500">
+                <div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;margin-bottom:6px">
+                  <div style="font-size:13px;font-weight:600;color:#0f172a">{{ current_user.get('name','') }}</div>
+                  <div style="font-size:12px;color:#94a3b8">{{ current_user.get('email','') }}</div>
+                </div>
+                <a href="{{ url_for('dealer.my_account') }}"
+                  style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;font-size:13px;color:#334155;transition:background .15s"
+                  onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                  <i class="fas fa-user-circle" style="color:#1a73e8;width:16px"></i> My Account
+                </a>
+                <a href="{{ url_for('auth.logout') }}"
+                  style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;font-size:13px;color:#ef4444;transition:background .15s;margin-top:2px"
+                  onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
+                  <i class="fas fa-sign-out-alt" style="width:16px"></i> Logout
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -212,6 +239,14 @@
         });
     </script>
     <script src="{{ url_for('static', filename='js/dms.js') }}"></script>
+    <script>
+    document.addEventListener('click', function(e) {
+      var drop = document.getElementById('topbarUserDrop');
+      if (drop && !drop.parentElement.contains(e.target)) {
+        drop.style.display = 'none';
+      }
+    });
+    </script>
     {% block extra_js %}{% endblock %}
   </body>
 </html>
