@@ -22,6 +22,12 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///Caryanams.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+    # ── Public base URL — used for minisite full URLs ──────────────────────────
+    # Set APP_URL env var in production: export APP_URL=https://yourdomain.com
+    # Falls back to http://localhost:5000 for local dev.
+    _raw_app_url = os.environ.get('APP_URL', 'http://localhost:5000').rstrip('/')
+    app.config['APP_URL'] = _raw_app_url
+
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     os.makedirs(app.config['KYC_UPLOAD_FOLDER'],     exist_ok=True)
     os.makedirs(app.config['VEHICLE_UPLOAD_FOLDER'], exist_ok=True)
@@ -220,6 +226,34 @@ def create_app():
     @app.context_processor
     def inject_user():
         return dict(current_user=g.user)  # None when not logged in
+
+    # ── Minisite URL helper — available in ALL templates ──────────────────────
+    # Usage in Jinja:  {{ minisite_url('ABC') }}
+    # Returns:  https://yourdomain.com/dealer/ABC
+    @app.context_processor
+    def inject_minisite_url():
+        def minisite_url(website_name):
+            if not website_name:
+                return ''
+            base = app.config.get('APP_URL', '').rstrip('/')
+            if not base:
+                # Fallback: build from current request context
+                from flask import request as _req
+                try:
+                    base = _req.url_root.rstrip('/')
+                except RuntimeError:
+                    base = 'http://localhost:5000'
+            slug = website_name.strip().lower().replace(' ', '-')
+            return f'{base}/dealer/{slug}'
+        return dict(minisite_url=minisite_url)
+
+    @app.template_global('minisite_url')
+    def minisite_url_global(website_name):
+        if not website_name:
+            return ''
+        base = app.config.get('APP_URL', '').rstrip('/')
+        slug = website_name.strip().lower().replace(' ', '-')
+        return f'{base}/dealer/{slug}'
 
     @app.template_filter('fmtdate')
     def fmtdate(s, fmt='%d %b %Y'):
