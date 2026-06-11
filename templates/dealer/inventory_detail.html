@@ -132,15 +132,7 @@
           {# Right: action buttons — Swap (cycle), Mask Edit, Replace #}
           <div style="display:flex;align-items:center;gap:8px;">
 
-            {# Mask Edit button #}
-            {% if all_imgs_typed and all_imgs_typed[0].get('id') %}
-            <button id="cySwapMaskBtn"
-              onclick="cySwapMaskEdit()"
-              title="Mask Edit"
-              style="background:linear-gradient(135deg,#ff6b35,#f7c948);border:none;cursor:pointer;font-size:11px;padding:5px 10px;border-radius:7px;color:#111;font-weight:900;display:flex;align-items:center;gap:4px;">
-              🎨 Edit
-            </button>
-            {% endif %}
+            {# Mask Edit button removed from dealer side #}
 
             {# Replace button #}
             {% if all_imgs_typed and all_imgs_typed[0].get('id') %}
@@ -701,11 +693,9 @@ function updateSwapBar(index) {
   }
   if (counterEl) counterEl.textContent = (index + 1) + ' / ' + images.length;
 
-  // Update mask edit + replace buttons with current image data
+  // Update replace buttons with current image data
   const imgMeta = allImgsMeta[index];
   if (imgMeta) {
-    const maskBtn = document.getElementById('cySwapMaskBtn');
-    if (maskBtn) maskBtn.onclick = () => openMaskEditor(imgMeta.id, CY_UPLOAD_BASE + imgMeta.filename, imgMeta.filename, imgMeta.imgType || 'gallery');
     const replaceInput = document.getElementById('cySwapReplaceInput');
     if (replaceInput) replaceInput._imgId = imgMeta.id;
     if (replaceInput) replaceInput._imgType = imgMeta.imgType;
@@ -717,14 +707,6 @@ function swapNextImage() {
   const next = (currentIndex + 1) % images.length;
   showImage(next);
   updateSwapBar(next);
-}
-
-// ── ADDED: cySwapMaskEdit — opens mask editor for current image ───────────────
-function cySwapMaskEdit() {
-  const meta = allImgsMeta[currentIndex];
-  if (meta && meta.id) {
-    openMaskEditor(meta.id, CY_UPLOAD_BASE + meta.filename, meta.filename, meta.imgType || 'gallery');
-  }
 }
 
 // ── ADDED: cySwapReplace — replaces current image ────────────────────────────
@@ -952,12 +934,7 @@ const _cyImgMeta = [
 // Alias so updateSwapBar can use allImgsMeta[index]
 const allImgsMeta = _cyImgMeta;
 
-function cyOpenCurrentMaskEdit() {
-  // Find meta for current displayed image index
-  const meta = _cyImgMeta.find(m => m.idx === currentIndex);
-  if (!meta) { alert('No editable image selected.'); return; }
-  openMaskEditor(meta.id, meta.url, meta.filename, meta.imgType || 'gallery');
-}
+// Mask editor removed from dealer side
 
 /* ── Replace existing image (dealer) ──────────────────────── */
 async function cyReplaceImage(input, viId, imgType) {
@@ -996,41 +973,6 @@ async function cyReplaceImage(input, viId, imgType) {
   input.value = '';
 }
 
-// After mask editor saves, update the displayed image src
-function maskEditorOnSave(viId, newImageUrl) {
-  // Find the meta entry
-  const meta = _cyImgMeta.find(m => m.id === parseInt(viId));
-  if (meta) {
-    // Update images array used by the gallery
-    const imgBaseUrl = newImageUrl.split('?')[0];
-    const busted = imgBaseUrl + '?t=' + Date.now();
-    if (images[meta.idx]) images[meta.idx] = busted.replace('/static/images/uploads/', '');
-    setImage(meta.idx);
-    // Also update thumbnail
-    const strip = document.getElementById('cyThumbStrip');
-    if (strip) {
-      const thumbDiv = strip.querySelector(`[data-index="${meta.idx}"] img`);
-      if (thumbDiv) thumbDiv.src = busted;
-    }
-  }
-
-  // ── Auto set as primary image after background removal ──────────────────
-  fetch('/dealer/inventory/set-primary-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ vi_id: viId, vehicle_id: VEHICLE_ID })
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.success) {
-      console.log('Auto set primary: image updated after mask edit');
-    }
-  })
-  .catch(() => {});  // silent fail — not critical
-
-  // Close modal after short delay
-  setTimeout(() => { closeMaskEditor(); }, 1000);
-}
 // ── Page load init ────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
   if (images.length > 0) {
@@ -1038,6 +980,4 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
-
-{% include 'mask_editor_modal.html' %}
 {% endblock %}
