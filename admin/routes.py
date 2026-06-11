@@ -499,22 +499,33 @@ def dealer_requests():
     return render_template('admin/dealer_requests.html', pending=pending,
                            approved=approved, page='dealer_requests')
 
-
 @admin_bp.route('/api/dealers/<int:dealer_id>/approve-kyc', methods=['POST'])
 @require_permission_api('dealers')
 def approve_kyc(dealer_id):
-    from models import User, DealerKYC
+    from models import User, DealerKYC, DealerNotification
     from extensions import db
     from datetime import datetime
     dealer = User.query.get_or_404(dealer_id)
-    dealer.is_active = True
-    # Update the KYC record status so dealer gets access
     kyc = DealerKYC.query.filter_by(dealer_id=dealer_id).first()
+    reviewer = session.get('admin_username') or session.get('sub_admin_username') or 'Admin'
+    now = datetime.utcnow()
     if kyc:
+        for doc in ('aadhaar_front', 'aadhaar_back', 'pan_card'):
+            setattr(kyc, doc + '_status', 'approved')
+            setattr(kyc, doc + '_reject', None)
+            setattr(kyc, doc + '_reviewed_by', reviewer)
+            setattr(kyc, doc + '_reviewed_at', now)
         kyc.kyc_status = 'approved'
-        kyc.reviewed_at = datetime.utcnow()
-        kyc.reviewed_by = g.user.get('name', 'Admin') if g.user else 'Admin'
+        kyc.reviewed_at = now
+        kyc.reviewed_by = reviewer
         kyc.rejection_reason = None
+        dealer.is_active = True
+    db.session.add(DealerNotification(
+        dealer_id=dealer_id,
+        title='KYC Approved — Account Activated',
+        message='Your KYC verification has been approved. Your dealer account is now fully active and all features are unlocked.',
+        notif_type='success'
+    ))
     db.session.commit()
     log_admin_action(f"Approved KYC for dealer {dealer.name}", 'Dealers')
     return jsonify({'success': True, 'message': f'KYC approved for {dealer.name}'})
@@ -523,24 +534,153 @@ def approve_kyc(dealer_id):
 @admin_bp.route('/api/dealers/<int:dealer_id>/reject-kyc', methods=['POST'])
 @require_permission_api('dealers')
 def reject_kyc(dealer_id):
-    from models import User, DealerKYC
+    from models import User, DealerKYC, DealerNotification
     from extensions import db
     from datetime import datetime
     dealer = User.query.get_or_404(dealer_id)
     data = request.get_json(silent=True) or {}
     reason = data.get('reason', '')
+    reviewer = session.get('admin_username') or session.get('sub_admin_username') or 'Admin'
+    now = datetime.utcnow()
     dealer.is_active = False
-    # Update the KYC record status so dealer is blocked and sees rejection reason
     kyc = DealerKYC.query.filter_by(dealer_id=dealer_id).first()
     if kyc:
         kyc.kyc_status = 'rejected'
-        kyc.reviewed_at = datetime.utcnow()
-        kyc.reviewed_by = g.user.get('name', 'Admin') if g.user else 'Admin'
+        kyc.reviewed_at = now
+        kyc.reviewed_by = reviewer
         kyc.rejection_reason = reason
+        for doc in ('aadhaar_front', 'aadhaar_back', 'pan_card'):
+            if (getattr(kyc, doc + '_status') or 'pending') == 'pending':
+                setattr(kyc, doc + '_status', 'rejected')
+                setattr(kyc, doc + '_reject', reason)
+                setattr(kyc, doc + '_reviewed_by', reviewer)
+                setattr(kyc, doc + '_reviewed_at', now)
+    db.session.add(DealerNotification(
+        dealer_id=dealer_id,
+        title='KYC Application Rejected',
+        message=f'Your KYC application has been rejected. Reason: {reason}' if reason else 'Your KYC application has been rejected. Please re-upload your documents.',
+        notif_type='danger'
+    ))
     db.session.commit()
     log_admin_action(
         f"Rejected KYC for dealer {dealer.name}: {reason}", 'Dealers')
     return jsonify({'success': True, 'message': f'KYC rejected for {dealer.name}'})
+
+
+@admin_bp.route('/api/kyc/<int:dealer_id>/doc-approve', methods=['POST'])
+@require_permission_api('kyc')
+def kyc_doc_approve(dealer_id):
+    """Approve a single KYC document."""
+    from models import User, DealerKYC, DealerNotification
+    from extensions import db
+    from datetime import datetime
+    data = request.get_json(silent=True) or {}
+    doc_key = data.get('doc_key')
+    if doc_key not in ('aadhaar_front', 'aadhaar_back', 'pan_card'):
+        return jsonify({'success': False, 'message': 'Invalid document key'})
+    kyc = DealerKYC.query.filter_by(dealer_id=dealer_id).first()
+    if not kyc:
+        return jsonify({'success': False, 'message': 'KYC record not found'})
+    reviewer = session.get('admin_username') or session.get('sub_admin_username') or 'Admin'
+    now = datetime.utcnow()
+    prev_doc_status = getattr(kyc, doc_key + '_status') or 'pending'
+    setattr(kyc, doc_key + '_status', 'approved')
+    setattr(kyc, doc_key + '_reject', None)
+    setattr(kyc, doc_key + '_reviewed_by', reviewer)
+    setattr(kyc, doc_key + '_reviewed_at', now)
+    kyc.reviewed_at = now
+    kyc.reviewed_by = reviewer
+    kyc.recalculate_status()
+    _log_kyc_review(dealer_id, doc_key, 'approved', None, prev_doc_status, reviewer)
+    doc_labels = {'aadhaar_front': 'Aadhaar Front', 'aadhaar_back': 'Aadhaar Back', 'pan_card': 'PAN Card'}
+    if kyc.kyc_status == 'approved':
+        dealer = User.query.get(dealer_id)
+        if dealer:
+            dealer.is_active = True
+        db.session.add(DealerNotification(
+            dealer_id=dealer_id,
+            title='KYC Approved — Account Activated',
+            message='All your KYC documents have been verified. Your dealer account is now fully active.',
+            notif_type='success'
+        ))
+    else:
+        db.session.add(DealerNotification(
+            dealer_id=dealer_id,
+            title=f'{doc_labels[doc_key]} Approved',
+            message=f'Your {doc_labels[doc_key]} document has been approved by the admin.',
+            notif_type='success'
+        ))
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'{doc_labels[doc_key]} approved',
+                    'overall_status': kyc.kyc_status, 'counts': _kyc_counts()})
+
+
+@admin_bp.route('/api/kyc/<int:dealer_id>/doc-reject', methods=['POST'])
+@require_permission_api('kyc')
+def kyc_doc_reject(dealer_id):
+    """Reject a single KYC document."""
+    from models import User, DealerKYC, DealerNotification
+    from extensions import db
+    from datetime import datetime
+    data = request.get_json(silent=True) or {}
+    doc_key = data.get('doc_key')
+    reason = data.get('reason', '')
+    if doc_key not in ('aadhaar_front', 'aadhaar_back', 'pan_card'):
+        return jsonify({'success': False, 'message': 'Invalid document key'})
+    if not reason:
+        return jsonify({'success': False, 'message': 'Rejection reason required'})
+    kyc = DealerKYC.query.filter_by(dealer_id=dealer_id).first()
+    if not kyc:
+        return jsonify({'success': False, 'message': 'KYC record not found'})
+    reviewer = session.get('admin_username') or session.get('sub_admin_username') or 'Admin'
+    now = datetime.utcnow()
+    prev_doc_status = getattr(kyc, doc_key + '_status') or 'pending'
+    setattr(kyc, doc_key + '_status', 'rejected')
+    setattr(kyc, doc_key + '_reject', reason)
+    setattr(kyc, doc_key + '_reviewed_by', reviewer)
+    setattr(kyc, doc_key + '_reviewed_at', now)
+    kyc.reviewed_at = now
+    kyc.reviewed_by = reviewer
+    kyc.recalculate_status()
+    _log_kyc_review(dealer_id, doc_key, 'rejected', reason, prev_doc_status, reviewer)
+    doc_labels = {'aadhaar_front': 'Aadhaar Front', 'aadhaar_back': 'Aadhaar Back', 'pan_card': 'PAN Card'}
+    db.session.add(DealerNotification(
+        dealer_id=dealer_id,
+        title=f'{doc_labels[doc_key]} Rejected',
+        message=f'Your {doc_labels[doc_key]} document was rejected. Reason: {reason}. Please re-upload this document.',
+        notif_type='danger'
+    ))
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'{doc_labels[doc_key]} rejected',
+                    'overall_status': kyc.kyc_status, 'counts': _kyc_counts()})
+
+
+# ─── KYC Review Audit CRUD ────────────────────────────────────────────────────
+
+@admin_bp.route('/api/kyc/<int:dealer_id>/reviews', methods=['GET'])
+@require_permission_api('kyc')
+def api_kyc_reviews(dealer_id):
+    """Return active (non-deleted) review history for a dealer."""
+    from models import KYCReview
+    reviews = (KYCReview.query
+               .filter_by(dealer_id=dealer_id)
+               .filter(KYCReview.deleted_at.is_(None))
+               .order_by(KYCReview.reviewed_at.desc())
+               .all())
+    return jsonify({'success': True, 'reviews': [r.to_dict() for r in reviews]})
+
+
+@admin_bp.route('/api/kyc/reviews/<int:review_id>', methods=['DELETE'])
+@require_permission_api('kyc')
+def api_delete_kyc_review(review_id):
+    """Soft-delete a single KYC review record (keeps audit trail)."""
+    from models import KYCReview
+    from extensions import db
+    review = KYCReview.query.get_or_404(review_id)
+    review.soft_delete()
+    db.session.commit()
+    log_admin_action(f'Soft-deleted KYC review id={review_id}', 'KYC')
+    return jsonify({'success': True, 'message': 'Review record removed.'})
 
 
 # ─── Users ────────────────────────────────────────────────────────────────────
@@ -1880,31 +2020,86 @@ def kyc_delete_image(dealer_id):
 
 
 # ─── KYC Approve / Reject / Reset API ────────────────────────────────────────
+# Helper: return live counter snapshot for dashboard cards
+
+def _kyc_counts():
+    """Return {pending, approved, rejected, none} counts for all dealers."""
+    from models import User, DealerKYC
+    from sqlalchemy import func
+    dealers_total = User.query.filter_by(role='dealer').count()
+    kyc_rows = DealerKYC.query.all()
+    counts = {'approved': 0, 'rejected': 0, 'pending': 0, 'none': 0}
+    kyc_dealer_ids = set()
+    for k in kyc_rows:
+        kyc_dealer_ids.add(k.dealer_id)
+        s = k.kyc_status or 'pending'
+        if s in counts:
+            counts[s] += 1
+        else:
+            counts['pending'] += 1
+    # dealers with no KYC record
+    all_dealer_ids = {u.id for u in User.query.filter_by(role='dealer').all()}
+    counts['none'] = len(all_dealer_ids - kyc_dealer_ids)
+    return counts
+
+
+# Helper: write a KYCReview audit record
+def _log_kyc_review(dealer_id, document_type, status, reason, previous_status, reviewer):
+    from models import KYCReview
+    from extensions import db
+    record = KYCReview(
+        dealer_id=dealer_id,
+        document_type=document_type,
+        status=status,
+        reason=reason or None,
+        previous_status=previous_status,
+        reviewed_by=reviewer,
+    )
+    db.session.add(record)
+
 
 @admin_bp.route('/api/kyc/<int:dealer_id>/approve', methods=['POST'])
 @require_permission_api('kyc')
 def api_approve_kyc(dealer_id):
-    from models import User, DealerKYC
+    from models import User, DealerKYC, DealerNotification
     from extensions import db
     dealer = User.query.get_or_404(dealer_id)
     kyc = DealerKYC.query.filter_by(dealer_id=dealer_id).first()
     if not kyc:
         kyc = DealerKYC(dealer_id=dealer_id)
         db.session.add(kyc)
+    reviewer = session.get('admin_username', 'admin')
+    now = datetime.utcnow()
+    for doc in ('aadhaar_front', 'aadhaar_back', 'pan_card'):
+        prev = getattr(kyc, doc + '_status') or 'pending'
+        setattr(kyc, doc + '_status', 'approved')
+        setattr(kyc, doc + '_reject', None)
+        setattr(kyc, doc + '_reviewed_by', reviewer)
+        setattr(kyc, doc + '_reviewed_at', now)
+        _log_kyc_review(dealer_id, doc, 'approved', None, prev, reviewer)
+    prev_overall = kyc.kyc_status or 'pending'
     kyc.kyc_status = 'approved'
     kyc.rejection_reason = None
-    kyc.reviewed_at = datetime.utcnow()
-    kyc.reviewed_by = session.get('admin_username', 'admin')
+    kyc.reviewed_at = now
+    kyc.reviewed_by = reviewer
     dealer.is_active = True
+    _log_kyc_review(dealer_id, 'complete_kyc', 'approved', None, prev_overall, reviewer)
+    db.session.add(DealerNotification(
+        dealer_id=dealer_id,
+        title='KYC Approved — Account Activated',
+        message='Your KYC verification has been approved. Your dealer account is now fully active and all features are unlocked.',
+        notif_type='success'
+    ))
     db.session.commit()
     log_admin_action(f'KYC approved for dealer {dealer.name}', 'KYC')
-    return jsonify({'success': True, 'message': f'KYC approved for {dealer.name}'})
+    return jsonify({'success': True, 'message': f'KYC approved for {dealer.name}',
+                    'counts': _kyc_counts()})
 
 
 @admin_bp.route('/api/kyc/<int:dealer_id>/reject', methods=['POST'])
 @require_permission_api('kyc')
 def api_reject_kyc(dealer_id):
-    from models import User, DealerKYC
+    from models import User, DealerKYC, DealerNotification
     from extensions import db
     dealer = User.query.get_or_404(dealer_id)
     data = request.get_json(silent=True) or {}
@@ -1915,13 +2110,32 @@ def api_reject_kyc(dealer_id):
     if not kyc:
         kyc = DealerKYC(dealer_id=dealer_id)
         db.session.add(kyc)
+    reviewer = session.get('admin_username', 'admin')
+    now = datetime.utcnow()
+    prev_overall = kyc.kyc_status or 'pending'
     kyc.kyc_status = 'rejected'
     kyc.rejection_reason = reason
-    kyc.reviewed_at = datetime.utcnow()
-    kyc.reviewed_by = session.get('admin_username', 'admin')
+    kyc.reviewed_at = now
+    kyc.reviewed_by = reviewer
+    for doc in ('aadhaar_front', 'aadhaar_back', 'pan_card'):
+        prev = getattr(kyc, doc + '_status') or 'pending'
+        if prev == 'pending':
+            setattr(kyc, doc + '_status', 'rejected')
+            setattr(kyc, doc + '_reject', reason)
+            setattr(kyc, doc + '_reviewed_by', reviewer)
+            setattr(kyc, doc + '_reviewed_at', now)
+            _log_kyc_review(dealer_id, doc, 'rejected', reason, prev, reviewer)
+    _log_kyc_review(dealer_id, 'complete_kyc', 'rejected', reason, prev_overall, reviewer)
+    db.session.add(DealerNotification(
+        dealer_id=dealer_id,
+        title='KYC Application Rejected',
+        message=f'Your KYC application has been rejected. Reason: {reason}. Please re-upload your documents.',
+        notif_type='danger'
+    ))
     db.session.commit()
     log_admin_action(f'KYC rejected for dealer {dealer.name}: {reason}', 'KYC')
-    return jsonify({'success': True, 'message': f'KYC rejected for {dealer.name}'})
+    return jsonify({'success': True, 'message': f'KYC rejected for {dealer.name}',
+                    'counts': _kyc_counts()})
 
 
 @admin_bp.route('/api/kyc/<int:dealer_id>/reset', methods=['POST'])
@@ -1930,14 +2144,20 @@ def api_reset_kyc(dealer_id):
     from models import DealerKYC
     from extensions import db
     kyc = DealerKYC.query.filter_by(dealer_id=dealer_id).first()
+    reviewer = session.get('admin_username', 'admin')
     if kyc:
+        prev_overall = kyc.kyc_status or 'pending'
         kyc.kyc_status = 'pending'
         kyc.rejection_reason = None
         kyc.reviewed_at = None
         kyc.reviewed_by = None
+        for doc in ('aadhaar_front', 'aadhaar_back', 'pan_card'):
+            setattr(kyc, doc + '_status', 'pending')
+            setattr(kyc, doc + '_reject', None)
+        _log_kyc_review(dealer_id, 'complete_kyc', 'reset', None, prev_overall, reviewer)
         db.session.commit()
     log_admin_action(f'KYC reset to pending for dealer_id={dealer_id}', 'KYC')
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'counts': _kyc_counts()})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
