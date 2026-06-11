@@ -74,6 +74,7 @@
     @media(max-width:480px){.car-grid{grid-template-columns:1fr}}
   </style>
   {% block extra_css %}{% endblock %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
 </head>
 <body>
 
@@ -110,6 +111,33 @@
       <a href="https://wa.me/91{{ dealer.whatsapp_number | replace('+91','') | replace(' ','') }}" target="_blank" class="btn btn-whatsapp">
         <i class="fab fa-whatsapp"></i> WhatsApp
       </a>
+      {% endif %}
+      {% if current_user %}
+        <div class="ms-user-menu" style="position:relative">
+          <button class="btn btn-outline" onclick="var d=document.getElementById('msUserDropdown');d.style.display=(d.style.display==='none'||d.style.display==='')?'block':'none'" style="gap:8px">
+            <i class="fas fa-user-circle"></i>
+            <span style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ current_user.name or current_user.email }}</span>
+            <i class="fas fa-chevron-down" style="font-size:11px"></i>
+          </button>
+          <div id="msUserDropdown" class="ms-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);min-width:180px;padding:8px;z-index:300">
+            <div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;margin-bottom:6px">
+              <div style="font-size:13px;font-weight:600;color:#0f172a">{{ current_user.name }}</div>
+              <div style="font-size:12px;color:#94a3b8">{{ current_user.email }}</div>
+            </div>
+            {% if current_user.role == 'dealer' %}
+            <a href="{{ url_for('dealer.dashboard') }}" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;font-size:13px;color:#334155;transition:background .15s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+              <i class="fas fa-chart-pie" style="color:#1a73e8;width:16px"></i> Dealer Dashboard
+            </a>
+            {% endif %}
+            <a href="{{ url_for('auth.logout') }}" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;font-size:13px;color:#ef4444;transition:background .15s;margin-top:4px" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
+              <i class="fas fa-sign-out-alt" style="width:16px"></i> Logout
+            </a>
+          </div>
+        </div>
+      {% else %}
+        <a href="{{ url_for('auth.login', returnUrl=request.path) }}" class="btn btn-outline">
+          <i class="fas fa-sign-in-alt"></i> Login
+        </a>
       {% endif %}
     </div>
     <button class="ms-hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')">
@@ -159,5 +187,16 @@
 {% endif %}
 
 {% block extra_js %}{% endblock %}
+<script>
+// Close user dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  var menu = document.querySelector('.ms-user-menu');
+  var dropdown = document.getElementById('msUserDropdown');
+  if (menu && dropdown && !menu.contains(e.target)) {
+    dropdown.style.display = 'none';
+  }
+});
+</script>
 </body>
 </html>
+
