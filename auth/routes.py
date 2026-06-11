@@ -7,9 +7,21 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    # Stash a safe minisite return URL so we can redirect back after login
+    if request.method == 'GET':
+        return_url = request.args.get('returnUrl', '').strip()
+        if return_url.startswith('/dealer/'):
+            session['minisite_return_url'] = return_url
+        else:
+            session.pop('minisite_return_url', None)
+
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        # Carry the minisite return URL through the POST
+        post_return_url = request.form.get('return_url', '').strip()
+        if post_return_url.startswith('/dealer/'):
+            session['minisite_return_url'] = post_return_url
         
         user = user_get_by_email(email)
         
@@ -38,6 +50,10 @@ def login():
                 db.session.commit()
             except Exception:
                 pass
+            # If the user came from a dealer minisite, send them back there
+            minisite_url = session.pop('minisite_return_url', None)
+            if minisite_url and minisite_url.startswith('/dealer/'):
+                return redirect(minisite_url)
             if user.role == 'dealer':
                 return redirect(url_for('dealer.dashboard'))
             else:
@@ -68,8 +84,8 @@ def register():
             flash('Name, email, and password are required.', 'error')
             return redirect(url_for('auth.register'))
 
-        if not phone_digits or len(phone_digits) != 10 or phone_digits[0] not in '6789':
-            flash('Please enter a valid 10-digit Indian mobile number (starting with 6–9).', 'error')
+        if not phone_digits or len(phone_digits) != 10:
+            flash('Please enter a valid 10-digit mobile number.', 'error')
             return redirect(url_for('auth.register'))
 
         if password != confirm_password:
@@ -113,3 +129,85 @@ def logout():
 @auth_bp.route('/role-select')
 def role_select():
     return render_template('auth/role_select.html')
+
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        user = user_get_by_email(email)
+        # Always show success message to prevent email enumeration
+        flash('If that email is registered, a password reset link has been sent. Please check your inbox.', 'success')
+        return redirect(url_for('auth.login'))
+    return render_template('auth/forgot_password.html')
+
+# ── Forgot Password: verify email + phone, then reset ─────────────────────────
+
+@auth_bp.route('/api/forgot-password/verify', methods=['POST'])
+def forgot_password_verify():
+    """Step 1 — check that email + phone both match a registered account."""
+    from flask import jsonify
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    phone_raw = (data.get('phone') or '').strip()
+
+    # Accept 10-digit input or +91XXXXXXXXXX
+    phone_digits = ''.join(c for c in phone_raw if c.isdigit())
+    if len(phone_digits) == 12 and phone_digits.startswith('91'):
+        phone_digits = phone_digits[2:]   # strip country code
+    phone_digits = phone_digits[-10:]     # keep last 10
+
+    if not email or len(phone_digits) != 10:
+        return jsonify({'success': False, 'message': 'Please enter a valid email and 10-digit mobile number.'})
+
+    # Case-insensitive email lookup so capitalisation differences don't block valid users
+    user = User.query.filter(User.email.ilike(email)).first()
+    if not user:
+        return jsonify({'success': False, 'message': 'No account found with this email address.'})
+
+    # phone stored as "+91XXXXXXXXXX" — compare last 10 digits only
+    stored_digits = ''.join(c for c in (user.phone or '') if c.isdigit())[-10:]
+    if stored_digits != phone_digits:
+        return jsonify({'success': False, 'message': 'Mobile number does not match our records.'})
+
+    # Both match — store a short-lived token in session so the reset step is gated
+    import secrets
+    token = secrets.token_hex(16)
+    session['fp_token'] = token
+    session['fp_user_id'] = user.id
+    return jsonify({'success': True, 'token': token})
+
+
+@auth_bp.route('/api/forgot-password/reset', methods=['POST'])
+def forgot_password_reset():
+    """Step 2 — set a new password; requires the token from step 1."""
+    from flask import jsonify
+    data = request.get_json(silent=True) or {}
+    token = (data.get('token') or '').strip()
+    new_password = data.get('password') or ''
+    confirm = data.get('confirm') or ''
+
+    if not token or token != session.get('fp_token'):
+        return jsonify({'success': False, 'message': 'Session expired. Please start over.'})
+
+    user_id = session.get('fp_user_id')
+    if not user_id:
+        return jsonify({'success': False, 'message': 'Session expired. Please start over.'})
+
+    if len(new_password) < 6:
+        return jsonify({'success': False, 'message': 'Password must be at least 6 characters.'})
+    if new_password != confirm:
+        return jsonify({'success': False, 'message': 'Passwords do not match.'})
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'success': False, 'message': 'Account not found.'})
+
+    user.set_password(new_password)
+    db.session.commit()
+
+    # Clear the token so it cannot be reused
+    session.pop('fp_token', None)
+    session.pop('fp_user_id', None)
+
+    return jsonify({'success': True, 'message': 'Password changed successfully! Please log in.'})
