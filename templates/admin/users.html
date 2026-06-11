@@ -17,6 +17,7 @@
     <input type="text" placeholder="Search users..." oninput="filterTable(this,'userTable')"
       style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
   </div>
+  <div class="table-wrapper">
   <table class="table" id="userTable">
     <thead>
       <tr><th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>City</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
@@ -63,6 +64,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% endblock %}
 
