@@ -69,28 +69,43 @@ _KYC_EXEMPT_ENDPOINTS = {
 
 
 def kyc_required(f):
-    """Decorator that blocks access until dealer KYC is approved by admin."""
+    """Decorator that blocks access until ALL 3 KYC documents are approved by admin."""
     @wraps(f)
     def decorated(*args, **kwargs):
         if not g.user or g.user.get('role') != 'dealer':
-            # non-dealers: let dealer_required handle
             return f(*args, **kwargs)
         from models import DealerKYC
         dealer_id = g.user['id']
         kyc = DealerKYC.query.filter_by(dealer_id=dealer_id).first()
 
-        # Docs uploaded but not yet approved → show pending page
         docs_uploaded = (
             kyc is not None and
             kyc.aadhaar_front and
             kyc.aadhaar_back and
             kyc.pan_card
         )
-        kyc_approved = docs_uploaded and kyc.kyc_status == 'approved'
 
-        if not kyc_approved:
-            if docs_uploaded and kyc.kyc_status == 'pending':
-                flash('Your KYC documents are under review. Please wait for admin approval.', 'info')
+        # Only fully approved when ALL 3 per-doc statuses are 'approved'
+        all_approved = (
+            docs_uploaded and
+            getattr(kyc, 'aadhaar_front_status', 'pending') == 'approved' and
+            getattr(kyc, 'aadhaar_back_status', 'pending') == 'approved' and
+            getattr(kyc, 'pan_card_status', 'pending') == 'approved'
+        )
+
+        if not all_approved:
+            if docs_uploaded:
+                # Check if any doc is rejected
+                rejected = [
+                    d for d in ('aadhaar_front', 'aadhaar_back', 'pan_card')
+                    if getattr(kyc, d + '_status', 'pending') == 'rejected'
+                ]
+                if rejected:
+                    doc_names = {'aadhaar_front': 'Aadhaar Front', 'aadhaar_back': 'Aadhaar Back', 'pan_card': 'PAN Card'}
+                    names = ', '.join(doc_names[d] for d in rejected)
+                    flash(f'Some KYC documents were rejected ({names}). Please re-upload them to continue.', 'error')
+                else:
+                    flash('Your KYC documents are under review. Please wait for admin approval.', 'info')
             else:
                 flash('Complete your KYC verification to continue using the DMS.', 'warning')
             return redirect(url_for('dealer.kyc_upload'))
@@ -108,10 +123,31 @@ def get_dealer_id():
 @dealer_required
 def kyc_upload():
     """Show KYC document upload page for dealers with incomplete KYC."""
-    from models import DealerKYC
+    from models import DealerKYC, DealerNotification
     dealer_id = get_dealer_id()
     kyc = DealerKYC.query.filter_by(dealer_id=dealer_id).first()
-    return render_template('dealer/kyc_upload.html', kyc=kyc)
+
+    # If all 3 docs are already approved, redirect straight to dashboard
+    if (kyc and
+            getattr(kyc, 'aadhaar_front_status', 'pending') == 'approved' and
+            getattr(kyc, 'aadhaar_back_status', 'pending') == 'approved' and
+            getattr(kyc, 'pan_card_status', 'pending') == 'approved'):
+        return redirect(url_for('dealer.dashboard'))
+
+    notifications = DealerNotification.query.filter_by(
+        dealer_id=dealer_id).order_by(DealerNotification.created_at.desc()).limit(10).all()
+    return render_template('dealer/kyc_upload.html', kyc=kyc, notifications=notifications)
+
+
+@dealer_bp.route('/api/notifications/mark-read', methods=['POST'])
+@dealer_required
+def mark_notifications_read():
+    """Mark all dealer notifications as read."""
+    from models import DealerNotification
+    dealer_id = get_dealer_id()
+    DealerNotification.query.filter_by(dealer_id=dealer_id, is_read=False).update({'is_read': True})
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 @dealer_bp.route('/kyc/submit', methods=['POST'])
@@ -126,14 +162,8 @@ def kyc_submit():
     if not kyc:
         kyc = DealerKYC(dealer_id=dealer_id, kyc_status='pending')
         db.session.add(kyc)
-    else:
-        # Always reset to pending when dealer submits/replaces documents
-        kyc.kyc_status = 'pending'
-        kyc.rejection_reason = None
-        from datetime import datetime
-        kyc.submitted_at = datetime.utcnow()
-        kyc.reviewed_at = None
-        kyc.reviewed_by = None
+    from datetime import datetime
+    kyc.submitted_at = datetime.utcnow()
 
     folder = os.path.join(
         current_app.config.get('KYC_UPLOAD_FOLDER',
@@ -147,6 +177,11 @@ def kyc_submit():
         f = request.files.get(doc_key)
         if not f or not f.filename:
             continue
+        # Don't overwrite an already-approved document
+        current_status = getattr(kyc, doc_key + '_status', 'pending') or 'pending'
+        if current_status == 'approved':
+            flash(f'{doc_key.replace("_"," ").title()} is already approved — skipped.', 'info')
+            continue
         ok, err = validate_image(f)
         if not ok:
             errors.append(f'{doc_key}: {err}')
@@ -154,6 +189,9 @@ def kyc_submit():
         saved = save_image(f, folder, prefix=doc_key.replace('_', '-'), vehicle_mode=False)
         if saved:
             setattr(kyc, doc_key, saved)
+            # Reset this doc's status back to pending (awaiting re-review)
+            setattr(kyc, doc_key + '_status', 'pending')
+            setattr(kyc, doc_key + '_reject', None)
             # ── Register in Centralized Document Storage ──────────────────────
             try:
                 from db import cds_register
@@ -179,6 +217,8 @@ def kyc_submit():
     else:
         flash('KYC documents uploaded successfully.', 'success')
 
+    # Recalculate overall status based on per-doc statuses
+    kyc.recalculate_status()
     db.session.commit()
     return redirect(url_for('dealer.kyc_upload'))
 
@@ -817,6 +857,7 @@ def leads():
 @dealer_required
 @kyc_required
 def add_lead():
+    import re
     dealer_id = get_dealer_id()
     agents = agents_get_by_dealer(dealer_id)
     vehicles = vehicles_get_by_dealer(dealer_id, per_page=100)['items']
@@ -843,13 +884,20 @@ def add_lead():
                     'Follow-up date must be a future date (tomorrow or later)', 'error')
                 return render_template('dealer/lead_form.html', lead=None, agents=agents, vehicles=vehicles)
 
+        # Phone validation: 10-digit number only
+        customer_phone = ''.join(c for c in (request.form.get('customer_phone') or '') if c.isdigit())[:10]
+        phone_valid = len(customer_phone) == 10 if customer_phone else True
+        if customer_phone and not phone_valid:
+            flash('Phone must be a valid 10-digit number.', 'error')
+            return render_template('dealer/lead_form.html', lead=None, agents=agents, vehicles=vehicles)
+
         lead_data = {
             'dealer_id': dealer_id,
             'agent_id': request.form.get('agent_id') or None,
             'vehicle_id': request.form.get('vehicle_id') or None,
             'customer_name': request.form.get('customer_name'),
             'customer_email': request.form.get('customer_email'),
-            'customer_phone': request.form.get('customer_phone'),
+            'customer_phone': customer_phone,
             'customer_city': request.form.get('customer_city'),
             'source': request.form.get('source'),
             'stage': request.form.get('stage'),
@@ -903,12 +951,23 @@ def edit_lead(lid):
                     'Follow-up date must be a future date (tomorrow or later)', 'error')
                 return render_template('dealer/lead_form.html', lead=lead, agents=agents, vehicles=vehicles)
 
+        # Phone validation: +91XXXXXXXXXX or 10-digit number
+        import re
+        customer_phone = (request.form.get('customer_phone') or '').strip()
+        phone_valid = bool(
+            re.match(r'^\+91[0-9]{10}$', customer_phone) or
+            re.match(r'^[0-9]{10}$', customer_phone)
+        )
+        if not phone_valid:
+            flash('Phone must be a 10-digit number or +91 followed by 10 digits.', 'error')
+            return render_template('dealer/lead_form.html', lead=lead, agents=agents, vehicles=vehicles)
+
         update_data = {
             'agent_id': request.form.get('agent_id') or None,
             'vehicle_id': request.form.get('vehicle_id') or None,
             'customer_name': request.form.get('customer_name'),
             'customer_email': request.form.get('customer_email'),
-            'customer_phone': request.form.get('customer_phone'),
+            'customer_phone': customer_phone,
             'customer_city': request.form.get('customer_city'),
             'source': request.form.get('source'),
             'stage': request.form.get('stage'),
@@ -962,13 +1021,22 @@ def agents():
 @dealer_required
 @kyc_required
 def add_agent():
+    import re
     dealer_id = get_dealer_id()
+    phone = (request.form.get('phone') or '').strip()
+
+    # Validate phone: 10-digit number only
+    phone_digits = ''.join(c for c in phone if c.isdigit())[:10]
+    phone_valid = len(phone_digits) == 10
+    if not phone_valid:
+        flash('Phone must be a valid 10-digit number.', 'error')
+        return redirect(url_for('dealer.agents'))
 
     agent_data = {
         'dealer_id': dealer_id,
         'name': request.form.get('name'),
         'email': request.form.get('email'),
-        'phone': request.form.get('phone'),
+        'phone': phone_digits,
         'status': request.form.get('status')
     }
 
@@ -1054,19 +1122,32 @@ def deals():
 @dealer_required
 @kyc_required
 def add_deal():
+    import re
     dealer_id = get_dealer_id()
     vehicles = vehicles_get_by_dealer(dealer_id, per_page=100)['items']
 
     if request.method == 'POST':
+        # Phone validation: 10-digit number only (optional in deal)
+        customer_phone = ''.join(c for c in (request.form.get('customer_phone') or '') if c.isdigit())[:10]
+        if customer_phone and len(customer_phone) != 10:
+            flash('Phone must be a valid 10-digit number.', 'error')
+            return render_template('dealer/deal_form.html', deal=None, vehicles=vehicles)
+
+        # Final price validation
+        final_price_raw = request.form.get('final_price')
+        if not final_price_raw or float(final_price_raw) <= 0:
+            flash('Final Price is required and must be greater than 0.', 'error')
+            return render_template('dealer/deal_form.html', deal=None, vehicles=vehicles)
+
         deal_data = {
             'dealer_id': dealer_id,
             'lead_id': request.form.get('lead_id') or None,
             'vehicle_id': int(request.form.get('vehicle_id')),
             'customer_name': request.form.get('customer_name'),
-            'customer_phone': request.form.get('customer_phone'),
+            'customer_phone': customer_phone,
             'customer_email': request.form.get('customer_email'),
             'asking_price': float(request.form.get('asking_price')) if request.form.get('asking_price') else None,
-            'final_price': float(request.form.get('final_price')),
+            'final_price': float(final_price_raw),
             'payment_mode': request.form.get('payment_mode'),
             'loan_amount': float(request.form.get('loan_amount')) if request.form.get('loan_amount') else None,
             'down_payment': float(request.form.get('down_payment')) if request.form.get('down_payment') else None,
@@ -1100,12 +1181,25 @@ def edit_deal(did_):
     vehicles = vehicles_get_by_dealer(dealer_id, per_page=100)['items']
 
     if request.method == 'POST':
+        import re
+        # Phone validation: 10-digit number only (optional in deal)
+        customer_phone = ''.join(c for c in (request.form.get('customer_phone') or '') if c.isdigit())[:10]
+        if customer_phone and len(customer_phone) != 10:
+            flash('Phone must be a valid 10-digit number.', 'error')
+            return render_template('dealer/deal_form.html', deal=deal, vehicles=vehicles)
+
+        # Final price validation
+        final_price_raw = request.form.get('final_price')
+        if not final_price_raw or float(final_price_raw) <= 0:
+            flash('Final Price is required and must be greater than 0.', 'error')
+            return render_template('dealer/deal_form.html', deal=deal, vehicles=vehicles)
+
         update_data = {
             'customer_name': request.form.get('customer_name'),
-            'customer_phone': request.form.get('customer_phone'),
+            'customer_phone': customer_phone,
             'customer_email': request.form.get('customer_email'),
             'asking_price': float(request.form.get('asking_price')) if request.form.get('asking_price') else None,
-            'final_price': float(request.form.get('final_price')),
+            'final_price': float(final_price_raw),
             'payment_mode': request.form.get('payment_mode'),
             'loan_amount': float(request.form.get('loan_amount')) if request.form.get('loan_amount') else None,
             'down_payment': float(request.form.get('down_payment')) if request.form.get('down_payment') else None,
@@ -1352,6 +1446,54 @@ def upgrade_subscription(plan):
 
     return redirect(url_for('dealer.subscription'))
 
+# ========== MY ACCOUNT ==========
+
+
+@dealer_bp.route('/my-account', methods=['GET', 'POST'])
+@dealer_required
+def my_account():
+    from models import db, User
+    dealer_id = get_dealer_id()
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'update_profile':
+            user = User.query.get(dealer_id)
+            if user:
+                name = request.form.get('name', '').strip()
+                phone = request.form.get('phone', '').strip()
+                if name:
+                    user.name = name
+                user.phone = phone
+                db.session.commit()
+                # Refresh session
+                session['user_name'] = user.name
+                flash('Profile updated successfully!', 'success')
+            return redirect(url_for('dealer.my_account'))
+
+        elif action == 'change_password':
+            user = User.query.get(dealer_id)
+            if user:
+                current_password = request.form.get('current_password', '')
+                new_password = request.form.get('new_password', '')
+                confirm_password = request.form.get('confirm_password', '')
+
+                if not user.check_password(current_password):
+                    flash('Current password is incorrect.', 'error')
+                elif len(new_password) < 6:
+                    flash('New password must be at least 6 characters.', 'error')
+                elif new_password != confirm_password:
+                    flash('New passwords do not match.', 'error')
+                else:
+                    user.set_password(new_password)
+                    db.session.commit()
+                    flash('Password changed successfully!', 'success')
+            return redirect(url_for('dealer.my_account'))
+
+    return render_template('dealer/my_account.html', current_user=g.user)
+
+
 # ========== WEBSITE SETTINGS ==========
 
 
@@ -1364,12 +1506,37 @@ def website_settings():
     dealer_user = User.query.get(dealer_id)
 
     if request.method == 'POST':
-        # Website name
-        website_name = request.form.get('website_name', '').strip()
-        if website_name:
-            dealer_user.website_name = website_name
+        # ── Website name: sanitise to a clean slug ─────────────────────────
+        raw_name = request.form.get('website_name', '').strip()
+        slug_error = None
 
-        # Optional logo upload
+        if raw_name:
+            import re
+            # Keep only alphanumerics, hyphens, underscores; convert spaces → hyphens
+            slug = re.sub(r'[^a-zA-Z0-9_-]', '-', raw_name.strip())
+            slug = re.sub(r'-{2,}', '-', slug).strip('-')   # collapse multiple hyphens
+            slug = slug[:80]                                  # max length
+
+            if not slug:
+                slug_error = 'Website name can only contain letters, numbers, hyphens and underscores.'
+            else:
+                # Check for duplicate (exclude current dealer)
+                existing = User.query.filter(
+                    User.role == 'dealer',
+                    User.website_name == slug,
+                    User.id != dealer_id
+                ).first()
+                if existing:
+                    slug_error = f'The name "{slug}" is already taken by another dealer. Please choose a different name.'
+                else:
+                    dealer_user.website_name = slug
+
+        if slug_error:
+            flash(slug_error, 'error')
+            # Re-render with error (don't save anything)
+            return render_template('dealer/website_settings.html', dealer=dealer_user)
+
+        # ── Optional logo upload ─────────────────────────────────────────
         logo_file = request.files.get('website_logo')
         if logo_file and logo_file.filename and is_allowed_image(logo_file.filename):
             logo_fname = save_uploaded_image(
@@ -1379,7 +1546,7 @@ def website_settings():
             )
             dealer_user.website_logo = logo_fname
 
-        # Other fields
+        # ── Other fields ─────────────────────────────────────────────────
         dealer_user.whatsapp_number = request.form.get(
             'whatsapp_number', '').strip() or dealer_user.whatsapp_number
         dealer_user.address = request.form.get('address', '').strip()
