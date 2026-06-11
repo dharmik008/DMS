@@ -56,11 +56,9 @@
         <i class="fas fa-check"></i> Current Plan
       </button>
       {% else %}
-      <form method="POST" action="{{ url_for('dealer.upgrade_subscription', plan=plan.name|lower) }}">
-        <button type="submit" class="btn btn-primary" style="width:100%">
-          <i class="fas fa-crown"></i> Upgrade to {{ plan.name }}
-        </button>
-      </form>
+      <button type="button" class="btn btn-primary" style="width:100%" onclick="selectPlan('{{ plan.name }}', '{{ plan.price }}', '{{ url_for('dealer.upgrade_subscription', plan=plan.name|lower) }}')">
+        <i class="fas fa-qrcode"></i> Upgrade to {{ plan.name }}
+      </button>
       {% endif %}
     </div>
   </div>
@@ -92,4 +90,140 @@
     </table>
   </div>
 </div>
+
+<!-- Razorpay QR Payment Section -->
+<div class="card mt-24" id="payment-qr-section">
+  <div class="card-header">
+    <div class="card-title"><i class="fas fa-qrcode"></i> Pay via QR Code (Razorpay)</div>
+  </div>
+  <div class="card-body" style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start;justify-content:center;padding:32px 24px">
+
+    <!-- QR Code -->
+    <div style="text-align:center">
+      <div style="background:#fff;border:2px solid #e2e8f0;border-radius:16px;padding:20px;display:inline-block;box-shadow:0 4px 20px rgba(0,0,0,.08)">
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px">
+          <svg width="22" height="22" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="10" fill="#072654"/><path d="M14 34L20.5 14H28L24 25H32L18 40L22 28H14V34Z" fill="#00BAF2"/></svg>
+          <span style="font-weight:700;font-size:15px;color:#072654;letter-spacing:.5px">Razorpay</span>
+        </div>
+        <svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" style="display:block">
+          <rect width="180" height="180" fill="white"/>
+          <rect x="10" y="10" width="49" height="49" rx="4" fill="#072654"/><rect x="17" y="17" width="35" height="35" rx="2" fill="white"/><rect x="24" y="24" width="21" height="21" rx="1" fill="#072654"/>
+          <rect x="121" y="10" width="49" height="49" rx="4" fill="#072654"/><rect x="128" y="17" width="35" height="35" rx="2" fill="white"/><rect x="135" y="24" width="21" height="21" rx="1" fill="#072654"/>
+          <rect x="10" y="121" width="49" height="49" rx="4" fill="#072654"/><rect x="17" y="128" width="35" height="35" rx="2" fill="white"/><rect x="24" y="135" width="21" height="21" rx="1" fill="#072654"/>
+          <rect x="70" y="10" width="7" height="7" fill="#072654"/><rect x="80" y="10" width="7" height="7" fill="#072654"/>
+          <rect x="70" y="20" width="7" height="7" fill="#072654"/><rect x="90" y="20" width="7" height="7" fill="#072654"/>
+          <rect x="80" y="30" width="7" height="7" fill="#072654"/><rect x="100" y="30" width="7" height="7" fill="#072654"/>
+          <rect x="70" y="40" width="7" height="7" fill="#072654"/><rect x="90" y="40" width="7" height="7" fill="#072654"/>
+          <rect x="80" y="50" width="7" height="7" fill="#072654"/><rect x="100" y="10" width="7" height="7" fill="#072654"/>
+          <rect x="110" y="20" width="7" height="7" fill="#072654"/><rect x="100" y="50" width="7" height="7" fill="#072654"/>
+          <rect x="10" y="70" width="7" height="7" fill="#072654"/><rect x="20" y="80" width="7" height="7" fill="#072654"/>
+          <rect x="30" y="70" width="7" height="7" fill="#072654"/><rect x="40" y="80" width="7" height="7" fill="#072654"/>
+          <rect x="50" y="70" width="7" height="7" fill="#072654"/><rect x="10" y="90" width="7" height="7" fill="#072654"/>
+          <rect x="30" y="90" width="7" height="7" fill="#072654"/><rect x="50" y="90" width="7" height="7" fill="#072654"/>
+          <rect x="20" y="100" width="7" height="7" fill="#072654"/><rect x="40" y="100" width="7" height="7" fill="#072654"/>
+          <rect x="10" y="110" width="7" height="7" fill="#072654"/><rect x="30" y="110" width="7" height="7" fill="#072654"/>
+          <rect x="70" y="70" width="7" height="7" fill="#072654"/><rect x="90" y="70" width="7" height="7" fill="#072654"/>
+          <rect x="110" y="70" width="7" height="7" fill="#072654"/><rect x="80" y="80" width="7" height="7" fill="#072654"/>
+          <rect x="100" y="80" width="7" height="7" fill="#072654"/><rect x="70" y="90" width="7" height="7" fill="#072654"/>
+          <rect x="90" y="90" width="7" height="7" fill="#072654"/><rect x="110" y="90" width="7" height="7" fill="#072654"/>
+          <rect x="80" y="100" width="7" height="7" fill="#072654"/><rect x="70" y="110" width="7" height="7" fill="#072654"/>
+          <rect x="100" y="100" width="7" height="7" fill="#072654"/><rect x="110" y="110" width="7" height="7" fill="#072654"/>
+          <rect x="130" y="70" width="7" height="7" fill="#072654"/><rect x="150" y="70" width="7" height="7" fill="#072654"/>
+          <rect x="140" y="80" width="7" height="7" fill="#072654"/><rect x="160" y="80" width="7" height="7" fill="#072654"/>
+          <rect x="130" y="90" width="7" height="7" fill="#072654"/><rect x="150" y="90" width="7" height="7" fill="#072654"/>
+          <rect x="140" y="100" width="7" height="7" fill="#072654"/><rect x="130" y="110" width="7" height="7" fill="#072654"/>
+          <rect x="160" y="100" width="7" height="7" fill="#072654"/>
+          <rect x="70" y="130" width="7" height="7" fill="#072654"/><rect x="90" y="130" width="7" height="7" fill="#072654"/>
+          <rect x="110" y="130" width="7" height="7" fill="#072654"/><rect x="80" y="140" width="7" height="7" fill="#072654"/>
+          <rect x="100" y="140" width="7" height="7" fill="#072654"/><rect x="70" y="150" width="7" height="7" fill="#072654"/>
+          <rect x="90" y="150" width="7" height="7" fill="#072654"/><rect x="110" y="160" width="7" height="7" fill="#072654"/>
+          <rect x="130" y="130" width="7" height="7" fill="#072654"/><rect x="150" y="130" width="7" height="7" fill="#072654"/>
+          <rect x="140" y="140" width="7" height="7" fill="#072654"/><rect x="160" y="140" width="7" height="7" fill="#072654"/>
+          <rect x="130" y="150" width="7" height="7" fill="#072654"/><rect x="150" y="160" width="7" height="7" fill="#072654"/>
+          <rect x="82" y="82" width="16" height="16" rx="3" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+          <path d="M86 92l2.5-6h2.5l-1.5 3.5H93l-4.5 5 1.5-3.5H86z" fill="#00BAF2"/>
+        </svg>
+        <div style="margin-top:10px;font-size:13px;font-weight:600;color:#072654">Scan &amp; Pay</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px">UPI · Cards · Net Banking</div>
+      </div>
+      <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:#fff8f0;border:1px solid #fed7aa;border-radius:8px;padding:6px 14px;font-size:12px;color:#92400e">
+        <i class="fas fa-info-circle"></i> Demo QR — integrate live Razorpay key to activate
+      </div>
+    </div>
+
+    <!-- Payment Instructions + Proof Form -->
+    <div style="max-width:360px;flex:1">
+      <h3 style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:700;color:var(--navy);margin-bottom:16px">How to Pay</h3>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:32px;height:32px;background:#072654;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0">1</div>
+          <div><div style="font-weight:600;font-size:14px;color:var(--navy)">Select a Plan</div><div style="font-size:13px;color:var(--text-muted);margin-top:2px">Click "Upgrade" on any plan above</div></div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:32px;height:32px;background:#00BAF2;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0">2</div>
+          <div><div style="font-weight:600;font-size:14px;color:var(--navy)">Scan QR Code</div><div style="font-size:13px;color:var(--text-muted);margin-top:2px">Open any UPI app — GPay, PhonePe, Paytm</div></div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:32px;height:32px;background:#10b981;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0">3</div>
+          <div><div style="font-weight:600;font-size:14px;color:var(--navy)">Enter Amount &amp; Pay</div><div style="font-size:13px;color:var(--text-muted);margin-top:2px">Add plan price and confirm payment</div></div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:32px;height:32px;background:#f59e0b;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0">4</div>
+          <div><div style="font-weight:600;font-size:14px;color:var(--navy)">Submit Payment Proof</div><div style="font-size:13px;color:var(--text-muted);margin-top:2px">Enter your UTR/Transaction ID below</div></div>
+        </div>
+      </div>
+
+      <!-- Payment Proof Form — shown only after plan is selected -->
+      <div id="paymentProofForm" style="display:none;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:20px">
+        <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:4px">
+          Confirm Payment for <span id="selectedPlanName" style="color:var(--primary)"></span>
+        </div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Amount: ₹<span id="selectedPlanPrice"></span></div>
+        <form method="POST" id="upgradeForm" action="">
+          <div style="margin-bottom:14px">
+            <label style="font-size:13px;font-weight:600;color:var(--navy);display:block;margin-bottom:6px">UTR / Transaction ID <span style="color:#ef4444">*</span></label>
+            <input type="text" name="transaction_id" required placeholder="e.g. 123456789012"
+              style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;transition:border-color .2s"
+              onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="font-size:13px;font-weight:600;color:var(--navy);display:block;margin-bottom:6px">Payment Date <span style="color:#ef4444">*</span></label>
+            <input type="date" name="payment_date" required
+              style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;transition:border-color .2s"
+              onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">
+          </div>
+          <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:14px">
+            <i class="fas fa-clock"></i> Your plan will be activated within 24 hours after payment verification by our team.
+          </div>
+          <div style="display:flex;gap:10px">
+            <button type="submit" class="btn btn-primary" style="flex:1">
+              <i class="fas fa-paper-plane"></i> Submit for Verification
+            </button>
+            <button type="button" class="btn" style="background:#f1f5f9;color:var(--navy)" onclick="document.getElementById('paymentProofForm').style.display='none'">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div style="margin-top:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;display:flex;align-items:center;gap:10px">
+        <i class="fas fa-shield-alt" style="color:#16a34a;font-size:20px"></i>
+        <div style="font-size:13px;color:#166534"><strong>100% Secure</strong> — All payments processed via Razorpay's encrypted gateway</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectPlan(name, price, upgradeUrl) {
+  document.getElementById('selectedPlanName').textContent = name;
+  document.getElementById('selectedPlanPrice').textContent = price;
+  document.getElementById('upgradeForm').action = upgradeUrl;
+  document.getElementById('paymentProofForm').style.display = 'block';
+  document.getElementById('payment-qr-section').scrollIntoView({behavior:'smooth', block:'start'});
+}
+</script>
 {% endblock %}
