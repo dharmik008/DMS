@@ -5,57 +5,107 @@
 {% block content %}
 <div style="max-width:760px;margin:0 auto;">
 
-  <!-- Warning Banner -->
+  <!-- Compute per-doc statuses -->
+  {% if kyc %}
+    {% set af_status = kyc.aadhaar_front_status if kyc.aadhaar_front_status else 'pending' %}
+    {% set ab_status = kyc.aadhaar_back_status if kyc.aadhaar_back_status else 'pending' %}
+    {% set pc_status = kyc.pan_card_status if kyc.pan_card_status else 'pending' %}
+    {% set all_approved = (af_status == 'approved' and ab_status == 'approved' and pc_status == 'approved') %}
+    {% set any_rejected = (af_status == 'rejected' or ab_status == 'rejected' or pc_status == 'rejected') %}
+  {% else %}
+    {% set af_status = 'pending' %}
+    {% set ab_status = 'pending' %}
+    {% set pc_status = 'pending' %}
+    {% set all_approved = false %}
+    {% set any_rejected = false %}
+  {% endif %}
+
+  <!-- Top Banner based on overall status -->
+  {% if all_approved %}
+  <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:12px;padding:20px 24px;margin-bottom:28px;display:flex;align-items:center;gap:16px;">
+    <div style="font-size:32px;">✅</div>
+    <div>
+      <div style="font-weight:700;font-size:16px;color:#15803d;">KYC Fully Approved!</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:2px;">All 3 documents have been verified. You have full access to the DMS.</div>
+    </div>
+  </div>
+  {% elif any_rejected %}
+  <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:12px;padding:20px 24px;margin-bottom:28px;display:flex;align-items:flex-start;gap:16px;">
+    <div style="font-size:32px;">❌</div>
+    <div>
+      <div style="font-weight:700;font-size:16px;color:#dc2626;">Some Documents Were Rejected</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:2px;">Please re-upload the rejected documents below to complete your KYC verification.</div>
+    </div>
+  </div>
+  {% elif kyc and kyc.aadhaar_front and kyc.aadhaar_back and kyc.pan_card %}
+  <div style="background:rgba(255,153,68,0.08);border:1px solid rgba(255,153,68,0.25);border-radius:12px;padding:20px 24px;margin-bottom:28px;display:flex;align-items:center;gap:16px;">
+    <div style="font-size:32px;">⏳</div>
+    <div>
+      <div style="font-weight:700;font-size:16px;color:#b45309;">KYC Under Review</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:2px;">Your documents are submitted and awaiting admin approval.</div>
+    </div>
+  </div>
+  {% else %}
   <div style="background:rgba(255,153,68,0.1);border:1px solid rgba(255,153,68,0.35);border-radius:12px;padding:20px 24px;margin-bottom:28px;display:flex;align-items:flex-start;gap:16px;">
     <div style="font-size:32px;line-height:1;">⚠️</div>
     <div>
       <div style="font-weight:700;font-size:16px;color:var(--navy);margin-bottom:4px;">KYC Verification Required</div>
       <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
-        Complete your KYC verification to continue using the DMS.
-        Upload the required documents below. Your documents will be reviewed by our admin team.
+        Upload all 3 required documents to get your KYC reviewed by our admin team.
       </div>
     </div>
   </div>
+  {% endif %}
 
-  <!-- Status Summary -->
+  <!-- Document Status Summary Cards -->
   {% if kyc %}
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
-    {% for field, label in [('aadhaar_front','Aadhaar Front'),('aadhaar_back','Aadhaar Back'),('pan_card','PAN Card')] %}
-    {% set val = kyc|attr(field) %}
-    <div id="status_{{ field }}" style="background:var(--card-bg);border:1px solid {% if val %}rgba(34,197,94,0.3){% else %}rgba(239,68,68,0.3){% endif %};border-radius:10px;padding:14px 16px;text-align:center;">
-      <div style="font-size:22px;margin-bottom:6px;">{% if val %}✅{% else %}❌{% endif %}</div>
+    {% for field, label, fstatus in [
+      ('aadhaar_front','Aadhaar Front', af_status),
+      ('aadhaar_back','Aadhaar Back', ab_status),
+      ('pan_card','PAN Card', pc_status)
+    ] %}
+    {% set uploaded = kyc|attr(field) %}
+    <div style="background:var(--card-bg);border:1.5px solid
+      {% if fstatus == 'approved' %}rgba(34,197,94,0.35)
+      {% elif fstatus == 'rejected' %}rgba(239,68,68,0.35)
+      {% else %}rgba(255,153,68,0.3){% endif %};
+      border-radius:10px;padding:14px 16px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">
+        {% if fstatus == 'approved' %}✅
+        {% elif fstatus == 'rejected' %}❌
+        {% elif uploaded %}⏳
+        {% else %}📎{% endif %}
+      </div>
       <div style="font-size:12px;font-weight:600;color:var(--navy);">{{ label }}</div>
-      <div style="font-size:11px;color:{% if val %}#16a34a{% else %}#dc2626{% endif %};margin-top:2px;">
-        {% if val %}Uploaded{% else %}Missing{% endif %}
+      <div style="font-size:11px;margin-top:2px;
+        {% if fstatus == 'approved' %}color:#16a34a;
+        {% elif fstatus == 'rejected' %}color:#dc2626;
+        {% else %}color:#b45309;{% endif %}">
+        {% if fstatus == 'approved' %}Approved
+        {% elif fstatus == 'rejected' %}Rejected — re-upload needed
+        {% elif uploaded %}Pending Review
+        {% else %}Not Uploaded{% endif %}
       </div>
     </div>
     {% endfor %}
   </div>
-
-  {% if kyc.kyc_status == 'approved' %}
-  <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:16px 20px;margin-bottom:24px;font-size:14px;color:#15803d;font-weight:600;">
-    ✅ Your KYC has been approved! You have full access to the DMS.
-  </div>
-  {% elif kyc.kyc_status == 'rejected' %}
-  <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:16px 20px;margin-bottom:24px;">
-    <div style="font-size:14px;color:#dc2626;font-weight:600;margin-bottom:4px;">❌ KYC Rejected — Please re-upload documents.</div>
-    {% if kyc.rejection_reason %}<div style="font-size:13px;color:var(--text-secondary);">Reason: {{ kyc.rejection_reason }}</div>{% endif %}
-  </div>
-  {% elif kyc.aadhaar_front and kyc.aadhaar_back and kyc.pan_card %}
-  <div style="background:rgba(255,153,68,0.08);border:1px solid rgba(255,153,68,0.25);border-radius:10px;padding:16px 20px;margin-bottom:24px;font-size:14px;color:#b45309;font-weight:600;">
-    ⏳ Documents uploaded — awaiting admin review.
-  </div>
-  {% endif %}
   {% endif %}
 
-  <!-- Upload Form -->
+  <!-- Upload / Re-upload Form -->
+  <!-- Show form if: not all approved, OR any rejected -->
+  {% if not all_approved %}
   <div class="card">
     <div class="card-header">
-      <div class="card-title"><i class="fas fa-id-card" style="margin-right:8px;color:var(--gold-accent)"></i>Upload KYC Documents</div>
+      <div class="card-title">
+        <i class="fas fa-id-card" style="margin-right:8px;color:var(--gold-accent)"></i>
+        {% if any_rejected %}Re-upload Rejected Documents{% else %}Upload KYC Documents{% endif %}
+      </div>
     </div>
     <div class="card-body" style="padding:24px;">
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
         Allowed formats: JPG, JPEG, PNG, WEBP &nbsp;·&nbsp; Max size: 10 MB per file
+        {% if any_rejected %} &nbsp;·&nbsp; <strong style="color:#dc2626;">Only rejected documents need to be re-uploaded.</strong>{% endif %}
       </p>
 
       <form method="POST" action="{{ url_for('dealer.kyc_submit') }}" enctype="multipart/form-data">
@@ -63,6 +113,11 @@
 
           {% for field, label, icon in [('aadhaar_front','Aadhaar Front','🪪'),('aadhaar_back','Aadhaar Back','🪪'),('pan_card','PAN Card','💳')] %}
           {% set val = kyc|attr(field) if kyc else None %}
+          {% set doc_status = kyc|attr(field ~ '_status') if kyc and kyc|attr(field ~ '_status') else 'pending' %}
+          {% set doc_reject = kyc|attr(field ~ '_reject') if kyc and kyc|attr(field ~ '_reject') else None %}
+          {% set is_approved = (doc_status == 'approved') %}
+          {% set is_rejected = (doc_status == 'rejected') %}
+
           {% if val %}
             {% set doc_url = url_for('static', filename='uploads/dealers/' ~ g.user['id'] ~ '/' ~ val) %}
           {% else %}
@@ -70,27 +125,39 @@
           {% endif %}
 
           <div class="form-group">
-
-            <!-- Title + badge -->
+            <!-- Title + status badge -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
               <label style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;margin:0;">
                 {{ icon }} {{ label }}
               </label>
-              <span id="badge_{{ field }}"
-                style="font-size:10px;font-weight:700;background:rgba(255,153,68,0.12);color:#b45309;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,153,68,0.35);{% if not val %}display:none;{% endif %}">
-                Pending Review
-              </span>
+              {% if is_approved %}
+              <span style="font-size:10px;font-weight:700;background:rgba(34,197,94,0.12);color:#16a34a;padding:3px 10px;border-radius:20px;border:1px solid rgba(34,197,94,0.35);">✅ Approved</span>
+              {% elif is_rejected %}
+              <span style="font-size:10px;font-weight:700;background:rgba(239,68,68,0.12);color:#dc2626;padding:3px 10px;border-radius:20px;border:1px solid rgba(239,68,68,0.35);">❌ Rejected</span>
+              {% elif val %}
+              <span style="font-size:10px;font-weight:700;background:rgba(255,153,68,0.12);color:#b45309;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,153,68,0.35);">⏳ Pending</span>
+              {% endif %}
             </div>
 
+            <!-- Rejection reason shown to dealer -->
+            {% if is_rejected and doc_reject %}
+            <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;">
+              <strong style="color:#dc2626;">Rejection reason:</strong>
+              <span style="color:var(--text-secondary);">{{ doc_reject }}</span>
+            </div>
+            {% endif %}
+
             <!-- Preview box -->
-            <!-- If value exists (saved in DB = submitted) disable click, otherwise allow click to upload -->
             <div id="preview_{{ field }}"
-                 style="width:100%;height:130px;border:2px solid var(--card-border);border-radius:10px;overflow:hidden;background:var(--bg-surface,#f9f9f9);position:relative;{% if not val %}cursor:pointer;{% endif %}"
-                 {% if not val %}onclick="document.getElementById('file_{{ field }}').click()"{% endif %}>
+                 style="width:100%;height:130px;border:2px solid {% if is_approved %}rgba(34,197,94,0.4){% elif is_rejected %}rgba(239,68,68,0.4){% else %}var(--card-border){% endif %};border-radius:10px;overflow:hidden;background:var(--bg-surface,#f9f9f9);position:relative;{% if not is_approved %}cursor:pointer;{% endif %}"
+                 {% if not is_approved %}onclick="document.getElementById('file_{{ field }}').click()"{% endif %}>
               {% if val %}
-                <img src="{{ doc_url }}"
-                     style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" alt="{{ label }}"
-                     onerror="this.style.display='none'">
+                <img src="{{ doc_url }}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" alt="{{ label }}" onerror="this.style.display='none'">
+                {% if is_approved %}
+                <div style="position:absolute;bottom:6px;right:6px;background:rgba(34,197,94,0.9);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">✅ Approved</div>
+                {% elif is_rejected %}
+                <div style="position:absolute;bottom:6px;right:6px;background:rgba(239,68,68,0.9);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">Click to replace</div>
+                {% endif %}
               {% else %}
                 <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#bbb;">
                   <div style="font-size:28px;margin-bottom:6px;">📎</div>
@@ -99,26 +166,33 @@
               {% endif %}
             </div>
 
-            <!-- Hidden file input -->
+            <!-- File input (disabled for approved docs) -->
             <input type="file"
                    id="file_{{ field }}"
                    name="{{ field }}"
                    data-field="{{ field }}"
                    accept=".jpg,.jpeg,.png,.webp"
                    onchange="kycPreview(this)"
-                   style="display:none;">
+                   style="display:none;"
+                   {% if is_approved %}disabled{% endif %}>
 
-            <!-- Buttons wrapper -->
+            <!-- Buttons -->
             <div id="btns_{{ field }}" style="margin-top:10px;">
-              {% if val %}
-              <!-- Already saved in DB = submitted — show Download only, no Replace -->
-              <a href="{{ doc_url }}" download
-                 style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:50px;border:1.5px solid var(--card-border);background:#fff;font-size:13px;font-weight:600;color:var(--navy,#1a2e4a);text-decoration:none;cursor:pointer;"
-                 onclick="event.stopPropagation()">
-                ⬇ Download
-              </a>
+              {% if is_approved %}
+              <!-- Approved: just show approved state, no upload -->
+              <div style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:50px;border:1.5px solid rgba(34,197,94,0.3);background:rgba(34,197,94,0.06);font-size:13px;font-weight:600;color:#16a34a;">
+                ✅ Document Approved
+              </div>
+              {% elif val %}
+              <!-- Uploaded but pending or rejected: show replace button -->
+              <button type="button"
+                 data-target="file_{{ field }}"
+                 onclick="document.getElementById(this.dataset.target).click()"
+                 style="width:100%;padding:10px;border-radius:50px;border:1.5px solid {% if is_rejected %}rgba(239,68,68,0.5){% else %}var(--card-border){% endif %};background:{% if is_rejected %}rgba(239,68,68,0.08){% else %}transparent{% endif %};font-size:13px;font-weight:600;color:{% if is_rejected %}#dc2626{% else %}var(--navy,#1a2e4a){% endif %};cursor:pointer;">
+                ↑ {% if is_rejected %}Re-upload {{ label }}{% else %}Replace{% endif %}
+              </button>
               {% else %}
-              <!-- Not yet uploaded — show Upload button -->
+              <!-- Not uploaded yet -->
               <button type="button"
                  data-target="file_{{ field }}"
                  onclick="document.getElementById(this.dataset.target).click()"
@@ -134,11 +208,44 @@
         </div>
 
         <button type="submit" class="btn btn-primary" style="width:100%;padding:12px;">
-          <i class="fas fa-cloud-upload-alt"></i> &nbsp;Submit KYC Documents
+          <i class="fas fa-cloud-upload-alt"></i> &nbsp;
+          {% if any_rejected %}Re-submit KYC Documents{% else %}Submit KYC Documents{% endif %}
         </button>
       </form>
     </div>
   </div>
+  {% endif %}
+
+  <!-- KYC Notifications -->
+  {% if notifications %}
+  <div style="margin-top:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:var(--navy);">Recent Notifications</div>
+      {% if notifications|selectattr('is_read','equalto',false)|list %}
+      <button onclick="markNotifRead()" style="font-size:12px;color:var(--gold-accent);background:none;border:none;cursor:pointer;font-weight:600;">Mark all read</button>
+      {% endif %}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      {% for notif in notifications %}
+      <div style="border-radius:10px;padding:14px 16px;border:1px solid
+        {% if notif.notif_type == 'success' %}rgba(34,197,94,0.25);background:rgba(34,197,94,0.06)
+        {% elif notif.notif_type == 'danger' %}rgba(239,68,68,0.25);background:rgba(239,68,68,0.06)
+        {% else %}rgba(255,153,68,0.25);background:rgba(255,153,68,0.06){% endif %};
+        {% if not notif.is_read %}box-shadow:0 0 0 2px rgba(255,153,68,0.15);{% endif %}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:16px;">
+            {% if notif.notif_type == 'success' %}✅{% elif notif.notif_type == 'danger' %}❌{% else %}ℹ️{% endif %}
+          </span>
+          <span style="font-size:13px;font-weight:700;color:var(--navy);">{{ notif.title }}</span>
+          {% if not notif.is_read %}<span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;margin-left:auto;flex-shrink:0;"></span>{% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;">{{ notif.message }}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;opacity:.7;">{{ notif.created_at.strftime('%d %b %Y, %I:%M %p') if notif.created_at else '' }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Logout -->
   <div style="text-align:center;margin-top:20px;">
@@ -155,10 +262,9 @@ function kycPreview(input) {
 
   var reader = new FileReader();
   reader.onload = function(e) {
-
-    // 1. Show image in preview — keep preview box clickable (for replace)
     var preview = document.getElementById('preview_' + field);
     preview.style.cursor = 'pointer';
+    preview.style.border = '2px solid rgba(255,153,68,0.4)';
     preview.onclick = function() { document.getElementById('file_' + field).click(); };
 
     var img = document.createElement('img');
@@ -167,40 +273,24 @@ function kycPreview(input) {
     preview.innerHTML = '';
     preview.appendChild(img);
 
-    // 2. Show both Download and Replace buttons (not yet submitted)
     var blobUrl = URL.createObjectURL(file);
-
-    var dlLink = document.createElement('a');
-    dlLink.href = blobUrl;
-    dlLink.download = file.name;
-    dlLink.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:50px;border:1.5px solid var(--card-border);background:#fff;font-size:13px;font-weight:600;color:var(--navy,#1a2e4a);text-decoration:none;cursor:pointer;';
-    dlLink.textContent = '⬇ Download';
-    dlLink.onclick = function(ev) { ev.stopPropagation(); };
-
     var rplBtn = document.createElement('button');
     rplBtn.type = 'button';
-    rplBtn.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:50px;border:none;background:var(--navy,#1a2e4a);font-size:13px;font-weight:600;color:#fff;cursor:pointer;';
-    rplBtn.textContent = '↑ Replace';
-    rplBtn.onclick = function(ev) {
-      ev.stopPropagation();
-      document.getElementById('file_' + field).click();
-    };
-
-    var wrapper = document.createElement('div');
-    wrapper.style.cssText = 'display:flex;gap:8px;';
-    wrapper.appendChild(dlLink);
-    wrapper.appendChild(rplBtn);
+    rplBtn.style.cssText = 'width:100%;padding:10px;border-radius:50px;border:none;background:var(--navy,#1a2e4a);font-size:13px;font-weight:600;color:#fff;cursor:pointer;';
+    rplBtn.textContent = '↑ Replace ' + field.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    rplBtn.onclick = function(ev) { ev.stopPropagation(); document.getElementById('file_' + field).click(); };
 
     var btnsDiv = document.getElementById('btns_' + field);
     btnsDiv.innerHTML = '';
-    btnsDiv.appendChild(wrapper);
-
-    // 3. Show status badge
-    var badge = document.getElementById('badge_' + field);
-    if (badge) badge.style.display = '';
+    btnsDiv.appendChild(rplBtn);
   };
 
   reader.readAsDataURL(file);
+}
+
+function markNotifRead() {
+  fetch('/dealer/api/notifications/mark-read', { method: 'POST' })
+    .then(r => r.json()).then(d => { if (d.success) location.reload(); });
 }
 </script>
 
