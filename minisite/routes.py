@@ -111,13 +111,32 @@ def _best_image_url(vehicle_dict: dict) -> str | None:
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _get_dealer_by_wname(website_name: str):
-    """Return dealer User object by website_name (fallback: by name)."""
+    """
+    Return dealer User by website_name.
+
+    Lookup order:
+      1. Exact match on website_name column
+      2. Case-insensitive match on website_name column (handles /dealer/ABC vs stored 'abc')
+      3. Fallback: case-insensitive match on dealer's actual name
+    """
+    if not website_name:
+        return None
+    # 1. Exact
     dealer = User.query.filter_by(role='dealer', website_name=website_name).first()
-    if not dealer:
-        dealer = User.query.filter(
-            User.role == 'dealer',
-            User.name.ilike(website_name)
-        ).first()
+    if dealer:
+        return dealer
+    # 2. Case-insensitive slug match
+    dealer = User.query.filter(
+        User.role == 'dealer',
+        User.website_name.ilike(website_name)
+    ).first()
+    if dealer:
+        return dealer
+    # 3. Fallback to dealer name
+    dealer = User.query.filter(
+        User.role == 'dealer',
+        User.name.ilike(website_name)
+    ).first()
     return dealer
 
 
@@ -193,11 +212,11 @@ def _require_dealer_auth(website_name_param='website_name'):
             uid = session.get('user_id')
             if not uid:
                 flash('Please log in to access the dashboard.', 'error')
-                return redirect(url_for('auth.login'))
+                return redirect(url_for('auth.login', returnUrl=request.path))
             dealer = _get_dealer_by_wname(website_name)
             if not dealer or dealer.id != uid:
                 flash('Access denied.', 'error')
-                return redirect(url_for('auth.login'))
+                return redirect(url_for('auth.login', returnUrl=request.path))
             return fn(*args, **kwargs)
         return wrapper
     return decorator
