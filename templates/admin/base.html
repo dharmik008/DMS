@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
 </head>
 <body>
 
@@ -257,6 +258,22 @@
   </div>
 </div>
 
+<!-- Sidebar overlay for mobile -->
+<div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:299;" onclick="document.getElementById('sidebar').classList.remove('open');document.body.classList.remove('sidebar-open');this.style.display='none';"></div>
+<script>
+// Extend toggleSidebar to also manage overlay
+(function(){
+  var orig = window.toggleSidebar;
+  window.toggleSidebar = function(){
+    var s = document.getElementById('sidebar');
+    var o = document.getElementById('sidebarOverlay');
+    s.classList.toggle('open');
+    document.body.classList.toggle('sidebar-open');
+    if(o) o.style.display = s.classList.contains('open') ? 'block' : 'none';
+    if(orig && orig !== window.toggleSidebar) orig();
+  };
+})();
+</script>
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
