@@ -4,7 +4,7 @@
 
 {% block content %}
 <div style="max-width:760px">
-  <form method="POST">
+  <form method="POST" onsubmit="return validateLeadForm()">
     <div class="card mb-24">
       <div class="card-header"><div class="card-title"><i class="fas fa-user" style="margin-right:8px;color:var(--gold-accent)"></i>Customer Details</div></div>
       <div class="card-body">
@@ -15,7 +15,13 @@
           </div>
           <div class="form-group">
             <label>Phone *</label>
-            <input type="tel" name="customer_phone" value="{{ lead['customer_phone'] if lead else '' }}" placeholder="+91 XXXXX XXXXX" required>
+            <input type="tel" name="customer_phone" id="lead_customer_phone"
+              value="{{ lead['customer_phone'] if lead else '' }}"
+              placeholder="+91XXXXXXXXXX or 10-digit number"
+              maxlength="14" required
+              oninput="formatPhoneInput(this)">
+            <small style="font-size:11px;color:var(--text-muted)">10-digit number or +91 + 10 digits</small>
+            <div id="lead_phone_error" style="color:#e53e3e;font-size:11px;display:none;margin-top:3px;"></div>
           </div>
           <div class="form-group">
             <label>Email</label>
@@ -119,5 +125,38 @@ document.addEventListener('DOMContentLoaded', function() {
   var stageSelect = document.getElementById('stageSelect');
   handleStageChange(stageSelect.value);
 });
+
+// ── Phone formatting ──────────────────────────────────────────────────────────
+function formatPhoneInput(input) {
+  var val = input.value.replace(/[^+0-9]/g, '');
+  if (val.startsWith('+') && !val.startsWith('+91')) {
+    val = '+91' + val.replace(/^\+[0-9]*/g, '');
+  }
+  input.value = val;
+}
+
+// ── Validate phone: +91 + 10 digits OR exactly 10 digits ─────────────────────
+function validatePhone(value) {
+  var clean = (value || '').trim();
+  return /^\+91[0-9]{10}$/.test(clean) || /^[0-9]{10}$/.test(clean);
+}
+
+// ── Lead form validation ──────────────────────────────────────────────────────
+function validateLeadForm() {
+  var phoneInput = document.getElementById('lead_customer_phone');
+  var phoneErr   = document.getElementById('lead_phone_error');
+  if (phoneInput && !validatePhone(phoneInput.value)) {
+    if (phoneErr) {
+      phoneErr.textContent = 'Enter a valid 10-digit number or +91 followed by 10 digits';
+      phoneErr.style.display = 'block';
+    }
+    phoneInput.style.borderColor = '#e53e3e';
+    phoneInput.focus();
+    return false;
+  }
+  if (phoneErr) phoneErr.style.display = 'none';
+  if (phoneInput) phoneInput.style.borderColor = '';
+  return true;
+}
 </script>
 {% endblock %}
