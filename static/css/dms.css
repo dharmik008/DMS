@@ -865,22 +865,32 @@ td {
 /* ========== Stage Tabs ========== */
 .stage-tabs {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;          /* single-row — scroll horizontally */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
     background: white;
-    padding: 8px 16px;
+    padding: 8px 12px;
     border-radius: var(--radius);
     border: 1px solid var(--card-border);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    margin-bottom: 16px;
 }
 
 .stage-tab {
-    padding: 8px 16px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 7px 14px;
     border-radius: 20px;
     text-decoration: none;
     font-size: 13px;
     font-weight: 600;
     color: var(--text-secondary);
     transition: all 0.2s;
+    border: none;
+    background: transparent;
+    cursor: pointer;
 }
 
 .stage-tab.active {
@@ -898,6 +908,11 @@ td {
 
 .stage-tab.active .count {
     background: rgba(255, 255, 255, 0.2);
+}
+
+.stage-tabs::-webkit-scrollbar {
+    display: none;
+    height: 0;
 }
 
 /* ========== EMI Calculator ========== */
