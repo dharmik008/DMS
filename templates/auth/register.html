@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
 <style>
 /* ── VALIDATION STYLES ── */
 .field-error {
@@ -228,15 +229,6 @@ function vPhone(input) {
     if (err)  err.style.display = 'block';
     const t = document.getElementById('regPhoneErrTxt');
     if (t) t.textContent = `Please enter all 10 digits (${digits.length}/10 entered).`;
-    return false;
-  }
-  // Must start with 6, 7, 8, or 9 (valid Indian mobile)
-  if (!/^[6-9]/.test(digits)) {
-    el.classList.add('input-invalid'); el.classList.remove('input-valid');
-    if (wrap) { wrap.style.borderColor = '#dc2626'; wrap.style.boxShadow = '0 0 0 3px rgba(220,38,38,0.12)'; }
-    if (err)  err.style.display = 'block';
-    const t = document.getElementById('regPhoneErrTxt');
-    if (t) t.textContent = 'Please enter a valid Indian mobile number (starts with 6–9).';
     return false;
   }
   // Valid
