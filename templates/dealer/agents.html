@@ -10,7 +10,7 @@
       <div class="card-title"><i class="fas fa-user-plus" style="margin-right:8px;color:var(--gold-accent)"></i>Add New Agent</div>
     </div>
     <div class="card-body">
-      <form method="POST" action="{{ url_for('dealer.add_agent') }}">
+      <form method="POST" action="{{ url_for('dealer.add_agent') }}" id="addAgentForm" onsubmit="return validateAgentPhone('add_phone')">
         <div class="form-grid">
           <div class="form-group">
             <label>Full Name *</label>
@@ -22,7 +22,12 @@
           </div>
           <div class="form-group">
             <label>Phone *</label>
-            <input type="tel" name="phone" placeholder="+91 XXXXX XXXXX" required>
+            <input type="tel" name="phone" id="add_phone"
+              placeholder="10-digit mobile number"
+              required maxlength="10"
+              oninput="formatPhoneInput(this)">
+            <small style="font-size:11px;color:var(--text-muted)">10-digit number only</small>
+            <div id="add_phone_error" style="color:#e53e3e;font-size:11px;display:none;margin-top:3px;"></div>
           </div>
           <div class="form-group">
             <label>Status</label>
@@ -69,20 +74,24 @@
     <div class="card-title"><i class="fas fa-users" style="margin-right:8px;color:var(--gold-accent)"></i>All Agents</div>
     <span class="badge badge-navy">{{ agents|length }} Total</span>
   </div>
-  <div class="table-wrap">
+  <div class="table-wrap" style="overflow-x:auto;">
     <table>
       <thead>
         <tr>
-          <th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Leads Assigned</th><th>Actions</th>
+          <th>Agent ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Leads Assigned</th><th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for agent in agents %}
         <tr>
-          <td style="color:var(--text-muted)">#{{ agent['id'] }}</td>
+          <td>
+            <span class="badge badge-navy" style="font-family:monospace;font-size:13px;letter-spacing:0.5px;padding:5px 10px;">
+              {{ agent['dealer_seq_id'] }}
+            </span>
+          </td>
           <td style="font-weight:600;color:var(--navy)">{{ agent['name'] }}</td>
-          <td>{{ agent['email'] }}</td>
-          <td>{{ agent['phone'] }}</td>
+          <td style="font-size:13px;">{{ agent['email'] }}</td>
+          <td style="font-size:13px;">{{ agent['phone'] }}</td>
           <td>
             <form method="POST" action="{{ url_for('dealer.update_agent_status', agent_id=agent['id']) }}" style="display:inline">
               <select name="status" onchange="this.form.submit()" style="width:auto;padding:4px 8px;font-size:12px">
@@ -95,7 +104,7 @@
             <span class="badge badge-info">{{ agent_leads_count.get(agent['id'], 0) }}</span>
           </td>
           <td>
-            <div style="display:flex;gap:6px">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <button class="btn btn-sm btn-primary" onclick="openEditModal({{ agent|tojson }})">
                 <i class="fas fa-edit"></i> Edit
               </button>
@@ -124,22 +133,27 @@
 <div id="editAgentModal" class="modal-overlay">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Edit Agent</div>
+      <div class="modal-title"><i class="fas fa-user-edit" style="margin-right:8px;color:var(--gold-accent)"></i>Edit Agent</div>
       <button class="modal-close" onclick="closeModal('editAgentModal')"><i class="fas fa-times"></i></button>
     </div>
-    <form method="POST" id="editAgentForm">
+    <form method="POST" id="editAgentForm" onsubmit="return validateAgentPhone('edit_phone')">
       <div class="modal-body">
         <div class="form-group">
-          <label>Full Name</label>
+          <label>Full Name *</label>
           <input type="text" name="name" id="edit_name" required>
         </div>
         <div class="form-group">
-          <label>Email</label>
+          <label>Email *</label>
           <input type="email" name="email" id="edit_email" required>
         </div>
         <div class="form-group">
-          <label>Phone</label>
-          <input type="tel" name="phone" id="edit_phone" required>
+          <label>Phone *</label>
+          <input type="tel" name="phone" id="edit_phone"
+            placeholder="10-digit mobile number"
+            required maxlength="10"
+            oninput="formatPhoneInput(this)">
+          <small style="font-size:11px;color:var(--text-muted)">10-digit number only</small>
+          <div id="edit_phone_error" style="color:#e53e3e;font-size:11px;display:none;margin-top:3px;"></div>
         </div>
         <div class="form-group">
           <label>Status</label>
@@ -151,36 +165,83 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline" onclick="closeModal('editAgentModal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
       </div>
     </form>
   </div>
 </div>
 
+{% endblock %}
+
 {% block extra_js %}
 <script>
+/* ── Phone validation helpers ───────────────────────────────────────────── */
+function validatePhone(value) {
+  var clean = (value || '').trim().replace(/\D/g, '');
+  return clean.length === 10;
+}
+
+function formatPhoneInput(input) {
+  input.value = input.value.replace(/\D/g, '').slice(0, 10);
+}
+
+function validateAgentPhone(inputId) {
+  var input  = document.getElementById(inputId);
+  var errDiv = document.getElementById(inputId + '_error');
+  if (!validatePhone(input.value)) {
+    if (errDiv) {
+      errDiv.textContent = 'Enter a valid 10-digit mobile number';
+      errDiv.style.display = 'block';
+    }
+    input.style.borderColor = '#e53e3e';
+    input.focus();
+    return false;
+  }
+  if (errDiv) errDiv.style.display = 'none';
+  input.style.borderColor = '';
+  return true;
+}
+
+/* ── Modal helpers ──────────────────────────────────────────────────────── */
 function openEditModal(agent) {
-  document.getElementById('edit_name').value = agent.name;
-  document.getElementById('edit_email').value = agent.email;
-  document.getElementById('edit_phone').value = agent.phone;
+  document.getElementById('edit_name').value   = agent.name;
+  document.getElementById('edit_email').value  = agent.email;
+  var ph = (agent.phone || '').replace(/\D/g, '');
+  if (ph.length === 12 && ph.startsWith('91')) ph = ph.slice(2);
+  document.getElementById('edit_phone').value  = ph;
   document.getElementById('edit_status').value = agent.status;
-  document.getElementById('editAgentForm').action = "{{ url_for('dealer.edit_agent', agent_id=0) }}".replace('0', agent.id);
+  // Show which agent is being edited in the modal header
+  var titleEl = document.querySelector('#editAgentModal .modal-title');
+  if (titleEl) {
+    titleEl.innerHTML = '<i class="fas fa-user-edit" style="margin-right:8px;color:var(--gold-accent)"></i>Edit Agent <span style="font-size:12px;font-family:monospace;background:var(--navy);color:#fff;padding:2px 8px;border-radius:4px;margin-left:6px;">#' + agent.dealer_seq_id + '</span>';
+  }
+  // Reset validation state
+  document.getElementById('edit_phone').style.borderColor = '';
+  var err = document.getElementById('edit_phone_error');
+  if (err) err.style.display = 'none';
+  // Set form action to correct agent edit URL using real DB id
+  document.getElementById('editAgentForm').action =
+    "{{ url_for('dealer.edit_agent', agent_id=0) }}".replace('/0', '/' + agent.id);
   openModal('editAgentModal');
 }
 
-function openModal(id) {
-  document.getElementById(id).classList.add('open');
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function confirmDelete(formId, msg) {
   if (confirm(msg || 'Are you sure you want to delete this?')) {
     document.getElementById(formId).submit();
   }
 }
+
+/* Close modal when clicking backdrop */
+document.addEventListener('DOMContentLoaded', function() {
+  var overlay = document.getElementById('editAgentModal');
+  if (overlay) {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) closeModal('editAgentModal');
+    });
+  }
+});
 </script>
-{% endblock %}
 {% endblock %}
