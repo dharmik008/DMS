@@ -580,7 +580,23 @@ class DealerKYC(db.Model):
     aadhaar_front = db.Column(db.String(255), nullable=True)
     aadhaar_back = db.Column(db.String(255), nullable=True)
     pan_card = db.Column(db.String(255), nullable=True)
-    # pending | approved | rejected
+    # Per-document statuses: pending | approved | rejected
+    aadhaar_front_status = db.Column(db.String(20), default='pending')
+    aadhaar_back_status = db.Column(db.String(20), default='pending')
+    pan_card_status = db.Column(db.String(20), default='pending')
+    # Per-document rejection reasons
+    aadhaar_front_reject = db.Column(db.Text, nullable=True)
+    aadhaar_back_reject = db.Column(db.Text, nullable=True)
+    pan_card_reject = db.Column(db.Text, nullable=True)
+    # Per-document reviewed_by / reviewed_at
+    aadhaar_front_reviewed_by = db.Column(db.String(100), nullable=True)
+    aadhaar_front_reviewed_at = db.Column(db.DateTime, nullable=True)
+    aadhaar_back_reviewed_by = db.Column(db.String(100), nullable=True)
+    aadhaar_back_reviewed_at = db.Column(db.DateTime, nullable=True)
+    pan_card_reviewed_by = db.Column(db.String(100), nullable=True)
+    pan_card_reviewed_at = db.Column(db.DateTime, nullable=True)
+    # Overall KYC status: pending | approved | rejected
+    # 'approved' only when ALL 3 docs are approved
     kyc_status = db.Column(db.String(20), default='pending')
     rejection_reason = db.Column(db.Text, nullable=True)
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -592,12 +608,40 @@ class DealerKYC(db.Model):
                                    cascade='all, delete-orphan',
                                    single_parent=True))
 
+    def recalculate_status(self):
+        """Auto-update overall kyc_status based on per-doc statuses."""
+        doc_fields = ['aadhaar_front', 'aadhaar_back', 'pan_card']
+        statuses = [getattr(self, f + '_status') or 'pending' for f in doc_fields]
+        if all(s == 'approved' for s in statuses):
+            self.kyc_status = 'approved'
+        elif any(s == 'rejected' for s in statuses):
+            self.kyc_status = 'rejected'
+        else:
+            self.kyc_status = 'pending'
+
     def __getitem__(self, key):
         """Support bracket-style access: kyc['aadhaar_front'] == kyc.aadhaar_front"""
         return getattr(self, key)
 
     def __repr__(self):
         return f'<DealerKYC dealer_id={self.dealer_id} status={self.kyc_status}>'
+
+
+class DealerNotification(db.Model):
+    """Notifications sent to dealers (KYC approvals, rejections, etc.)."""
+    __tablename__ = 'dealer_notifications'
+    id = db.Column(db.Integer, primary_key=True)
+    dealer_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    notif_type = db.Column(db.String(30), default='info')  # success | warning | danger | info
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    dealer = db.relationship('User', backref=db.backref('notifications', lazy='dynamic', cascade='all, delete-orphan'))
+
+    def __repr__(self):
+        return f'<DealerNotification dealer_id={self.dealer_id} title={self.title}>'
 
 
 class SubAdmin(db.Model):
@@ -784,3 +828,67 @@ class VisitorLog(db.Model):
 
     def __repr__(self):
         return f'<VisitorLog {self.ip_address} {self.page_url}>'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# KYC REVIEW AUDIT TABLE
+# ─────────────────────────────────────────────────────────────────────────────
+
+class KYCReview(db.Model):
+    """
+    Full audit trail for every KYC approve / reject / reset action.
+
+    document_type values:
+        aadhaar_front | aadhaar_back | pan_card | complete_kyc
+
+    status values:
+        approved | rejected | reset | pending
+
+    Soft-delete via deleted_at (NULL = active record).
+    """
+    __tablename__ = 'kyc_reviews'
+
+    id                  = db.Column(db.Integer,     primary_key=True)
+    dealer_id           = db.Column(db.Integer,     db.ForeignKey('users.id', ondelete='CASCADE'),
+                                    nullable=False, index=True)
+    # aadhaar_front | aadhaar_back | pan_card | complete_kyc
+    document_type       = db.Column(db.String(30),  nullable=False)
+    # approved | rejected | reset | pending
+    status              = db.Column(db.String(20),  nullable=False)
+    reason              = db.Column(db.Text,         nullable=True)
+    # snapshot of previous status before this action
+    previous_status     = db.Column(db.String(20),  nullable=True)
+    reviewed_by         = db.Column(db.String(100), nullable=False, default='admin')
+    reviewed_by_id      = db.Column(db.Integer,     nullable=True)   # sub-admin id if applicable
+    reviewed_at         = db.Column(db.DateTime,    default=datetime.utcnow)
+    created_at          = db.Column(db.DateTime,    default=datetime.utcnow)
+    updated_at          = db.Column(db.DateTime,    default=datetime.utcnow, onupdate=datetime.utcnow)
+    # soft-delete: set deleted_at to remove from active views, keep for audit
+    deleted_at          = db.Column(db.DateTime,    nullable=True)
+
+    dealer = db.relationship('User', foreign_keys=[dealer_id],
+                             backref=db.backref('kyc_reviews', lazy='dynamic',
+                                                order_by='KYCReview.reviewed_at.desc()'))
+
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None
+
+    def soft_delete(self):
+        self.deleted_at = datetime.utcnow()
+
+    def to_dict(self):
+        return {
+            'id':             self.id,
+            'dealer_id':      self.dealer_id,
+            'document_type':  self.document_type,
+            'status':         self.status,
+            'reason':         self.reason,
+            'previous_status': self.previous_status,
+            'reviewed_by':    self.reviewed_by,
+            'reviewed_at':    self.reviewed_at.isoformat() if self.reviewed_at else None,
+            'deleted_at':     self.deleted_at.isoformat() if self.deleted_at else None,
+        }
+
+    def __repr__(self):
+        return f'<KYCReview dealer={self.dealer_id} doc={self.document_type} status={self.status}>'
