@@ -98,6 +98,19 @@ input[type=range]     { width:100%; accent-color:var(--navy); }
   .studio-wrap { grid-template-columns:1fr; height:auto; }
   .canvas-card { min-height:400px; }
 }
+@media (max-width: 640px) {
+  .studio-wrap { gap:12px; }
+  .preview-grid { grid-template-columns:1fr; }
+  .preview-slot img { height:180px; }
+  .swatch-grid { grid-template-columns:repeat(5,1fr); }
+  .bg-presets { grid-template-columns:1fr; }
+  .quality-grid { grid-template-columns:1fr; }
+  .engine-pills { flex-direction:column; }
+  .engine-pill { width:100%; }
+  .canvas-header { padding:10px 14px; }
+  .drop-zone { min-height:200px; padding:24px 16px; }
+  .drop-zone-icon { width:48px; height:48px; font-size:20px; }
+}
 
 /* Engine select style */
 .engine-pills { display:flex; gap:6px; }
