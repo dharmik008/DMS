@@ -133,9 +133,17 @@ def agent_get(agent_id):
 
 
 def agents_get_by_dealer(dealer_id):
+    # Order ASC first so the earliest-added agent always gets dealer_seq_id=1, next=2, etc.
     agents = Agent.query.filter_by(dealer_id=dealer_id).order_by(
-        Agent.created_at.desc()).all()
-    return [a.to_dict() for a in agents]
+        Agent.created_at.asc(), Agent.id.asc()).all()
+    result = []
+    for seq, a in enumerate(agents, start=1):
+        d = a.to_dict()
+        d['dealer_seq_id'] = seq   # per-dealer 1-based sequence, independent per dealer
+        result.append(d)
+    # Re-sort newest-first for table display; seq IDs are already locked
+    result.sort(key=lambda x: x['created_at'], reverse=True)
+    return result
 
 
 def agents_get_available(dealer_id):
