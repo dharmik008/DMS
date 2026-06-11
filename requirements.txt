@@ -1,29 +1,51 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Caryanams DMS — Final Clean requirements.txt
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Core Flask ────────────────────────────────────────────────────────────────
 Flask==3.0.3
-Werkzeug==3.0.6
+Werkzeug==3.0.3
 
+# ── Database (ORM + migrations) ───────────────────────────────────────────────
 Flask-SQLAlchemy==3.1.1
-SQLAlchemy==2.0.36
+SQLAlchemy==2.0.31
 Flask-Migrate==4.0.7
-alembic==1.14.0
+alembic==1.13.2
 
+# ── Authentication & Forms ────────────────────────────────────────────────────
 Flask-Login==0.6.3
-Flask-WTF==1.2.2
-WTForms==3.2.1
+Flask-WTF==1.2.1
+WTForms==3.1.2
 itsdangerous==2.2.0
 
-Pillow==11.0.0
-opencv-python-headless==4.10.0.84
+# ── Image Processing ──────────────────────────────────────────────────────────
+Pillow==10.4.0
+opencv-python-headless==4.9.0.80
 
+# ── AI Background Removal (IMPORTANT COMPATIBILITY FIX) ───────────────────────
 numpy==1.26.4
-onnxruntime==1.20.1
-rembg==2.0.61
+onnxruntime==1.18.1
+rembg==2.0.57
 pooch==1.8.2
 
+# ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv==1.0.1
-click==8.1.8
-requests==2.32.3
+click==8.1.7
+requests==2.31.0
 
-gunicorn==23.0.0
+# ── Production Server ─────────────────────────────────────────────────────────
+gunicorn==22.0.0
 
+# ─────────────────────────────────────────────────────────────────────────────
+# OPTIONAL (uncomment if needed)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Flask-Mail==0.10.0
+# Flask-CORS==4.0.1
+# celery==5.4.0
+# redis==5.0.7
+# boto3==1.34.144
+# razorpay==1.4.1
+# ── Admin Reports ─────────────────────────────────────────────────────────────
 openpyxl==3.1.5
-reportlab==4.2.5
+reportlab==4.2.2
