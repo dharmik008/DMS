@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/marketplace.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
 
 {% block extra_head %}{% endblock %}
 </head>
@@ -105,16 +106,16 @@
 <script>
 function toggleMobileNav() {
   const nav = document.getElementById('navLinks');
-  nav.style.display = nav.style.display === 'flex' ? 'none' : 'flex';
-  nav.style.flexDirection = 'column';
-  nav.style.position = 'absolute';
-  nav.style.top = '68px';
-  nav.style.left = '0';
-  nav.style.right = '0';
-  nav.style.background = '#002366';
-  nav.style.padding = '12px';
-  nav.style.zIndex = '99';
+  nav.classList.toggle('open');
 }
+// Close nav when clicking outside
+document.addEventListener('click', function(e) {
+  const nav = document.getElementById('navLinks');
+  const toggle = document.querySelector('.nav-mobile-toggle');
+  if (nav && toggle && !nav.contains(e.target) && !toggle.contains(e.target)) {
+    nav.classList.remove('open');
+  }
+});
 </script>
 {% block extra_js %}{% endblock %}
 </body>
