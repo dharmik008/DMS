@@ -11,21 +11,21 @@
 </div>
 
 <!-- Stats Row -->
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;" id="statsRow">
   <div class="stat-card" style="border-left:3px solid var(--orange);">
-    <div class="stat-value" style="color:var(--orange);">{{ pending_count }}</div>
+    <div class="stat-value" style="color:var(--orange);" id="statPending">{{ pending_count }}</div>
     <div class="stat-label">Pending Review</div>
   </div>
   <div class="stat-card" style="border-left:3px solid var(--green);">
-    <div class="stat-value" style="color:var(--green);">{{ approved_count }}</div>
+    <div class="stat-value" style="color:var(--green);" id="statApproved">{{ approved_count }}</div>
     <div class="stat-label">Approved</div>
   </div>
   <div class="stat-card" style="border-left:3px solid var(--red);">
-    <div class="stat-value" style="color:var(--red);">{{ rejected_count }}</div>
+    <div class="stat-value" style="color:var(--red);" id="statRejected">{{ rejected_count }}</div>
     <div class="stat-label">Rejected</div>
   </div>
   <div class="stat-card" style="border-left:3px solid var(--text-3);">
-    <div class="stat-value" style="color:var(--text-3);">{{ no_kyc_count }}</div>
+    <div class="stat-value" style="color:var(--text-3);" id="statNone">{{ no_kyc_count }}</div>
     <div class="stat-label">No KYC Submitted</div>
   </div>
 </div>
@@ -45,6 +45,7 @@
     <input type="text" placeholder="Search dealers…" oninput="filterTable(this,'kycTable')"
       style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
   </div>
+  <div class="table-wrapper">
   <table class="table" id="kycTable">
     <thead>
       <tr>
@@ -62,7 +63,7 @@
       {% for dealer in dealers %}
       {% set kyc = kyc_map.get(dealer.id) %}
       {% set status = kyc.kyc_status if kyc else 'none' %}
-      <tr data-kycstatus="{{ status }}">
+      <tr data-kycstatus="{{ status }}" id="row_{{ dealer.id }}">
         <td>
           <strong>{{ dealer.name }}</strong><br>
           <span style="font-size:11px;color:var(--text-2);">{{ dealer.company_name or dealer.city or '—' }}</span>
@@ -98,7 +99,7 @@
           </a>
           {% else %}<span style="color:var(--text-3);font-size:12px;">Not uploaded</span>{% endif %}
         </td>
-        <td>
+        <td id="statusCell_{{ dealer.id }}">
           {% if status == 'approved' %}
             <span class="badge badge-success">✅ Approved</span>
           {% elif status == 'rejected' %}
@@ -112,24 +113,24 @@
         <td style="font-size:12px;color:var(--text-2);">
           {{ kyc.submitted_at.strftime('%d %b %Y') if kyc and kyc.submitted_at else '—' }}
         </td>
-        <td style="white-space:nowrap;">
+        <td style="white-space:nowrap;" id="actionsCell_{{ dealer.id }}">
           <div style="display:flex;gap:6px;align-items:center;">
             <a href="{{ url_for('admin.kyc_detail', dealer_id=dealer.id) }}"
                title="View KYC Details" aria-label="View KYC Details"
                style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#06b6d4;color:#fff;text-decoration:none;font-size:13px;transition:opacity .15s;">
               <i class="fas fa-eye"></i></a>
             {% if status != 'approved' %}
-            <button onclick="approveKyc({{ dealer.id }})"
+            <button onclick="approveKyc({{ dealer.id }}, '{{ dealer.name|replace("'","\\'")}}')"
                     title="Approve KYC" aria-label="Approve KYC"
+                    id="approveBtn_{{ dealer.id }}"
                     style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;font-size:13px;transition:opacity .15s;">
               <i class="fas fa-check"></i></button>
             {% endif %}
-            {% if status != 'rejected' %}
-            <button onclick="openRejectModal({{ dealer.id }},'{{ dealer.name|replace("'","\\'")}}')"
+            <button onclick="openRejectModal({{ dealer.id }},'{{ dealer.name|replace("'","\\'")}}','{{ status }}')"
                     title="Reject KYC" aria-label="Reject KYC"
+                    id="rejectBtn_{{ dealer.id }}"
                     style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:13px;transition:opacity .15s;">
               <i class="fas fa-times"></i></button>
-            {% endif %}
           </div>
         </td>
       </tr>
@@ -138,21 +139,106 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 
-<!-- Reject Modal -->
-<div id="rejectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:28px;width:440px;max-width:95vw;">
-    <h3 style="margin-bottom:8px;font-size:18px;">Reject KYC</h3>
-    <p id="rejectModalTitle" style="color:var(--text-2);font-size:13px;margin-bottom:20px;"></p>
-    <div class="form-group">
-      <label style="font-size:13px;color:var(--text-2);margin-bottom:6px;display:block;">Rejection Reason *</label>
-      <textarea id="rejectReason" rows="3" placeholder="Explain why KYC is rejected…"
-        style="width:100%;background:var(--bg-surface);border:1px solid var(--border-md);border-radius:8px;padding:10px;color:var(--text-1);font-size:13px;resize:vertical;"></textarea>
+<!-- ════════════════════════════════════════════════════════════════
+     REJECT KYC MODAL  — with document selector + reason textarea
+     ════════════════════════════════════════════════════════════════ -->
+<div id="rejectModal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:1000;
+            align-items:center;justify-content:center;padding:16px;"
+     onclick="if(event.target===this)closeRejectModal()">
+
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;
+              padding:28px 28px 24px;width:460px;max-width:95vw;
+              box-shadow:0 24px 64px rgba(0,0,0,.45);
+              animation:modalIn .18s ease;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <h3 style="font-size:18px;font-weight:700;margin:0;">Reject KYC</h3>
+      <button onclick="closeRejectModal()"
+              style="background:none;border:none;color:var(--text-2);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;">×</button>
     </div>
-    <div style="display:flex;gap:10px;margin-top:16px;">
-      <button onclick="submitReject()" class="btn btn-danger" style="flex:1;">Confirm Reject</button>
-      <button onclick="closeRejectModal()" class="btn btn-outline" style="flex:1;">Cancel</button>
+    <p id="rejectModalSubtitle" style="color:var(--text-2);font-size:13px;margin:0 0 20px;"></p>
+
+    <!-- ── Rejected Document (radio) ──────────────────────────── -->
+    <div style="margin-bottom:18px;">
+      <label style="font-size:13px;font-weight:600;color:var(--text-1);display:block;margin-bottom:10px;">
+        Rejected Document <span style="color:var(--red);">*</span>
+      </label>
+      <div style="display:flex;flex-direction:column;gap:6px;" id="docRadioGroup">
+        <label id="radio_label_aadhaar_front"
+               style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
+                      border:1.5px solid var(--border-md);cursor:pointer;font-size:13px;
+                      transition:border-color .15s,background .15s;">
+          <input type="radio" name="rejectDocType" value="aadhaar_front"
+                 onchange="highlightRadio(this)" style="accent-color:#ef4444;cursor:pointer;">
+          🪪&nbsp; Aadhaar Front
+        </label>
+        <label id="radio_label_aadhaar_back"
+               style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
+                      border:1.5px solid var(--border-md);cursor:pointer;font-size:13px;
+                      transition:border-color .15s,background .15s;">
+          <input type="radio" name="rejectDocType" value="aadhaar_back"
+                 onchange="highlightRadio(this)" style="accent-color:#ef4444;cursor:pointer;">
+          🪪&nbsp; Aadhaar Back
+        </label>
+        <label id="radio_label_pan_card"
+               style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
+                      border:1.5px solid var(--border-md);cursor:pointer;font-size:13px;
+                      transition:border-color .15s,background .15s;">
+          <input type="radio" name="rejectDocType" value="pan_card"
+                 onchange="highlightRadio(this)" style="accent-color:#ef4444;cursor:pointer;">
+          💳&nbsp; PAN Card
+        </label>
+        <label id="radio_label_complete_kyc"
+               style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
+                      border:1.5px solid var(--border-md);cursor:pointer;font-size:13px;
+                      transition:border-color .15s,background .15s;">
+          <input type="radio" name="rejectDocType" value="complete_kyc"
+                 onchange="highlightRadio(this)" style="accent-color:#ef4444;cursor:pointer;">
+          ❌&nbsp; Complete KYC
+        </label>
+      </div>
+      <div id="docValidationMsg"
+           style="display:none;color:#ef4444;font-size:12px;margin-top:6px;">
+        ⚠ Please select a document to reject.
+      </div>
+    </div>
+
+    <!-- ── Rejection Reason (textarea) ──────────────────────── -->
+    <div style="margin-bottom:20px;">
+      <label style="font-size:13px;font-weight:600;color:var(--text-1);display:block;margin-bottom:6px;">
+        Rejection Reason <span style="color:var(--red);">*</span>
+      </label>
+      <textarea id="rejectReason" rows="3"
+                placeholder="Explain why this document / KYC is being rejected…"
+                oninput="clearReasonError()"
+                style="width:100%;box-sizing:border-box;background:var(--bg-surface);
+                       border:1.5px solid var(--border-md);border-radius:8px;padding:10px 12px;
+                       color:var(--text-1);font-size:13px;resize:vertical;min-height:80px;
+                       transition:border-color .15s;"></textarea>
+      <div id="reasonValidationMsg"
+           style="display:none;color:#ef4444;font-size:12px;margin-top:4px;">
+        ⚠ Please enter a rejection reason.
+      </div>
+    </div>
+
+    <!-- ── Buttons ─────────────────────────────────────────── -->
+    <div style="display:flex;gap:10px;">
+      <button onclick="submitReject()"
+              id="confirmRejectBtn"
+              class="btn btn-danger"
+              style="flex:1;font-weight:600;">
+        Confirm Reject
+      </button>
+      <button onclick="closeRejectModal()"
+              class="btn btn-outline"
+              style="flex:1;">
+        Cancel
+      </button>
     </div>
   </div>
 </div>
@@ -170,9 +256,22 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-let rejectDealerId = null;
+<style>
+@keyframes modalIn {
+  from { opacity:0; transform:translateY(-12px) scale(.97); }
+  to   { opacity:1; transform:translateY(0)      scale(1); }
+}
+.radio-selected {
+  border-color: #ef4444 !important;
+  background: rgba(239,68,68,.06) !important;
+}
+</style>
 
+<script>
+let rejectDealerId   = null;
+let rejectDealerName = null;
+
+/* ── Table helpers ──────────────────────────────────────── */
 function filterTable(inp, tableId) {
   const q = inp.value.toLowerCase();
   document.querySelectorAll('#' + tableId + ' tbody tr').forEach(r => {
@@ -181,42 +280,157 @@ function filterTable(inp, tableId) {
 }
 
 function filterKyc(status, btn) {
-  document.querySelectorAll('.kyc-tab').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline'); });
+  document.querySelectorAll('.kyc-tab').forEach(b => {
+    b.classList.remove('btn-primary'); b.classList.add('btn-outline');
+  });
   btn.classList.add('btn-primary'); btn.classList.remove('btn-outline');
   document.querySelectorAll('#kycTable tbody tr[data-kycstatus]').forEach(r => {
     r.style.display = (status === 'all' || r.dataset.kycstatus === status) ? '' : 'none';
   });
 }
 
-function approveKyc(dealerId) {
-  if (!confirm('Approve KYC for this dealer?')) return;
+/* ── Approve (full KYC) ─────────────────────────────────── */
+function approveKyc(dealerId, name) {
+  if (!confirm('Approve ALL KYC documents for ' + name + '?')) return;
   fetch('/admin/api/kyc/' + dealerId + '/approve', { method: 'POST' })
     .then(r => r.json()).then(d => {
-      if (d.success) { showToast(d.message, 'success'); setTimeout(() => location.reload(), 900); }
-      else showToast(d.message || 'Error', 'error');
+      if (d.success) {
+        showToast(d.message, 'success');
+        updateRowStatus(dealerId, 'approved');
+        updateCounters(d.counts);
+      } else showToast(d.message || 'Error', 'error');
     });
 }
 
-function openRejectModal(dealerId, name) {
-  rejectDealerId = dealerId;
-  document.getElementById('rejectModalTitle').textContent = 'Rejecting KYC for: ' + name;
+/* ── Open reject modal ──────────────────────────────────── */
+function openRejectModal(dealerId, name, currentStatus) {
+  rejectDealerId   = dealerId;
+  rejectDealerName = name;
+
+  // Reset state
+  document.querySelectorAll('input[name="rejectDocType"]').forEach(r => r.checked = false);
+  document.querySelectorAll('[id^="radio_label_"]').forEach(l => l.classList.remove('radio-selected'));
   document.getElementById('rejectReason').value = '';
+  document.getElementById('docValidationMsg').style.display   = 'none';
+  document.getElementById('reasonValidationMsg').style.display = 'none';
+  document.getElementById('rejectReason').style.borderColor   = '';
+
+  document.getElementById('rejectModalSubtitle').textContent =
+    'Rejecting KYC for: ' + name;
+
   document.getElementById('rejectModal').style.display = 'flex';
+  // Focus first radio for accessibility
+  document.querySelector('input[name="rejectDocType"]').focus();
 }
-function closeRejectModal() { document.getElementById('rejectModal').style.display = 'none'; }
 
+function closeRejectModal() {
+  document.getElementById('rejectModal').style.display = 'none';
+}
+
+/* ── Radio highlight ────────────────────────────────────── */
+function highlightRadio(radio) {
+  document.querySelectorAll('[id^="radio_label_"]').forEach(l => l.classList.remove('radio-selected'));
+  const label = document.getElementById('radio_label_' + radio.value);
+  if (label) label.classList.add('radio-selected');
+  document.getElementById('docValidationMsg').style.display = 'none';
+}
+
+function clearReasonError() {
+  document.getElementById('reasonValidationMsg').style.display = 'none';
+  document.getElementById('rejectReason').style.borderColor = '';
+}
+
+/* ── Submit reject ──────────────────────────────────────── */
 function submitReject() {
-  const reason = document.getElementById('rejectReason').value.trim();
-  if (!reason) { showToast('Please enter a rejection reason.', 'error'); return; }
-  fetch('/admin/api/kyc/' + rejectDealerId + '/reject', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({reason})
-  }).then(r => r.json()).then(d => {
-    if (d.success) { closeRejectModal(); showToast(d.message, 'success'); setTimeout(() => location.reload(), 900); }
-    else showToast(d.message || 'Error', 'error');
-  });
+  const selected = document.querySelector('input[name="rejectDocType"]:checked');
+  const reason   = document.getElementById('rejectReason').value.trim();
+  let valid = true;
+
+  if (!selected) {
+    document.getElementById('docValidationMsg').style.display = 'block';
+    valid = false;
+  }
+  if (!reason) {
+    document.getElementById('reasonValidationMsg').style.display = 'block';
+    document.getElementById('rejectReason').style.borderColor = '#ef4444';
+    valid = false;
+  }
+  if (!valid) return;
+
+  const docType = selected.value;
+  const btn = document.getElementById('confirmRejectBtn');
+  btn.disabled = true;
+  btn.textContent = 'Rejecting…';
+
+  if (docType === 'complete_kyc') {
+    // Reject entire KYC
+    fetch('/admin/api/kyc/' + rejectDealerId + '/reject', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ reason })
+    }).then(r => r.json()).then(d => {
+      btn.disabled = false; btn.textContent = 'Confirm Reject';
+      if (d.success) {
+        closeRejectModal();
+        showToast(d.message, 'success');
+        updateRowStatus(rejectDealerId, 'rejected');
+        updateCounters(d.counts);
+      } else showToast(d.message || 'Error', 'error');
+    }).catch(() => { btn.disabled = false; btn.textContent = 'Confirm Reject'; });
+
+  } else {
+    // Reject single document
+    fetch('/admin/api/kyc/' + rejectDealerId + '/doc-reject', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ doc_key: docType, reason })
+    }).then(r => r.json()).then(d => {
+      btn.disabled = false; btn.textContent = 'Confirm Reject';
+      if (d.success) {
+        closeRejectModal();
+        showToast(d.message, 'success');
+        updateRowStatus(rejectDealerId, d.overall_status);
+        updateCounters(d.counts);
+      } else showToast(d.message || 'Error', 'error');
+    }).catch(() => { btn.disabled = false; btn.textContent = 'Confirm Reject'; });
+  }
 }
 
+/* ── Update a single table row status in-place ─────────── */
+function updateRowStatus(dealerId, newStatus) {
+  const row = document.getElementById('row_' + dealerId);
+  if (!row) return;
+  row.dataset.kycstatus = newStatus;
+
+  const cell = document.getElementById('statusCell_' + dealerId);
+  if (cell) {
+    const badges = {
+      approved: '<span class="badge badge-success">✅ Approved</span>',
+      rejected: '<span class="badge badge-danger">❌ Rejected</span>',
+      pending:  '<span class="badge" style="background:rgba(255,153,68,0.15);color:var(--orange);border:1px solid rgba(255,153,68,0.3);">⏳ Pending</span>',
+    };
+    cell.innerHTML = badges[newStatus] || '<span class="badge" style="background:var(--bg-hover);color:var(--text-3);">No KYC</span>';
+  }
+
+  // Update action buttons
+  const actCell = document.getElementById('actionsCell_' + dealerId);
+  if (actCell) {
+    const approveBtn = actCell.querySelector('#approveBtn_' + dealerId);
+    if (newStatus === 'approved' && approveBtn) approveBtn.style.display = 'none';
+    if (newStatus !== 'approved' && approveBtn) approveBtn.style.display = '';
+  }
+}
+
+/* ── Update counter cards ───────────────────────────────── */
+function updateCounters(counts) {
+  if (!counts) return;
+  if (counts.pending  !== undefined) document.getElementById('statPending').textContent  = counts.pending;
+  if (counts.approved !== undefined) document.getElementById('statApproved').textContent = counts.approved;
+  if (counts.rejected !== undefined) document.getElementById('statRejected').textContent = counts.rejected;
+  if (counts.none     !== undefined) document.getElementById('statNone').textContent     = counts.none;
+}
+
+/* ── Lightbox ────────────────────────────────────────────── */
 function openLightbox(src, label) {
   document.getElementById('lightboxImg').src = src;
   document.getElementById('lightboxLabel').textContent = label;
@@ -224,13 +438,19 @@ function openLightbox(src, label) {
   document.getElementById('lightbox').style.display = 'flex';
 }
 function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeLightbox(); closeRejectModal(); }
+});
 
+/* ── Toast ───────────────────────────────────────────────── */
 function showToast(msg, type) {
   const t = document.createElement('div');
   t.textContent = msg;
-  t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;z-index:9999;background:' + (type==='success'?'#22c55e':'#ef4444');
-  document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;' +
+    'color:#fff;font-size:14px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);' +
+    'background:' + (type === 'success' ? '#22c55e' : '#ef4444');
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
 }
 </script>
 {% endblock %}
