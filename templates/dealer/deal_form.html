@@ -4,7 +4,7 @@
 
 {% block content %}
 <div style="max-width:900px">
-  <form method="POST" id="dealForm">
+  <form method="POST" id="dealForm" onsubmit="return validateDealForm()">
     <div class="grid-2 mb-24">
       <!-- Left: Deal Details -->
       <div style="display:flex;flex-direction:column;gap:24px">
@@ -18,7 +18,13 @@
               </div>
               <div class="form-group">
                 <label>Phone</label>
-                <input type="tel" name="customer_phone" value="{{ deal['customer_phone'] if deal else '' }}">
+                <input type="tel" name="customer_phone" id="deal_customer_phone"
+                value="{{ deal['customer_phone'] if deal else '' }}"
+                placeholder="+91XXXXXXXXXX or 10-digit number"
+                maxlength="14"
+                oninput="formatPhoneInput(this)">
+              <small style="font-size:11px;color:var(--text-muted)">10-digit number or +91 + 10 digits</small>
+              <div id="deal_phone_error" style="color:#e53e3e;font-size:11px;display:none;margin-top:3px;"></div>
               </div>
               <div class="form-group">
                 <label>Email</label>
@@ -34,18 +40,33 @@
             <div class="form-grid">
               <div class="form-group full">
                 <label>Vehicle *</label>
-                <select name="vehicle_id" required>
+                <select name="vehicle_id" id="vehicle_select" required onchange="onVehicleChange(this)">
                   <option value="">Select Vehicle</option>
                   {% for v in vehicles %}
-                  <option value="{{ v['id'] }}" {% if deal and deal['vehicle_id'] == v['id'] %}selected{% endif %}>
+                  <option value="{{ v['id'] }}"
+                    data-price="{{ v['price'] }}"
+                    data-year="{{ v.get('year','') }}"
+                    data-make="{{ v.get('make','') }}"
+                    data-model="{{ v.get('model','') }}"
+                    data-fuel="{{ v.get('fuel_type','') }}"
+                    data-transmission="{{ v.get('transmission','') }}"
+                    data-mileage="{{ v.get('mileage','') }}"
+                    data-color="{{ v.get('color','') }}"
+                    {% if deal and deal['vehicle_id'] == v['id'] %}selected{% endif %}>
                     {{ v['year'] }} {{ v['make'] }} {{ v['model'] }} — ₹{{ "{:,.0f}".format(v['price']) }}
                   </option>
                   {% endfor %}
                 </select>
               </div>
+              <!-- Vehicle info auto-fetch panel -->
+              <div id="vehicleInfoPanel" style="display:none;margin-top:10px;padding:12px 14px;background:var(--gold);border-radius:var(--radius);border:1px solid var(--gold-dark);grid-column:1/-1">
+                <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px"><i class="fas fa-car" style="margin-right:6px;color:var(--gold-accent)"></i>Selected Vehicle Info</div>
+                <div id="vehicleInfoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px"></div>
+              </div>
+              </div>
               <div class="form-group">
                 <label>Asking Price (₹)</label>
-                <input type="number" name="asking_price" value="{{ deal['asking_price'] if deal and deal['asking_price'] else '' }}" placeholder="Original asking price">
+                <input type="number" name="asking_price" id="asking_price" value="{{ deal['asking_price'] if deal and deal['asking_price'] else '' }}" placeholder="Original asking price">
               </div>
               <div class="form-group">
                 <label>Final Price (₹) *</label>
@@ -224,5 +245,86 @@ function fillEMIValues() {
 // Init
 toggleLoanFields();
 updateGST();
+// Auto-fetch vehicle info on page load (edit mode)
+document.addEventListener('DOMContentLoaded', function() {
+  var sel = document.getElementById('vehicle_select');
+  if (sel && sel.value) onVehicleChange(sel);
+});
+
+// ── Phone formatting ──────────────────────────────────────────────────────────
+function formatPhoneInput(input) {
+  var val = input.value.replace(/[^+0-9]/g, '');
+  if (val.startsWith('+') && !val.startsWith('+91')) {
+    val = '+91' + val.replace(/^\+[0-9]*/g, '');
+  }
+  input.value = val;
+}
+
+// ── Validate phone: +91 + 10 digits OR exactly 10 digits ─────────────────────
+function validatePhone(value) {
+  var clean = (value || '').trim();
+  if (!clean) return true; // phone is optional in deal form
+  return /^\+91[0-9]{10}$/.test(clean) || /^[0-9]{10}$/.test(clean);
+}
+
+// ── Deal & Seal form validation ───────────────────────────────────────────────
+function validateDealForm() {
+  var phoneInput = document.getElementById('deal_customer_phone');
+  var phoneErr   = document.getElementById('deal_phone_error');
+  var finalPrice = document.getElementById('final_price');
+  var valid = true;
+
+  // Phone validation
+  if (phoneInput && phoneInput.value.trim() !== '') {
+    if (!validatePhone(phoneInput.value)) {
+      if (phoneErr) {
+        phoneErr.textContent = 'Enter a valid 10-digit number or +91 followed by 10 digits';
+        phoneErr.style.display = 'block';
+      }
+      phoneInput.style.borderColor = '#e53e3e';
+      phoneInput.focus();
+      valid = false;
+    } else {
+      if (phoneErr) phoneErr.style.display = 'none';
+      phoneInput.style.borderColor = '';
+    }
+  }
+
+  // Final price must be positive
+  if (finalPrice && (!finalPrice.value || parseFloat(finalPrice.value) <= 0)) {
+    finalPrice.style.borderColor = '#e53e3e';
+    finalPrice.focus();
+    alert('Please enter a valid Final Price.');
+    valid = false;
+  } else if (finalPrice) {
+    finalPrice.style.borderColor = '';
+  }
+
+  return valid;
+}
+
+// ── Vehicle auto-fetch ────────────────────────────────────────────────────────
+function onVehicleChange(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var panel = document.getElementById('vehicleInfoPanel');
+  var grid  = document.getElementById('vehicleInfoGrid');
+  var askingInput = document.getElementById('asking_price');
+  if (!opt || !opt.value) { panel.style.display = 'none'; return; }
+  var price = parseFloat(opt.dataset.price || 0);
+  if (price > 0 && askingInput) askingInput.value = Math.round(price);
+  var cells = [];
+  if (opt.dataset.year)         cells.push(['Year', opt.dataset.year]);
+  if (opt.dataset.make)         cells.push(['Make', opt.dataset.make]);
+  if (opt.dataset.model)        cells.push(['Model', opt.dataset.model]);
+  if (price > 0)                cells.push(['Price', '₹' + price.toLocaleString('en-IN')]);
+  if (opt.dataset.fuel)         cells.push(['Fuel', opt.dataset.fuel]);
+  if (opt.dataset.transmission) cells.push(['Gear', opt.dataset.transmission]);
+  if (opt.dataset.mileage)      cells.push(['KM', parseInt(opt.dataset.mileage).toLocaleString('en-IN')]);
+  if (opt.dataset.color)        cells.push(['Color', opt.dataset.color]);
+  grid.innerHTML = cells.map(function(c) {
+    return '<div style="background:#fff;border-radius:6px;padding:6px 8px"><div style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase">' + c[0] + '</div><div style="font-size:12px;font-weight:600;color:var(--navy)">' + c[1] + '</div></div>';
+  }).join('');
+  panel.style.display = cells.length ? 'block' : 'none';
+}
 </script>
 {% endblock %}
