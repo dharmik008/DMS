@@ -1,60 +1,61 @@
 """
-utils/upload_helpers.py — Caryanams DMS
-Secure image upload helpers for KYC documents and vehicle images.
+utils/image_utils.py — Caryanams Image Processing Pipeline
+============================================================
 
-Vehicle images → HD (1920×1080) + white background + Caryanams logo watermark
-KYC documents  → plain save (no processing)
+save_uploaded_image() — FAST plain save for ALL uploads (vehicle + KYC + logo).
+  - NO background removal at upload time (rembg removed from upload pipeline)
+  - Background removal happens ONLY in Mask Editor (studio/api/process-car)
+  - vehicle_mode=True: resize to max 1920x1080 if larger, stamp logo, save as JPEG 92
+  - vehicle_mode=False: plain save (KYC docs, logos, etc.)
+
+Format rules:
+  .webp  → convert to .jpg
+  .png   → keep as .png  (unless vehicle_mode=True, then → .jpg)
+  .jpg / .jpeg → .jpg
 """
+
 import os
+import io
 import uuid
 import logging
 from PIL import Image
-import io
 
 logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
-MAX_IMAGE_BYTES    = 15 * 1024 * 1024   # 15 MB
 
+# ─── HD canvas settings ───────────────────────────────────────────────────────
+HD_W   = 1920
+HD_H   = 1080
+PAD    = 0.05          # 5 % padding on each side
+QUALITY = 92
 
-def allowed_image(filename: str) -> bool:
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def validate_image(file_storage) -> tuple[bool, str]:
-    """Return (ok, error_message). Validates extension + size."""
-    if not file_storage or not file_storage.filename:
-        return False, 'No file provided.'
-    if not allowed_image(file_storage.filename):
-        return False, f'Invalid format. Allowed: {", ".join(ALLOWED_EXTENSIONS)}.'
-    file_storage.stream.seek(0, 2)
-    size = file_storage.stream.tell()
-    file_storage.stream.seek(0)
-    if size > MAX_IMAGE_BYTES:
-        return False, f'File too large (max 15 MB). Got {size // (1024*1024)} MB.'
-    return True, ''
-
-
-def delete_image(folder: str, filename: str):
-    """Safely delete an image file."""
-    if not filename:
-        return
-    path = os.path.join(folder, filename)
-    try:
-        if os.path.isfile(path):
-            os.remove(path)
-    except Exception as e:
-        logger.warning(f'[delete_image] Could not delete {path}: {e}')
-
-
-# ─── Internal pipeline (shared with image_utils) ─────────────────────────────
-
+# ─── Logo path (relative to this file: ../../static/images/logo.png) ─────────
 def _logo_path() -> str:
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base, 'static', 'images', 'logo.png')
 
 
+def get_safe_extension(filename: str) -> str:
+    ext = os.path.splitext(filename)[1].lower().lstrip('.')
+    if ext == 'webp':
+        return 'jpg'
+    if ext == 'png':
+        return 'png'
+    if ext in ('jpg', 'jpeg'):
+        return 'jpg'
+    return 'jpg'
+
+
+def is_allowed_image(filename: str) -> bool:
+    ext = os.path.splitext(filename)[1].lower().lstrip('.')
+    return ext in ALLOWED_EXTENSIONS
+
+
+# ─── Background removal ───────────────────────────────────────────────────────
+
 def _remove_background(img: Image.Image) -> Image.Image:
+    """Try rembg AI removal. Falls back to returning the RGBA image as-is."""
     try:
         from rembg import remove as rembg_remove
         buf = io.BytesIO()
@@ -62,29 +63,40 @@ def _remove_background(img: Image.Image) -> Image.Image:
         result = rembg_remove(buf.getvalue())
         return Image.open(io.BytesIO(result)).convert('RGBA')
     except ImportError:
-        logger.info('[upload_helpers] rembg not installed — skipping BG removal')
+        logger.info('[image_utils] rembg not installed — skipping BG removal')
     except Exception as e:
-        logger.warning(f'[upload_helpers] rembg failed: {e}')
+        logger.warning(f'[image_utils] rembg failed: {e}')
     return img.convert('RGBA')
 
 
+# ─── White canvas composer ────────────────────────────────────────────────────
+
 def _place_on_white_hd(fg: Image.Image) -> Image.Image:
-    HD_W, HD_H, PAD = 1920, 1080, 0.05
+    """
+    Composite RGBA foreground onto a 1920×1080 white canvas.
+    Car is centred with PAD% padding on all sides — nothing ever gets cropped.
+    """
+    # Crop transparent border
     bbox = fg.getbbox() if fg.mode == 'RGBA' else None
     if bbox:
         fg = fg.crop(bbox)
+
     fw, fh = fg.size
     avail_w = int(HD_W * (1 - 2 * PAD))
     avail_h = int(HD_H * (1 - 2 * PAD))
-    scale   = min(avail_w / fw, avail_h / fh, 1.0)
+    scale   = min(avail_w / fw, avail_h / fh, 1.0)   # never upscale beyond original
     nw, nh  = max(1, int(fw * scale)), max(1, int(fh * scale))
     fg_rs   = fg.resize((nw, nh), Image.LANCZOS)
+
     canvas  = Image.new('RGBA', (HD_W, HD_H), (255, 255, 255, 255))
-    px, py  = (HD_W - nw) // 2, (HD_H - nh) // 2
+    px      = (HD_W - nw) // 2
+    py      = (HD_H - nh) // 2
     mask    = fg_rs.split()[3] if fg_rs.mode == 'RGBA' else None
     canvas.paste(fg_rs, (px, py), mask)
     return canvas.convert('RGB')
 
+
+# ─── Logo stamp ───────────────────────────────────────────────────────────────
 
 def _stamp_logo(canvas: Image.Image) -> Image.Image:
     lpath = _logo_path()
@@ -96,87 +108,98 @@ def _stamp_logo(canvas: Image.Image) -> Image.Image:
         target_w = max(80, int(canvas.width * 0.11))
         scale    = target_w / lw
         logo_rs  = logo.resize((int(lw * scale), int(lh * scale)), Image.LANCZOS)
+
+        # 70 % opacity
         r, g, b, a = logo_rs.split()
         a = a.point(lambda x: int(x * 0.70))
         logo_rs = Image.merge('RGBA', (r, g, b, a))
-        margin  = int(canvas.width * 0.015)
+
+        margin = int(canvas.width * 0.015)
         px = canvas.width  - logo_rs.width  - margin
         py = canvas.height - logo_rs.height - margin
         base = canvas.convert('RGBA')
         base.paste(logo_rs, (px, py), logo_rs)
         return base.convert('RGB')
     except Exception as e:
-        logger.warning(f'[upload_helpers] logo stamp failed: {e}')
+        logger.warning(f'[image_utils] logo stamp failed: {e}')
         return canvas
 
 
-def _vehicle_pipeline(raw_bytes: bytes) -> bytes:
-    img    = Image.open(io.BytesIO(raw_bytes)).convert('RGB')
-    canvas = _stamp_logo(img)
-    out    = io.BytesIO()
-    canvas.save(out, 'JPEG', quality=92, optimize=True)
+# ─── Full vehicle pipeline (NO background removal — fast save) ───────────────
+
+def _process_vehicle_image(file_obj) -> bytes:
+    """
+    Fast pipeline: resize to max HD if needed, stamp logo, save as JPEG.
+    NO background removal here — that happens only in Mask Editor.
+    """
+    raw = file_obj.read()
+    file_obj.seek(0)
+
+    img = Image.open(io.BytesIO(raw)).convert('RGB')
+
+    # Resize down if larger than HD (never upscale)
+    if img.width > HD_W or img.height > HD_H:
+        img.thumbnail((HD_W, HD_H), Image.LANCZOS)
+
+    # Stamp logo
+    img = _stamp_logo(img)
+
+    out = io.BytesIO()
+    img.save(out, 'JPEG', quality=QUALITY, optimize=True)
     return out.getvalue()
 
 
-# ─── Public API ───────────────────────────────────────────────────────────────
+# ─── Main public function ─────────────────────────────────────────────────────
 
-def save_image(
-    file_storage,
-    folder: str,
-    prefix: str = 'img',
-    vehicle_mode: bool = True,   # False for KYC docs / logos
-) -> str | None:
+def save_uploaded_image(
+    file_obj,
+    upload_folder: str,
+    base_name: str,
+    vehicle_mode: bool = True,   # True = HD + white bg + logo pipeline
+) -> str:
     """
-    Save an uploaded image.
+    Save a werkzeug FileStorage to upload_folder.
 
-    vehicle_mode=True  → HD + white BG + logo pipeline → always .jpg
-    vehicle_mode=False → plain save (KYC, logos)
+    vehicle_mode=True  (default) — full pipeline: BG removal, white HD canvas, logo
+    vehicle_mode=False           — plain save (KYC docs, logos, etc.)
 
-    Returns filename or None on error.
+    Returns final filename (e.g. 'abc123.jpg').
     """
-    os.makedirs(folder, exist_ok=True)
-    uid = uuid.uuid4().hex[:8]
+    os.makedirs(upload_folder, exist_ok=True)
+    original_name = file_obj.filename or ''
+    orig_ext = os.path.splitext(original_name)[1].lower().lstrip('.')
 
     if vehicle_mode:
-        filename  = f'{prefix}_{uid}.jpg'
-        dest_path = os.path.join(folder, filename)
+        # Always output as .jpg for vehicle images
+        final_filename = f'{base_name}.jpg'
+        dest_path = os.path.join(upload_folder, final_filename)
         try:
-            raw = file_storage.stream.read()
-            file_storage.stream.seek(0)
-            processed = _vehicle_pipeline(raw)
+            processed = _process_vehicle_image(file_obj)
             with open(dest_path, 'wb') as f:
                 f.write(processed)
-            logger.info(f'[save_image] vehicle HD: {filename}')
-            return filename
+            logger.info(f'[save_uploaded_image] vehicle HD saved: {final_filename}')
+            return final_filename
         except Exception as e:
-            logger.error(f'[save_image] vehicle pipeline error: {e}', exc_info=True)
-            file_storage.stream.seek(0)
-            # Fall through to plain save
+            logger.error(f'[save_uploaded_image] vehicle pipeline failed: {e}', exc_info=True)
+            # Fallback: plain save
+            file_obj.seek(0)
 
-    # Plain save (KYC / logos / pipeline fallback)
-    orig_name = file_storage.filename or ''
-    ext = orig_name.rsplit('.', 1)[-1].lower() if '.' in orig_name else 'jpg'
-    if ext == 'webp':
-        ext = 'jpg'
-    filename  = f'{prefix}_{uid}.{ext}'
-    dest_path = os.path.join(folder, filename)
-    try:
-        img = Image.open(file_storage.stream)
-        if img.mode in ('RGBA', 'P', 'LA'):
+    # ── Plain save (KYC / logos / fallback) ──────────────────────────────────
+    ext = get_safe_extension(original_name)
+    final_filename = f'{base_name}.{ext}'
+    dest_path = os.path.join(upload_folder, final_filename)
+
+    if orig_ext == 'webp':
+        img = Image.open(file_obj)
+        if img.mode in ('RGBA', 'LA', 'P'):
             bg = Image.new('RGB', img.size, (255, 255, 255))
-            if img.mode == 'P':
-                img = img.convert('RGBA')
-            bg.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
-            img = bg
-        elif img.mode != 'RGB':
-            img = img.convert('RGB')
-        max_dim = 1600
-        w, h = img.size
-        if max(w, h) > max_dim:
-            ratio = max_dim / max(w, h)
-            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
-        img.save(dest_path, 'JPEG', quality=85, optimize=True)
-        return filename
-    except Exception as e:
-        logger.error(f'[save_image] plain save error: {e}')
-        return None
+            img = img.convert('RGBA')
+            bg.paste(img, mask=img.split()[3])
+            bg.save(dest_path, 'JPEG', quality=QUALITY)
+        else:
+            img.convert('RGB').save(dest_path, 'JPEG', quality=QUALITY)
+    else:
+        file_obj.seek(0)
+        file_obj.save(dest_path)
+
+    return final_filename
