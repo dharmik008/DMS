@@ -1,1144 +1,636 @@
-{# ═══════════════════════════════════════════════════════════════════════════ #}
-{# MASK EDITOR MODAL — Include in any template that needs per-image editing   #}
-{# Usage: {% include 'mask_editor_modal.html' %}                               #}
+{# MASK EDITOR MODAL — Vehicle Image Editor (Blur BG + Hide Number Plate) #}
+{# Usage: {% include 'mask_editor_modal.html' %} in any admin template        #}
 {# JS API: openMaskEditor(viId, imgUrl, imgFilename, imageType)               #}
-{#   imageType: 'front'|'rear'|'right_side'|'left_side'|'engine'|'boot'|    #}
-{#             'interior'|'gallery'  (auto-detects category)                  #}
-{# After save: maskEditorOnSave(viId, newImageUrl) — override to handle       #}
-{# ═══════════════════════════════════════════════════════════════════════════ #}
+{#         maskEditorOnSave(viId, newImageUrl)  — define this in parent page  #}
 
-<!-- ══ MASK EDITOR MODAL ══════════════════════════════════════════════════════ -->
-<div id="maskEditorOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);z-index:9000;align-items:center;justify-content:center;padding:12px;">
-  <div style="background:linear-gradient(145deg,#0f0c29,#1a1740,#16213e);border:1px solid rgba(255,255,255,0.12);border-radius:24px;width:100%;max-width:1100px;max-height:96vh;overflow-y:auto;position:relative;display:flex;flex-direction:column;">
+<div id="maskEditorOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.90);backdrop-filter:blur(8px);z-index:9000;align-items:center;justify-content:center;padding:12px;">
+  <div style="background:#111827;border-radius:20px;max-width:980px;width:100%;max-height:95vh;overflow-y:auto;display:flex;flex-direction:column;gap:0;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
 
     <!-- Header -->
-    <div style="padding:18px 24px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px 14px;border-bottom:1px solid rgba(255,255,255,0.08);">
       <div>
-        <div style="font-size:18px;font-weight:900;letter-spacing:3px;background:linear-gradient(90deg,#ff6b35,#f7c948,#00d4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">🎨 MASK EDITOR</div>
-        <div id="meFilename" style="font-size:11px;color:#666;margin-top:2px;letter-spacing:1px;"></div>
+        <div style="font-size:1rem;font-weight:800;color:#fff;">🎨 Vehicle Image Editor</div>
+        <div id="meFileName" style="font-size:.75rem;color:#94a3b8;margin-top:2px;"></div>
       </div>
-      <!-- Category badge -->
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div id="meCategoryBadge" style="display:none;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:800;letter-spacing:1px;"></div>
-        <button onclick="closeMaskEditor()" style="background:rgba(255,255,255,0.08);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer;line-height:1;">✕</button>
-      </div>
+      <button onclick="closeMaskEditor()" style="background:rgba(255,255,255,0.08);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer;line-height:1;">✕</button>
     </div>
 
     <!-- Body -->
-    <div style="padding:20px 24px;flex:1;">
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:18px;">
 
-      <!-- Steps (exterior only) -->
-      <div style="display:flex;justify-content:center;gap:0;flex-wrap:wrap;margin-bottom:18px;" id="meStepBar">
-        <div class="me-step" id="meS1"><span class="me-dot"></span>1. Detect Plate</div>
-        <div class="me-step" id="meS2"><span class="me-dot"></span>2. Remove BG</div>
-        <div class="me-step" id="meS3"><span class="me-dot"></span>3. Apply BG</div>
-      </div>
-
-      <!-- Interior mode notice -->
-      <div id="meInteriorNotice" style="display:none;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);border-radius:12px;padding:12px 16px;font-size:13px;color:#00d4ff;margin-bottom:16px;text-align:center;">
-        🪑 <strong>Interior Image</strong> — Full-screen display preserved. Number plate will be <strong>fully hidden</strong> with Caryanams logo if detected. Background is kept as-is.
-      </div>
-
-      <!-- Mode bar -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
-        <span style="font-size:11px;color:#666;margin-right:4px;">PLATE MODE:</span>
-        <button class="me-mode-btn me-active" data-mode="caryanams" onclick="meModeClick(this)">🔶 CARYANAMS (Hide)</button>
-        <button class="me-mode-btn" data-mode="blur"      onclick="meModeClick(this)">🌀 Blur</button>
-        <button class="me-mode-btn" data-mode="black"     onclick="meModeClick(this)">⬛ Black</button>
-        <button class="me-mode-btn" data-mode="inpaint"   onclick="meModeClick(this)">🔲 Inpaint</button>
-
-        <!-- Manual Select toggle -->
-        <button class="me-manual-btn me-active" id="meManualToggle" onclick="meToggleManual()">✏️ Manual Select</button>
-        <button class="me-sel-btn"   id="meRemoveSel"    onclick="meClearRect()" style="display:none;">✕ Clear Selection</button>
-
-        <div id="meCarSizeWrap" style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-          <span style="font-size:11px;color:#666;">Car Size:</span>
-          <input type="range" id="meCarSize" min="40" max="95" value="75" oninput="meSizeLabel.textContent=this.value+'%'" style="width:90px;">
-          <span id="meSizeLabel" style="font-size:12px;color:#f7c948;font-weight:700;">75%</span>
-        </div>
-      </div>
-
-      <!-- ─── Manual Sub-Tools (shown only when Manual Select is active) ─── -->
-      <div id="meManualTools" style="display:none;background:rgba(255,176,32,0.06);border:1px solid rgba(255,176,32,0.2);border-radius:12px;padding:10px 14px;margin-bottom:14px;">
-        <div style="font-size:11px;color:#ffb020;font-weight:700;letter-spacing:1px;margin-bottom:8px;">SELECTION TOOL:</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <!-- 4-Point (Perspective) tool -->
-          <button class="me-tool-btn me-tool-active" id="meToolQuad" onclick="meSelectTool('quad')" title="Click 4 corners of the number plate (perspective-aware)">
-            📌 4-Point
-            <span style="font-size:10px;display:block;opacity:0.7;">Perspective corners</span>
-          </button>
-          <!-- Square/Rectangle tool -->
-          <button class="me-tool-btn" id="meToolSquare" onclick="meSelectTool('square')" title="Draw a rectangle around the number plate">
-            ⬜ Square
-            <span style="font-size:10px;display:block;opacity:0.7;">Click &amp; drag</span>
-          </button>
-          <!-- Pencil/Freehand tool -->
-          <button class="me-tool-btn" id="meToolPencil" onclick="meSelectTool('pencil')" title="Draw freehand around curved or angled plates">
-            ✏️ Pencil
-            <span style="font-size:10px;display:block;opacity:0.7;">Freehand draw</span>
-          </button>
-          <!-- Aspect lock (rect mode only) -->
-          <label id="meLockAspectWrap" style="display:none;align-items:center;gap:5px;font-size:12px;color:#ffb020;cursor:pointer;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,176,32,0.25);background:rgba(255,176,32,0.06);">
-            <input type="checkbox" id="meLockAspect" style="accent-color:#F59E0B;"> 🔒 Lock 4.5:1 ratio
-          </label>
-        </div>
-        <!-- Tool hint -->
-        <div id="meToolHint" style="font-size:12px;color:#ffb020;margin-top:8px;">
-          📌 <strong>4-Point:</strong> Plate ke 4 corners par click karo — TL → TR → BR → BL order mein. Fir drag karke adjust karo, phir Process karo.
-        </div>
-        <!-- 4-point step indicator -->
-        <div id="meQuadStepBar" style="display:flex;gap:6px;margin-top:8px;font-size:11px;align-items:center;flex-wrap:wrap;">
-          <span style="color:#666;font-weight:600;">CORNERS:</span>
-          <span class="me-qstep" id="meQstep-0" title="Click 1 — Top Left">TL</span>
-          <span class="me-qstep" id="meQstep-1" title="Click 2 — Top Right">TR</span>
-          <span class="me-qstep" id="meQstep-2" title="Click 3 — Bottom Right">BR</span>
-          <span class="me-qstep" id="meQstep-3" title="Click 4 — Bottom Left">BL</span>
-          <span id="meQClickHint" style="color:#f7c948;font-weight:700;font-size:11px;margin-left:4px;">👆 Click 1 to place TL corner</span>
-          <button onclick="meResetQuad()" style="margin-left:6px;padding:3px 10px;font-size:10px;border-radius:6px;border:1px solid rgba(255,77,28,0.3);background:rgba(255,77,28,0.08);color:#ff4d1c;cursor:pointer;font-weight:700;">↺ Reset</button>
-        </div>
-      </div>
-
-      <!-- Preview grid -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;" id="mePreviewGrid">
-        <!-- Original with canvas overlay -->
-        <div style="background:rgba(0,0,0,0.3);border-radius:14px;overflow:hidden;">
-          <div style="font-size:10px;color:#94a3b8;letter-spacing:2px;padding:8px 12px 6px;font-weight:700;">ORIGINAL</div>
-          <!-- Fixed-height frame: both panels same height, image fills frame exactly -->
-          <div id="meOrigFrame" style="position:relative;width:100%;height:320px;background:#0a0a0a;overflow:hidden;">
-            <img id="meOrigImg" src="" alt="original"
-              style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;display:block;">
-            <!-- Main draw canvas (rect/pencil/quad click detection) -->
-            <canvas id="mePlateCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;cursor:crosshair;touch-action:none;"></canvas>
-            <!-- SVG overlay for 4-point quad corners (on top of canvas) -->
-            <svg id="meQuadSvg" style="display:none;position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;">
-              <polygon id="meQuadPoly" points="" fill="rgba(245,158,11,0.12)" stroke="#F59E0B" stroke-width="2" stroke-dasharray="6,3" pointer-events="none"/>
-              <line id="meQline-01" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="4,3" pointer-events="none"/>
-              <line id="meQline-12" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="4,3" pointer-events="none"/>
-              <line id="meQline-23" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="4,3" pointer-events="none"/>
-              <line id="meQline-30" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="4,3" pointer-events="none"/>
-              <!-- 4 draggable corner circles -->
-              <circle class="me-qpt" id="meQpt-0" r="10" fill="#F59E0B" stroke="#fff" stroke-width="2.5" cursor="move" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));pointer-events:auto" touch-action="none"/>
-              <circle class="me-qpt" id="meQpt-1" r="10" fill="#F59E0B" stroke="#fff" stroke-width="2.5" cursor="move" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));pointer-events:auto" touch-action="none"/>
-              <circle class="me-qpt" id="meQpt-2" r="10" fill="#F59E0B" stroke="#fff" stroke-width="2.5" cursor="move" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));pointer-events:auto" touch-action="none"/>
-              <circle class="me-qpt" id="meQpt-3" r="10" fill="#F59E0B" stroke="#fff" stroke-width="2.5" cursor="move" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));pointer-events:auto" touch-action="none"/>
-              <!-- Corner labels -->
-              <text id="meQlabel-0" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" pointer-events="none">TL</text>
-              <text id="meQlabel-1" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" pointer-events="none">TR</text>
-              <text id="meQlabel-2" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" pointer-events="none">BR</text>
-              <text id="meQlabel-3" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" pointer-events="none">BL</text>
-            </svg>
-            <!-- Rectangle selection overlay (rect mode) -->
-            <div id="meSelRect" style="display:none;position:absolute;border:2px dashed #00d4ff;box-sizing:border-box;background:rgba(0,212,255,0.07);pointer-events:auto;">
-              <div class="me-sel-handle nw" data-dir="nw"></div>
-              <div class="me-sel-handle n"  data-dir="n"></div>
-              <div class="me-sel-handle ne" data-dir="ne"></div>
-              <div class="me-sel-handle e"  data-dir="e"></div>
-              <div class="me-sel-handle se" data-dir="se"></div>
-              <div class="me-sel-handle s"  data-dir="s"></div>
-              <div class="me-sel-handle sw" data-dir="sw"></div>
-              <div class="me-sel-handle w"  data-dir="w"></div>
-              <div id="meSelDimsBadge" style="position:absolute;top:-22px;left:0;background:rgba(0,0,0,0.7);color:#00d4ff;font-size:10px;padding:2px 6px;border-radius:4px;white-space:nowrap;"></div>
-            </div>
-          </div>
-        </div>
-        <!-- Processed -->
-        <div id="meProcBox" style="background:rgba(0,0,0,0.3);border-radius:14px;overflow:hidden;">
-          <div style="font-size:10px;color:#94a3b8;letter-spacing:2px;padding:8px 12px 6px;font-weight:700;" id="meProcLabel">PROCESSED</div>
-          <!-- Same fixed height, clean dark bg -->
-          <div id="meProcInner" style="position:relative;width:100%;height:320px;background:#0a0a0a;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-            <div id="meProcPH" style="color:#3a3a4a;font-size:13px;text-align:center;padding:20px;position:absolute;">
-              <div style="font-size:28px;margin-bottom:8px;">🖼️</div>
-              Processed result will appear here
-            </div>
-            <img id="meProcImg" alt="result"
-              style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;">
-          </div>
-        </div>
-      </div>
-
-      <!-- Status -->
-      <div id="meStatusBox" style="display:none;padding:10px 16px;border-radius:10px;font-size:13px;margin-bottom:14px;"></div>
-
-      <!-- Progress -->
-      <div id="meProgress" style="display:none;margin-bottom:14px;">
-        <div style="font-size:12px;color:#aaa;margin-bottom:6px;" id="meProgressLabel">Processing...</div>
-        <div style="background:rgba(255,255,255,0.1);border-radius:10px;height:6px;overflow:hidden;">
-          <div id="meProgressFill" style="height:100%;background:linear-gradient(90deg,#ff6b35,#f7c948,#00d4ff);background-size:200%;transition:width 0.4s;width:0%;"></div>
-        </div>
-      </div>
-
-      <!-- Result banner -->
-      <div id="meResultBanner" style="display:none;background:linear-gradient(135deg,rgba(0,230,118,0.08),rgba(0,176,255,0.08));border:1px solid rgba(0,230,118,0.25);border-radius:12px;padding:14px 18px;font-size:13px;color:#ccc;line-height:1.7;margin-bottom:14px;"></div>
-
-      <!-- Action buttons -->
-      <!-- Exterior mode: 3-button row -->
-      <div id="meExteriorBtns" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin-bottom:8px;">
-        <!-- Full auto: plate + BG -->
-        <button id="meProcessBtn" onclick="meDoProcess(null)"
-          style="padding:13px 24px;font-size:14px;font-weight:800;border:none;border-radius:50px;cursor:pointer;background:linear-gradient(135deg,#ff6b35,#f7c948);color:#111;letter-spacing:0.5px;min-width:160px;">
-          ⚡ Auto Process Car
+      <!-- Action Buttons Row -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button id="meBlurBtn" onclick="meDoBlurBg()" class="me-action-btn" style="background:#059669;color:#fff;">
+          🌫️ Blur Background
         </button>
-        <!-- Plate Only: hide plate, keep original BG -->
-        <button id="mePlateOnlyBtn" onclick="meDoProcessCategory('plate_only')"
-          style="padding:13px 22px;font-size:14px;font-weight:800;border:none;border-radius:50px;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;letter-spacing:0.5px;min-width:150px;">
-          🔲 Plate Only
+        <button id="mePlateBtn" onclick="meOpenPlateModal()" class="me-action-btn" style="background:#f59e0b;color:#111;">
+          🎯 Draw &amp; Hide Plate
         </button>
-        <!-- BG Only: remove BG + showroom, keep original plate -->
-        <button id="meBgOnlyBtn" onclick="meDoProcessCategory('bg_only')"
-          style="padding:13px 22px;font-size:14px;font-weight:800;border:none;border-radius:50px;cursor:pointer;background:linear-gradient(135deg,#0891b2,#06b6d4);color:#fff;letter-spacing:0.5px;min-width:150px;">
-          🖼️ BG Only
+        <button id="mePlateBlurBtn" onclick="meDoPlateAndBlur()" class="me-action-btn" style="background:#7c3aed;color:#fff;">
+          ✨ Number Plate + Blur
         </button>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;">
-        <!-- Interior: plate hide only -->
-        <button id="meInteriorBtn" onclick="meDoProcess(null)" style="display:none;padding:14px 32px;font-size:15px;font-weight:800;border:none;border-radius:50px;cursor:pointer;background:linear-gradient(135deg,#00b4d8,#0077b6);color:#fff;letter-spacing:0.5px;min-width:180px;">
-          🔲 Hide Number Plate
-        </button>
-        <!-- Manual selection process -->
-        <button id="meRemoveSelBtn" onclick="meDoProcessManual()" style="display:none;padding:14px 24px;font-size:14px;font-weight:700;border:none;border-radius:50px;cursor:pointer;background:rgba(255,176,32,0.18);color:#ffb020;border:1px solid rgba(255,176,32,0.4);">
-          ✅ Process Selected
-        </button>
-        <!-- Save button -->
-        <button id="meSaveBtn" onclick="meSaveBack()" style="display:none;padding:14px 32px;font-size:15px;font-weight:800;border:none;border-radius:50px;cursor:pointer;background:linear-gradient(135deg,#00e676,#00b0ff);color:#000;letter-spacing:0.5px;min-width:180px;">
+        <button id="meSaveBtn" onclick="meSaveBack()" class="me-action-btn" style="background:#1B4FD8;color:#fff;" disabled>
           💾 Save to Vehicle
         </button>
-        <button onclick="closeMaskEditor()" style="padding:14px 24px;font-size:13px;border:1px solid rgba(255,255,255,0.15);border-radius:50px;background:transparent;color:#888;cursor:pointer;">Cancel</button>
+        <button onclick="meResetToOriginal()" class="me-action-btn" style="background:rgba(255,255,255,0.07);color:#94a3b8;border:1px solid rgba(255,255,255,0.12);">
+          ↩ Reset
+        </button>
       </div>
 
+      <!-- Status Bar -->
+      <div id="meStatusBar" style="display:none;padding:10px 16px;border-radius:10px;font-size:.82rem;font-weight:600;background:rgba(27,79,216,0.15);color:#93c5fd;border:1px solid rgba(27,79,216,0.3);">
+        Ready
+      </div>
+
+      <!-- Image Preview -->
+      <div style="position:relative;border-radius:14px;overflow:hidden;background:#0f172a;min-height:220px;display:flex;align-items:center;justify-content:center;">
+        <img id="meOriginalImg" src="" alt="Original" style="display:none;max-width:100%;max-height:60vh;object-fit:contain;border-radius:10px;z-index:2;position:relative;">
+        <img id="meProcessedImg" src="" alt="Processed" style="display:none;max-width:100%;max-height:60vh;object-fit:contain;border-radius:10px;z-index:2;position:relative;">
+        <div id="meImgPlaceholder" style="color:#475569;font-size:.9rem;">Loading image…</div>
+        <!-- Blur Progress Overlay -->
+        <div id="meBlurProgress" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.72);z-index:20;flex-direction:column;align-items:center;justify-content:center;gap:16px;border-radius:14px;">
+          <div style="width:54px;height:54px;border:4px solid rgba(255,255,255,0.15);border-top-color:#10b981;border-radius:50%;animation:meSpin .8s linear infinite;"></div>
+          <div id="meBlurProgressTxt" style="color:#f1f5f9;font-size:.88rem;font-weight:700;text-align:center;line-height:1.5;">🤖 AI removing background…<br><span style="font-size:.75rem;font-weight:400;color:#94a3b8;">Thoda wait karo, yeh 10-20 sec le sakta hai</span></div>
+          <div style="width:180px;height:4px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;">
+            <div id="meBlurProgressBar" style="height:100%;background:linear-gradient(90deg,#10b981,#3b82f6);border-radius:4px;width:0%;transition:width .4s ease;"></div>
+          </div>
+        </div>
+        <!-- Before/After Toggle -->
+        <div id="meToggleBar" style="display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.85);border-radius:20px;padding:4px;display:flex;gap:2px;z-index:10;backdrop-filter:blur(4px);">
+          <button onclick="meShowView('original')" id="meToggleOrig" class="me-toggle-btn me-toggle-active">Original</button>
+          <button onclick="meShowView('processed')" id="meToggleProc" class="me-toggle-btn">Processed</button>
+        </div>
+      </div>
+
+    </div><!-- /body -->
+  </div>
+</div>
+
+
+<!-- ── PLATE SELECTION MODAL (inside mask editor) ─────────────────────────── -->
+<div id="mePlateOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.60);backdrop-filter:blur(4px);z-index:9500;align-items:center;justify-content:center;padding:12px;">
+  <div style="background:#ffffff;border-radius:18px;max-width:940px;width:100%;max-height:92vh;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,0.35);scrollbar-width:thin;scrollbar-color:#cbd5e1 #f1f5f9;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:.95rem;font-weight:800;color:#1e293b;">🎯 Number Plate Select Karo</div>
+      <button onclick="meClosePlateModal()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+
+    <p id="meHint4pt" style="font-size:.78rem;color:#64748b;">Plate ke <strong style="color:#1e293b;">4 corners</strong> par <strong style="color:#1e293b;">click</strong> karo — TL → TR → BR → BL order mein.</p>
+
+
+    <!-- Hide mode selector -->
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:.72rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;">Hide Style:</span>
+      <select id="mePlateModeSelect" style="border:1.5px solid #cbd5e1;border-radius:8px;padding:5px 10px;font-size:.8rem;background:#fff;color:#1e293b;cursor:pointer;">
+        <option value="caryanams">Caryanams Logo</option>
+        <option value="blur">Blur</option>
+        <option value="black">Black Block</option>
+        <option value="white">White Block</option>
+      </select>
+    </div>
+
+    <!-- Canvas wrapper -->
+    <div id="mePCanvasWrap" style="position:relative;display:inline-block;cursor:crosshair;user-select:none;touch-action:none;width:100%;border-radius:10px;">
+      <canvas id="mePCanvas" style="display:block;max-width:100%;border-radius:10px;touch-action:none;"></canvas>
+      <!-- SVG for 4-point mode -->
+      <svg id="mePQuadSvg" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;display:block;pointer-events:none;">
+        <polygon id="mePQuadPoly" points="" fill="rgba(245,158,11,0.12)" stroke="#F59E0B" stroke-width="2" stroke-dasharray="6,3" pointer-events="none"/>
+        <circle class="mePQpt" id="mePQpt0" r="10" fill="#F59E0B" stroke="#fff" stroke-width="2.5" cursor="move" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));pointer-events:auto" touch-action="none"/>
+        <circle class="mePQpt" id="mePQpt1" r="10" fill="#F59E0B" stroke="#fff" stroke-width="2.5" cursor="move" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));pointer-events:auto" touch-action="none"/>
+        <circle class="mePQpt" id="mePQpt2" r="10" fill="#F59E0B" stroke="#fff" stroke-width="2.5" cursor="move" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));pointer-events:auto" touch-action="none"/>
+        <circle class="mePQpt" id="mePQpt3" r="10" fill="#F59E0B" stroke="#fff" stroke-width="2.5" cursor="move" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));pointer-events:auto" touch-action="none"/>
+        <text id="mePQlbl0" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" pointer-events="none">TL</text>
+        <text id="mePQlbl1" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" pointer-events="none">TR</text>
+        <text id="mePQlbl2" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" pointer-events="none">BR</text>
+        <text id="mePQlbl3" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" pointer-events="none">BL</text>
+      </svg>
+      <!-- Rect selection box -->
+      <div id="mePSelRect" style="display:none;position:absolute;pointer-events:none;">
+        <div id="mePSelDims" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- 4pt step bar -->
+    <div id="mePQStepBar" style="display:flex;gap:6px;align-items:center;font-size:12px;">
+      <span id="mePQS0" class="me-qstep me-qstep-active">1 TL</span>
+      <span style="color:#94a3b8">→</span>
+      <span id="mePQS1" class="me-qstep">2 TR</span>
+      <span style="color:#94a3b8">→</span>
+      <span id="mePQS2" class="me-qstep">3 BR</span>
+      <span style="color:#94a3b8">→</span>
+      <span id="mePQS3" class="me-qstep">4 BL</span>
+      <button onclick="mePResetQuad()" style="margin-left:auto;" class="me-plate-mode-btn" style="font-size:11px;padding:3px 10px;">↺ Reset</button>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button id="mePConfirmBtn" disabled onclick="mePConfirmPlate()" class="me-action-btn" style="background:#f59e0b;color:#111;">🔲 Hide Plate</button>
+      <button class="me-action-btn" onclick="meClosePlateModal()" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;">Cancel</button>
     </div>
   </div>
 </div>
 
+
 <style>
-.me-step {
-  display:flex;align-items:center;gap:6px;padding:7px 14px;
-  border-radius:30px;font-size:12px;font-weight:700;
-  background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);
-  margin:3px;color:#666;
+.me-action-btn {
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 18px;border-radius:10px;font-size:.82rem;font-weight:700;
+  font-family:inherit;cursor:pointer;border:1.5px solid transparent;
+  transition:opacity .15s,box-shadow .15s;white-space:nowrap;
 }
-.me-dot { width:8px;height:8px;border-radius:50%;background:#333;flex-shrink:0; }
-.me-step.active { color:#f7c948;border-color:rgba(247,201,72,0.4); }
-.me-step.active .me-dot { background:#f7c948; }
-.me-step.done   { color:#00e676;border-color:rgba(0,230,118,0.4); }
-.me-step.done   .me-dot { background:#00e676; }
-.me-mode-btn {
-  padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);
-  background:transparent;color:#aaa;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;
+.me-action-btn:disabled { opacity:.4;cursor:not-allowed; }
+.me-action-btn:not(:disabled):hover { opacity:.88; }
+.me-toggle-btn {
+  padding:5px 14px;border-radius:16px;font-size:.75rem;font-weight:700;
+  font-family:inherit;cursor:pointer;border:none;background:transparent;color:#64748b;
+  transition:background .15s,color .15s;
 }
-.me-mode-btn:hover { border-color:#ff6b35;color:#ff6b35; }
-.me-mode-btn.me-active { background:#ff6b35;border-color:#ff6b35;color:#fff; }
-.me-manual-btn {
-  padding:7px 14px;border-radius:8px;border:1px solid rgba(255,176,32,0.3);
-  background:rgba(255,176,32,0.08);color:#ffb020;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;
+.me-toggle-btn.me-toggle-active { background:rgba(27,79,216,.8);color:#fff; }
+.me-plate-mode-btn {
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:7px 14px;border-radius:8px;font-size:.78rem;font-weight:700;
+  font-family:inherit;cursor:pointer;border:1.5px solid #F59E0B;
+  background:#F59E0B;color:#111;transition:opacity .15s;
 }
-.me-manual-btn.me-active { background:rgba(255,176,32,0.22);border-color:rgba(255,176,32,0.6); }
-.me-sel-btn {
-  padding:7px 14px;border-radius:8px;border:1px solid rgba(0,212,255,0.3);
-  background:rgba(0,212,255,0.08);color:#00d4ff;font-size:12px;font-weight:600;cursor:pointer;
+.me-plate-mode-btn:hover { opacity:.88; }
+.meSelHandle {
+  position:absolute;width:10px;height:10px;
+  background:#fff;border:2px solid #1B4FD8;border-radius:2px;
 }
-/* Manual sub-tools */
-.me-tool-btn {
-  padding:8px 16px;border-radius:10px;border:1px solid rgba(255,176,32,0.3);
-  background:rgba(255,255,255,0.04);color:#aaa;font-size:13px;font-weight:700;
-  cursor:pointer;transition:all .2s;text-align:center;min-width:90px;
-}
-.me-tool-btn:hover { border-color:#ffb020;color:#ffb020; }
-.me-tool-btn.me-tool-active {
-  background:rgba(255,176,32,0.18);border-color:#ffb020;color:#ffb020;
-  box-shadow:0 0 0 1px rgba(255,176,32,0.2);
-}
-/* 4-point step dots */
 .me-qstep {
-  padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800;letter-spacing:1px;
-  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#555;
-  transition:all .2s;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:24px;border-radius:20px;font-size:.72rem;font-weight:800;
+  background:rgba(255,255,255,0.06);color:#64748b;border:1.5px solid #334155;
 }
-.me-qstep.done   { background:rgba(0,230,118,0.14);border-color:rgba(0,230,118,0.4);color:#00e676; }
-.me-qstep.active { background:rgba(245,158,11,0.18);border-color:rgba(245,158,11,0.5);color:#F59E0B; }
-/* Rectangle resize handles */
-.me-sel-handle {
-  position:absolute;width:14px;height:14px;background:#00d4ff;border:2px solid #fff;
-  border-radius:3px;box-sizing:border-box;
-}
-.me-sel-handle.nw { top:-7px;  left:-7px;  cursor:nw-resize; }
-.me-sel-handle.n  { top:-7px;  left:calc(50% - 7px); cursor:n-resize; }
-.me-sel-handle.ne { top:-7px;  right:-7px; cursor:ne-resize; }
-.me-sel-handle.e  { top:calc(50% - 7px); right:-7px; cursor:e-resize; }
-.me-sel-handle.se { bottom:-7px; right:-7px; cursor:se-resize; }
-.me-sel-handle.s  { bottom:-7px; left:calc(50% - 7px); cursor:s-resize; }
-.me-sel-handle.sw { bottom:-7px; left:-7px; cursor:sw-resize; }
-.me-sel-handle.w  { top:calc(50% - 7px); left:-7px; cursor:w-resize; }
-/* Interior processed: full-screen display */
-#meProcInner.interior-mode { background: #0d0d0d !important; }
-#meProcInner.interior-mode #meProcImg { object-fit: contain !important; }
-@media(max-width:640px){
-  #maskEditorOverlay > div { max-width:100%;border-radius:14px; }
-  #mePreviewGrid { grid-template-columns:1fr !important; }
-  #meOrigFrame, #meProcInner { height:240px !important; }
-}
+.me-qstep.me-qstep-active { background:#F59E0B;color:#111; }
+.me-qstep.me-qstep-done   { background:#059669;color:#fff; }
 </style>
 
 <script>
-/* ══════════════════════════════════════════════════════════════
-   MASK EDITOR — State
-══════════════════════════════════════════════════════════════ */
-let _meViId       = null;
-let _meStudioId   = null;
-let _meCurMode    = 'caryanams';
-let _meManual     = false;
-let _meProcessing = false;
-let _meDrawing    = false;
-let _meImgType    = 'gallery';
-let _meIsInterior = false;
-let _meStartX=0, _meStartY=0;
-let _meRect={x:0,y:0,w:0,h:0}, _meHasRect=false;
-let _meScaleX=1, _meScaleY=1;
-let _meNatW=1, _meNatH=1;
+// ════════════════════════════════════════════════════════════════════
+// MASK EDITOR STATE
+// ════════════════════════════════════════════════════════════════════
+let _meViId          = null;
+let _meOriginalUrl   = null;
+let _meProcessedUrl  = null;  // current working image (after blur/plate ops)
+let _meHasProcessed  = false;
+let _meProcessing    = false;
+let _mePlateBlurPending = false;
 
-/* ── Tools: 'quad' | 'square' | 'pencil' ── */
-let _meTool = 'quad';
-let _mePencilPoints = [];
-let _meHasPencil = false;
-const PLATE_ASPECT = 4.5;
+// Plate modal state
+let _mePMode         = '4pt';
+let _mePQpts         = [];
+let _mePQDragIdx     = -1;
+let _mePQClickMoved  = false;
+let _mePQPDownX      = 0, _mePQPDownY = 0;
+let _mePSelBox       = null;
+let _mePSelMode      = null;
+let _mePSelSnap      = null;
+let _mePNatW         = 1, _mePNatH = 1;
+let _mePManualRect   = null;
+let _mePManualQuad   = null;
+const ME_PLATE_ASPECT = 4.5;
 
-/* ── 4-Point (Quad) State ── */
-let _meQpts = [];          // canvas-display coords [{x,y},…] TL→TR→BR→BL
-let _meQDragIdx = -1;
-let _meQClickMoved = false;
-let _meQPtrDownX = 0, _meQPtrDownY = 0;
 
-/* ── Rect Mode State ── */
-let _meSelBox = null, _meSelMode = null, _meSelSnap = null;
-
-const ME_INTERIOR_TYPES = [];  // All types now support full BG + plate processing
-const ME_EXTERIOR_TYPES = ['front', 'rear', 'right_side', 'left_side', 'engine', 'boot', 'interior', 'gallery'];
-
-/* ── DOM helpers ── */
-const _meCanvas   = () => document.getElementById('mePlateCanvas');
-const _meCtx      = () => _meCanvas().getContext('2d');
-const _meOrigImg  = () => document.getElementById('meOrigImg');
-const _meProcImg  = () => document.getElementById('meProcImg');
-const _meProcPH   = () => document.getElementById('meProcPH');
-const _meProgress = () => document.getElementById('meProgress');
-const _mePFill    = () => document.getElementById('meProgressFill');
-const _mePLabel   = () => document.getElementById('meProgressLabel');
-const _meStatus   = () => document.getElementById('meStatusBox');
-const _meProcBtn  = () => document.getElementById('meProcessBtn');
-const _meSaveBtn  = () => document.getElementById('meSaveBtn');
-const _meResult   = () => document.getElementById('meResultBanner');
-const _meRemSel   = () => document.getElementById('meRemoveSel');
-const _meSelProc  = () => document.getElementById('meRemoveSelBtn');
-const _meQuadSvg  = () => document.getElementById('meQuadSvg');
-const _meSelRect  = () => document.getElementById('meSelRect');
-
-/* ══════════════════════════════════════════════════════════════
-   TOOL SELECTION
-══════════════════════════════════════════════════════════════ */
-function meSelectTool(tool) {
-  _meTool = tool;
-  document.getElementById('meToolQuad').classList.toggle('me-tool-active', tool==='quad');
-  document.getElementById('meToolSquare').classList.toggle('me-tool-active', tool==='square');
-  document.getElementById('meToolPencil').classList.toggle('me-tool-active', tool==='pencil');
-
-  const hint = document.getElementById('meToolHint');
-  const lockWrap = document.getElementById('meLockAspectWrap');
-  const quadStepBar = document.getElementById('meQuadStepBar');
-
-  // Always keep canvas interactive
-  _meCanvas().style.pointerEvents = 'auto';
-
-  if (tool==='quad') {
-    hint.innerHTML = '📌 <strong>4-Point:</strong> Plate ke 4 corners par click karo — TL → TR → BR → BL order mein. Fir drag karke adjust karo, phir Process karo.';
-    _meCanvas().style.cursor = 'crosshair';
-    lockWrap.style.display = 'none';
-    quadStepBar.style.display = 'flex';
-    _meQuadSvg().style.display = 'block';
-    _meQuadSvg().style.pointerEvents = 'none';  // SVG must not block canvas clicks
-    _meSelRect().style.display = 'none';
-    // Erase any lingering green auto-detect rectangle from the canvas
-    const _qc = _meCanvas(); if(_qc) _meCtx().clearRect(0,0,_qc.width,_qc.height);
-    _meResetQuadInternal();
-  } else if (tool==='square') {
-    hint.innerHTML = '⬜ <strong>Square:</strong> Click &amp; drag karo plate ke upar rectangle draw karne ke liye. Handles se resize/move karo.';
-    _meCanvas().style.cursor = 'crosshair';
-    lockWrap.style.display = 'flex';
-    quadStepBar.style.display = 'none';
-    _meQuadSvg().style.display = 'none';
-    _meSelBox = null; _meRenderSel();
-  } else {
-    hint.innerHTML = '✏️ <strong>Pencil:</strong> Plate ke around freehand draw karo (click &amp; drag). Khatam hone par Process karo.';
-    _meCanvas().style.cursor = 'cell';
-    lockWrap.style.display = 'none';
-    quadStepBar.style.display = 'none';
-    _meQuadSvg().style.display = 'none';
-    _meSelBox = null; _meRenderSel();
-  }
-  meClearRect();
-}
-
-/* ══════════════════════════════════════════════════════════════
-   OPEN / CLOSE
-══════════════════════════════════════════════════════════════ */
+// ── Open / Close ─────────────────────────────────────────────────────────────
 function openMaskEditor(viId, imgUrl, imgFilename, imgType) {
-  _meViId = viId; _meStudioId = null; _meHasRect = false; _meHasPencil = false;
-  _meManual = false; _meProcessing = false; _mePencilPoints = [];
-  _meImgType = imgType || 'gallery';
-  _meIsInterior = ME_INTERIOR_TYPES.includes(_meImgType);
+  _meViId         = viId;
+  _meOriginalUrl  = imgUrl;
+  _meProcessedUrl = imgUrl;
+  _meHasProcessed = false;
+  _meProcessing   = false;
 
-  document.getElementById('meFilename').textContent = imgFilename || '';
+  document.getElementById('meFileName').textContent = imgFilename || '';
+  document.getElementById('meStatusBar').style.display = 'none';
+  document.getElementById('meSaveBtn').disabled = true;
+  document.getElementById('meToggleBar').style.display = 'none';
 
-  const badge = document.getElementById('meCategoryBadge');
-  if (_meIsInterior) {
-    badge.style.display = 'block';
-    badge.style.background = 'rgba(0,212,255,0.15)';
-    badge.style.border = '1px solid rgba(0,212,255,0.4)';
-    badge.style.color = '#00d4ff';
-    const labels = {interior:'🪑 Interior', engine:'⚙️ Engine', boot:'🧳 Boot'};
-    badge.textContent = labels[_meImgType] || '📷 Interior';
-  } else if (ME_EXTERIOR_TYPES.includes(_meImgType)) {
-    badge.style.display = 'block';
-    badge.style.background = 'rgba(255,107,53,0.15)';
-    badge.style.border = '1px solid rgba(255,107,53,0.4)';
-    badge.style.color = '#ff6b35';
-    const labels = {front:'🚗 Front', rear:'🔙 Rear', right_side:'➡️ Right Side', left_side:'⬅️ Left Side'};
-    badge.textContent = labels[_meImgType] || '🚘 Exterior';
-  } else {
-    badge.style.display = 'none';
-  }
+  // Load original image
+  const origEl = document.getElementById('meOriginalImg');
+  const procEl = document.getElementById('meProcessedImg');
+  const placeholder = document.getElementById('meImgPlaceholder');
+  origEl.style.display = 'none';
+  procEl.style.display = 'none';
+  placeholder.style.display = 'block';
 
-  document.getElementById('meInteriorNotice').style.display = _meIsInterior ? 'block' : 'none';
-  document.getElementById('meStepBar').style.display = _meIsInterior ? 'none' : 'flex';
-  document.getElementById('meCarSizeWrap').style.display = _meIsInterior ? 'none' : 'flex';
-  document.getElementById('meProcessBtn').style.display = _meIsInterior ? 'none' : 'flex';
-  document.getElementById('meInteriorBtn').style.display = _meIsInterior ? 'flex' : 'none';
-  document.getElementById('meExteriorBtns').style.display = _meIsInterior ? 'none' : 'flex';
+  const img = new Image();
+  img.onload = () => {
+    origEl.src  = imgUrl;
+    procEl.src  = imgUrl;
+    origEl.style.display = 'block';
+    placeholder.style.display = 'none';
+    meShowView('original');
+  };
+  img.onerror = () => {
+    placeholder.textContent = '⚠ Could not load image';
+  };
+  img.src = imgUrl;
 
-  const procInner = document.getElementById('meProcInner');
-  if (_meIsInterior) {
-    procInner.classList.add('interior-mode');
-    document.getElementById('meProcLabel').textContent = 'RESULT';
-  } else {
-    procInner.classList.remove('interior-mode');
-    document.getElementById('meProcLabel').textContent = 'PROCESSED';
-  }
-
-  // Reset manual tool state — AUTO ENABLE for quad tool
-  document.getElementById('meManualTools').style.display = 'block';
-  document.getElementById('meManualToggle').classList.add('me-active');
-  _meManual = true;
-  // Default to 4-point tool
-  _meTool = 'quad';
-  document.getElementById('meToolQuad').classList.add('me-tool-active');
-  document.getElementById('meToolSquare').classList.remove('me-tool-active');
-  document.getElementById('meToolPencil').classList.remove('me-tool-active');
-  document.getElementById('meQuadStepBar').style.display = 'flex';
-  document.getElementById('meLockAspectWrap').style.display = 'none';
-  // Show quad SVG right away since manual is auto-enabled
-  document.getElementById('meQuadSvg').style.display = 'block';
-
-  _meOrigImg().src = imgUrl;
-  _meOrigImg().onload = function() { _meSetupCanvas(); _meAutoDetectSilent(); };
-  _meProcImg().src = ''; _meProcImg().style.display = 'none';
-  _meProcPH().style.display = 'flex';
-  _meSaveBtn().style.display = 'none';
-  _meSaveBtn().disabled = false;
-  _meSaveBtn().innerHTML = '💾 Save to Vehicle';
-  _meSelProc().style.display = 'none';
-  _meRemSel().style.display = 'none';
-  _meStatus().style.display = 'none';
-  _meResult().style.display = 'none';
-  _meProgress().style.display = 'none';
-  ['meS1','meS2','meS3'].forEach(id => { const e=document.getElementById(id); e.className='me-step'; });
   document.getElementById('maskEditorOverlay').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-  _meUploadForEdit();
 }
 
 function closeMaskEditor() {
   document.getElementById('maskEditorOverlay').style.display = 'none';
-  document.body.style.overflow = '';
+  meClosePlateModal();
+  _meViId = null; _meOriginalUrl = null; _meProcessedUrl = null;
+  _meHasProcessed = false; _meProcessing = false;
 }
 
-/* ── Upload to studio ── */
-async function _meUploadForEdit() {
-  try {
-    const fd = new FormData();
-    fd.append('vi_id', _meViId);
-    const r = await fetch('/studio/api/mask-editor/upload-for-edit', {method:'POST', body:fd});
-    const d = await r.json();
-    if (d.ok) { _meStudioId = d.studio_id; }
-    else { _meShowStatus('Upload error: '+(d.error||'unknown'), 'error'); }
-  } catch(e) { _meShowStatus('Upload error: '+e.message, 'error'); }
-}
+// ── Image view toggle ────────────────────────────────────────────────────────
+function meShowView(which) {
+  const origEl = document.getElementById('meOriginalImg');
+  const procEl = document.getElementById('meProcessedImg');
+  const btnOrig = document.getElementById('meToggleOrig');
+  const btnProc = document.getElementById('meToggleProc');
 
-/* ══════════════════════════════════════════════════════════════
-   CANVAS SETUP
-══════════════════════════════════════════════════════════════ */
-function _meSetupCanvas() {
-  const img = _meOrigImg();
-  const c   = _meCanvas();
-  const frame = document.getElementById('meOrigFrame');
-  const cW = frame.offsetWidth, cH = frame.offsetHeight;
-  const natW = img.naturalWidth  || cW;
-  const natH = img.naturalHeight || cH;
-  _meNatW = natW; _meNatH = natH;
-  const ratio = natW / natH;
-  const conRatio = cW / cH;
-  let renderW, renderH, offX, offY;
-  if (ratio > conRatio) {
-    renderW = cW; renderH = cW / ratio;
-    offX = 0;    offY = (cH - renderH) / 2;
+  if (which === 'processed' && _meHasProcessed) {
+    origEl.style.display = 'none';
+    procEl.style.display = 'block';
+    btnOrig.classList.remove('me-toggle-active');
+    btnProc.classList.add('me-toggle-active');
   } else {
-    renderH = cH; renderW = cH * ratio;
-    offX = (cW - renderW) / 2; offY = 0;
+    origEl.style.display = 'block';
+    procEl.style.display = 'none';
+    btnOrig.classList.add('me-toggle-active');
+    btnProc.classList.remove('me-toggle-active');
   }
-  c.width = cW; c.height = cH;
-  c.style.width = '100%'; c.style.height = '100%';
-  _meScaleX = natW / renderW;
-  _meScaleY = natH / renderH;
-  c._offX = offX; c._offY = offY;
-  c._rW = renderW; c._rH = renderH;
-  c.style.pointerEvents = 'auto';  // always enabled — manual mode auto-active
-
-  // ── Square tool events ──
-  c.onmousedown = (e) => {
-    if (_meTool === 'square') {
-      _meDrawing=true;
-      const p=_meGetPos(e); _meStartX=p.x; _meStartY=p.y; _meHasRect=false; _meHasPencil=false;
-      _meRemSel().style.display='none';
-    } else if (_meTool === 'pencil') {
-      _meDrawing=true; _meHasRect=false; _meHasPencil=false;
-      const p=_meGetPos(e);
-      _mePencilPoints=[p];
-      _meRemSel().style.display='none';
-    }
-  };
-  c.onmousemove = (e) => {
-    if (!_meDrawing) return;
-    const p=_meGetPos(e);
-    if (_meTool === 'square') {
-      _meRect={x:Math.min(_meStartX,p.x),y:Math.min(_meStartY,p.y),w:Math.abs(p.x-_meStartX),h:Math.abs(p.y-_meStartY)};
-      _meDrawRectOnCanvas(_meRect,'#ffb020');
-    } else if (_meTool === 'pencil') {
-      _mePencilPoints.push(p);
-      _meDrawPencilPath(_mePencilPoints, '#ffb020');
-    }
-  };
-  c.onmouseup = () => {
-    if (!_meDrawing) return; _meDrawing=false;
-    if (_meTool === 'square') {
-      if(_meRect.w>10&&_meRect.h>5){
-        _meHasRect=true;
-        _meRemSel().style.display='inline-flex';
-        _meSelProc().style.display='inline-flex';
-        _meDrawRectOnCanvas(_meRect,'#00d4ff');
-      }
-    } else if (_meTool === 'pencil') {
-      if (_mePencilPoints.length > 3) {
-        _meHasPencil=true;
-        const xs = _mePencilPoints.map(p=>p.x), ys = _mePencilPoints.map(p=>p.y);
-        _meRect = { x: Math.min(...xs), y: Math.min(...ys),
-                    w: Math.max(...xs)-Math.min(...xs), h: Math.max(...ys)-Math.min(...ys) };
-        if (_meRect.w > 5 && _meRect.h > 5) {
-          _meHasRect = true;
-          _meRemSel().style.display='inline-flex';
-          _meSelProc().style.display='inline-flex';
-        }
-        _meDrawPencilPath(_mePencilPoints, '#00d4ff');
-      }
-    }
-  };
-  c.ontouchstart=(e)=>{e.preventDefault();const t=e.touches[0];c.onmousedown({clientX:t.clientX,clientY:t.clientY});};
-  c.ontouchmove =(e)=>{e.preventDefault();const t=e.touches[0];c.onmousemove({clientX:t.clientX,clientY:t.clientY});};
-  c.ontouchend  =(e)=>{e.preventDefault();c.onmouseup();};
-
-  // ── Quad mode: BULLETPROOF click → 1 click = 1 dot (max 4) ──────────────
-  // Uses pointerup to avoid any conflict with drag events.
-  // Drag detection: if pointer moved >8px between down and up, it's a drag not a click.
-  let _qPtrDownX = 0, _qPtrDownY = 0;
-  c.addEventListener('pointerdown', (e) => {
-    if (_meTool !== 'quad') return;
-    _qPtrDownX = e.clientX; _qPtrDownY = e.clientY;
-    _meQClickMoved = false;
-    _meQPtrDownX = e.clientX; _meQPtrDownY = e.clientY;
-  });
-  c.addEventListener('pointermove', (e) => {
-    if (_meTool !== 'quad') return;
-    const dx = e.clientX - _qPtrDownX, dy = e.clientY - _qPtrDownY;
-    if (Math.hypot(dx, dy) > 8) _meQClickMoved = true;
-  });
-  c.addEventListener('pointerup', (e) => {
-    if (_meTool !== 'quad') return;
-    // Only place a dot if: not a drag, not dragging an existing corner, not full yet
-    if (_meQClickMoved || _meQDragIdx >= 0 || _meQpts.length >= 4) return;
-    const dx = e.clientX - _qPtrDownX, dy = e.clientY - _qPtrDownY;
-    if (Math.hypot(dx, dy) > 8) return; // extra safety
-    const r = c.getBoundingClientRect();
-    const x = e.clientX - r.left;
-    const y = e.clientY - r.top;
-    // Clamp within canvas
-    const cx = Math.max(0, Math.min(c.width,  x));
-    const cy = Math.max(0, Math.min(c.height, y));
-    _meQpts.push({ x: cx, y: cy });
-    _meUpdateQuadSvg(); _meUpdateQSteps();
-    if (_meQpts.length === 4) {
-      _meSetManualRectFromQuad();
-      _meRemSel().style.display = 'inline-flex';
-      _meSelProc().style.display = 'inline-flex';
-    }
-  });
-
-  // ── Rect mode: pointer events on canvas & sel-rect ──
-  const _meSelRectEl = _meSelRect();
-  const _meWrap = document.getElementById('meOrigFrame');
-
-  c.addEventListener('pointerdown', e => {
-    if (_meTool !== 'square') return;
-    e.preventDefault();
-    const p = _mePtrXY(e); _meStartX=p.x; _meStartY=p.y; _meSelMode='draw'; _meSelBox=null; _meRenderSel();
-    c.setPointerCapture(e.pointerId);
-  });
-  _meSelRectEl.addEventListener('pointerdown', e => {
-    if (_meTool !== 'square') return;
-    e.preventDefault(); e.stopPropagation();
-    if(!_meSelBox) return;
-    _meSelMode = e.target.dataset.dir || 'move';
-    const p = _mePtrXY(e); _meSelSnap = {..._meSelBox, mx:p.x, my:p.y};
-    _meSelRectEl.setPointerCapture(e.pointerId);
-  });
-  _meWrap.addEventListener('pointermove', e => {
-    if (!_meSelMode || _meTool !== 'square') return;
-    const p = _mePtrXY(e), lk = document.getElementById('meLockAspect').checked;
-    if (_meSelMode === 'draw') {
-      let w=Math.abs(p.x-_meStartX), h=lk?w/PLATE_ASPECT:Math.abs(p.y-_meStartY);
-      _meSelBox = _meClampBox({x:p.x>=_meStartX?_meStartX:_meStartX-w, y:p.y>=_meStartY?_meStartY:_meStartY-h, w, h});
-      _meRenderSel(); return;
-    }
-    if (!_meSelSnap) return;
-    const dx=p.x-_meSelSnap.mx, dy=p.y-_meSelSnap.my;
-    let {x,y,w,h} = _meSelSnap; const d = _meSelMode;
-    if(d==='move'){x+=dx;y+=dy;}
-    else if(d==='se'){w+=dx;h=lk?w/PLATE_ASPECT:h+dy;}
-    else if(d==='sw'){x+=dx;w-=dx;h=lk?w/PLATE_ASPECT:h+dy;}
-    else if(d==='ne'){w+=dx;y+=dy;h=lk?w/PLATE_ASPECT:h-dy;}
-    else if(d==='nw'){x+=dx;w-=dx;y+=dy;h=lk?w/PLATE_ASPECT:h-dy;}
-    else if(d==='e'){w+=dx;if(lk)h=w/PLATE_ASPECT;}
-    else if(d==='w'){x+=dx;w-=dx;if(lk)h=w/PLATE_ASPECT;}
-    else if(d==='s'){h+=dy;if(lk)w=h*PLATE_ASPECT;}
-    else if(d==='n'){y+=dy;h-=dy;if(lk)w=h*PLATE_ASPECT;}
-    _meSelBox=_meClampBox({x,y,w,h}); _meRenderSel();
-  });
-  const _meEndSel = () => { _meSelMode=null; _meSelSnap=null; };
-  _meWrap.addEventListener('pointerup', _meEndSel);
-  _meWrap.addEventListener('pointercancel', _meEndSel);
-  window.addEventListener('pointerup', _meEndSel);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   4-POINT (QUAD) MODE LOGIC
-══════════════════════════════════════════════════════════════ */
-function _meResetQuadInternal() {
-  _meQpts = []; _meQDragIdx = -1;
-  _meUpdateQuadSvg(); _meUpdateQSteps();
-}
-function meResetQuad() {
-  _meResetQuadInternal();
-  meClearRect();
-  // Also erase any auto-detect green rectangle from the canvas
-  const _rc = _meCanvas(); if(_rc) _meCtx().clearRect(0,0,_rc.width,_rc.height);
-}
-
-function _meUpdateQSteps() {
-  const labels = ['TL — Top Left', 'TR — Top Right', 'BR — Bottom Right', 'BL — Bottom Left'];
-  const shortLabels = ['TL', 'TR', 'BR', 'BL'];
-  for (let i=0; i<4; i++) {
-    const el = document.getElementById('meQstep-'+i);
-    if (i < _meQpts.length)       el.className = 'me-qstep done';
-    else if (i === _meQpts.length) el.className = 'me-qstep active';
-    else                           el.className = 'me-qstep';
+function meSetStatus(msg, type) {
+  const bar = document.getElementById('meStatusBar');
+  bar.style.display = 'block';
+  bar.textContent = msg;
+  if (type === 'error') {
+    bar.style.background = 'rgba(220,38,38,0.15)';
+    bar.style.color = '#fca5a5';
+    bar.style.borderColor = 'rgba(220,38,38,0.3)';
+  } else if (type === 'success') {
+    bar.style.background = 'rgba(5,150,105,0.15)';
+    bar.style.color = '#6ee7b7';
+    bar.style.borderColor = 'rgba(5,150,105,0.3)';
+  } else {
+    bar.style.background = 'rgba(27,79,216,0.15)';
+    bar.style.color = '#93c5fd';
+    bar.style.borderColor = 'rgba(27,79,216,0.3)';
   }
-  const hint = document.getElementById('meQClickHint');
-  if (hint) {
-    if (_meQpts.length === 0) {
-      hint.textContent = '👆 Click 1 to place TL corner';
-      hint.style.color = '#f7c948';
-    } else if (_meQpts.length < 4) {
-      const n = _meQpts.length + 1;
-      hint.textContent = `👆 Click ${n} to place ${labels[_meQpts.length]}`;
-      hint.style.color = '#f7c948';
+}
+
+function meSetLoading(btnId, on, label) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = on;
+  if (on) btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:meSpin .6s linear infinite;flex-shrink:0;margin-right:4px;"></span> Processing…';
+  else    btn.innerHTML = label;
+}
+
+// ── Reset ────────────────────────────────────────────────────────────────────
+function meResetToOriginal() {
+  if (!_meOriginalUrl) return;
+  _meProcessedUrl = _meOriginalUrl;
+  _meHasProcessed = false;
+  document.getElementById('meProcessedImg').src = _meOriginalUrl;
+  document.getElementById('meToggleBar').style.display = 'none';
+  document.getElementById('meSaveBtn').disabled = true;
+  meShowView('original');
+  meSetStatus('Reset to original image.', 'info');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// BLUR BACKGROUND
+// ════════════════════════════════════════════════════════════════════
+async function meDoBlurBg() {
+  if (!_meViId || _meProcessing) return;
+  _meProcessing = true;
+  meSetLoading('meBlurBtn', true, '');
+  meSetStatus('⏳ Blurring background (AI BG removal + depth blur)…');
+
+  // Show progress overlay with animated progress bar
+  const prog = document.getElementById('meBlurProgress');
+  const progBar = document.getElementById('meBlurProgressBar');
+  const progTxt = document.getElementById('meBlurProgressTxt');
+  prog.style.display = 'flex';
+  progBar.style.width = '0%';
+
+  // Animate progress bar through stages
+  const steps = [
+    { pct: 15, delay: 400,  txt: '🤖 AI removing background…<br><span style="font-size:.75rem;font-weight:400;color:#94a3b8;">Thoda wait karo, yeh 10-20 sec le sakta hai</span>' },
+    { pct: 35, delay: 2500, txt: '✂️ Car mask clean kar rahe hain…<br><span style="font-size:.75rem;font-weight:400;color:#94a3b8;">Edges refine ho rahi hain</span>' },
+    { pct: 60, delay: 5000, txt: '🌫️ Background blur apply ho raha hai…<br><span style="font-size:.75rem;font-weight:400;color:#94a3b8;">Depth-of-field effect ban raha hai</span>' },
+    { pct: 80, delay: 8000, txt: '🎨 Final image render ho rahi hai…<br><span style="font-size:.75rem;font-weight:400;color:#94a3b8;">Almost done!</span>' },
+    { pct: 92, delay: 12000, txt: '⏳ Almost complete…<br><span style="font-size:.75rem;font-weight:400;color:#94a3b8;">Bas kuch second aur…</span>' },
+  ];
+  const timers = steps.map(s => setTimeout(() => {
+    progBar.style.width = s.pct + '%';
+    progTxt.innerHTML = s.txt;
+  }, s.delay));
+
+  try {
+    const r = await fetch(`/admin/api/vehicles/images/${_meViId}/blur-bg`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({})
+    });
+    timers.forEach(t => clearTimeout(t));
+    progBar.style.width = '100%';
+    const d = await r.json();
+    setTimeout(() => { prog.style.display = 'none'; progBar.style.width = '0%'; }, 500);
+    if (d.success) {
+      _meProcessedUrl = d.processed_url + '?t=' + Date.now();
+      _meHasProcessed = true;
+      document.getElementById('meProcessedImg').src = _meProcessedUrl;
+      document.getElementById('meToggleBar').style.display = 'flex';
+      document.getElementById('meSaveBtn').disabled = false;
+      meShowView('processed');
+      meSetStatus('✅ Background blurred! Review then click "Save to Vehicle".', 'success');
     } else {
-      hint.textContent = '✅ All 4 corners placed! Drag to adjust, then Process.';
-      hint.style.color = '#00e676';
+      meSetStatus('⚠ ' + (d.error || 'Blur failed'), 'error');
     }
+  } catch(e) {
+    timers.forEach(t => clearTimeout(t));
+    prog.style.display = 'none';
+    meSetStatus('❌ Error: ' + e.message, 'error');
+  }
+  _meProcessing = false;
+  meSetLoading('meBlurBtn', false, '🌫️ Blur Background');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// NUMBER PLATE + BLUR (combined: first hide plate, then blur bg)
+// ════════════════════════════════════════════════════════════════════
+function meDoPlateAndBlur() {
+  // Step 1: Open plate modal. After plate is hidden, blur will auto-trigger.
+  _mePlateBlurPending = true;
+  meOpenPlateModal();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SAVE BACK TO VEHICLE IMAGE
+// ════════════════════════════════════════════════════════════════════
+async function meSaveBack() {
+  if (!_meViId || !_meHasProcessed || !_meProcessedUrl) return;
+  meSetLoading('meSaveBtn', true, '');
+  meSetStatus('💾 Saving processed image to vehicle…');
+  try {
+    const r = await fetch(`/admin/api/vehicles/images/${_meViId}/save-processed`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ processed_url: _meProcessedUrl })
+    });
+    const d = await r.json();
+    if (d.success) {
+      meSetStatus('✅ Saved! Image updated on vehicle.', 'success');
+      if (typeof maskEditorOnSave === 'function') {
+        maskEditorOnSave(_meViId, d.image_url || _meProcessedUrl);
+      }
+    } else {
+      meSetStatus('⚠ ' + (d.error || 'Save failed'), 'error');
+    }
+  } catch(e) {
+    meSetStatus('❌ Error: ' + e.message, 'error');
+  }
+  meSetLoading('meSaveBtn', false, '💾 Save to Vehicle');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PLATE MODAL — Open / Close
+// ════════════════════════════════════════════════════════════════════
+function meOpenPlateModal() {
+  if (!_meViId) return;
+  const overlay = document.getElementById('mePlateOverlay');
+  overlay.style.display = 'flex';
+  mePSetMode('4pt');
+  mePResetQuad();
+  document.getElementById('mePSelRect').style.display = 'none';
+  document.getElementById('mePConfirmBtn').disabled = true;
+
+  // Draw the current working image onto the plate canvas
+  const srcUrl = _meProcessedUrl || _meOriginalUrl;
+  const canvas = document.getElementById('mePCanvas');
+  const ctx = canvas.getContext('2d');
+  const image = new Image(); image.crossOrigin = 'anonymous';
+  image.src = srcUrl;
+  image.onload = async () => {
+    _mePNatW = image.width; _mePNatH = image.height;
+    const maxW = Math.min(window.innerWidth * .82, 860);
+    const scale = maxW / image.width;
+    canvas.width  = image.width  * scale;
+    canvas.height = image.height * scale;
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    // No auto-detect — user clicks to place 4 corner dots manually
+  };
+}
+
+function meClosePlateModal() {
+  document.getElementById('mePlateOverlay').style.display = 'none';
+  _mePManualRect = null; _mePManualQuad = null;
+  _mePSelBox = null; _mePSelMode = null;
+  _mePlateBlurPending = false;
+  mePResetQuad();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PLATE MODAL — Mode switching
+// ════════════════════════════════════════════════════════════════════
+function mePSetMode(m) {
+  _mePMode = '4pt'; // always 4pt only
+  document.getElementById('mePQStepBar').style.display = 'flex';
+  document.getElementById('mePQuadSvg').style.display  = 'block';
+  document.getElementById('mePSelRect').style.display  = 'none';
+  mePResetQuad();
+  document.getElementById('mePConfirmBtn').disabled = true;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PLATE MODAL — 4-Point Quad Mode
+// ════════════════════════════════════════════════════════════════════
+function mePResetQuad() {
+  _mePQpts=[]; _mePQDragIdx=-1;
+  mePUpdateQuadSvg(); mePUpdateQSteps();
+  document.getElementById('mePConfirmBtn').disabled = true;
+}
+
+function mePUpdateQSteps() {
+  for (let i=0; i<4; i++) {
+    const el = document.getElementById('mePQS'+i);
+    if (!el) continue;
+    if (i < _mePQpts.length)      el.className = 'me-qstep me-qstep-done';
+    else if (i===_mePQpts.length) el.className = 'me-qstep me-qstep-active';
+    else                          el.className = 'me-qstep';
   }
 }
 
-function _meUpdateQuadSvg() {
+function mePUpdateQuadSvg() {
   for (let i=0; i<4; i++) {
-    const c = document.getElementById('meQpt-'+i);
-    const l = document.getElementById('meQlabel-'+i);
-    if (i < _meQpts.length) {
-      c.setAttribute('cx', _meQpts[i].x); c.setAttribute('cy', _meQpts[i].y);
-      l.setAttribute('x', _meQpts[i].x);  l.setAttribute('y', _meQpts[i].y+4);
-      c.style.display='block'; l.style.display='block';
-    } else { c.style.display='none'; l.style.display='none'; }
+    const c  = document.getElementById('mePQpt'+i);
+    const lb = document.getElementById('mePQlbl'+i);
+    if (!c || !lb) continue;
+    if (i < _mePQpts.length) {
+      c.setAttribute('cx', _mePQpts[i].x); c.setAttribute('cy', _mePQpts[i].y);
+      lb.setAttribute('x', _mePQpts[i].x); lb.setAttribute('y', _mePQpts[i].y + 4);
+      c.style.display='block'; lb.style.display='block';
+    } else { c.style.display='none'; lb.style.display='none'; }
   }
-  const poly = document.getElementById('meQuadPoly');
-  if (_meQpts.length === 4) {
-    poly.setAttribute('points', _meQpts.map(p=>p.x+','+p.y).join(' '));
-    poly.style.display = 'block';
-  } else { poly.style.display = 'none'; }
-  // Draw connecting lines while placing
-  [['meQline-01',0,1],['meQline-12',1,2],['meQline-23',2,3],['meQline-30',3,0]].forEach(([id,a,b]) => {
-    const el = document.getElementById(id);
-    if (_meQpts.length === 4) { el.style.display='none'; return; }
-    if (_meQpts[a] && _meQpts[b]) {
-      el.setAttribute('x1',_meQpts[a].x); el.setAttribute('y1',_meQpts[a].y);
-      el.setAttribute('x2',_meQpts[b].x); el.setAttribute('y2',_meQpts[b].y);
-      el.style.display='block';
-    } else el.style.display='none';
+  const poly = document.getElementById('mePQuadPoly');
+  if (!poly) return;
+  if (_mePQpts.length===4) { poly.setAttribute('points', _mePQpts.map(p=>p.x+','+p.y).join(' ')); poly.style.display='block'; }
+  else { poly.style.display='none'; }
+}
+
+function mePSetManualFromQuad() {
+  const xs=_mePQpts.map(p=>p.x), ys=_mePQpts.map(p=>p.y);
+  const canvas = document.getElementById('mePCanvas');
+  const sx=_mePNatW/canvas.width, sy=_mePNatH/canvas.height;
+  _mePManualRect = { x:Math.round(Math.min(...xs)*sx), y:Math.round(Math.min(...ys)*sy),
+                     w:Math.round((Math.max(...xs)-Math.min(...xs))*sx),
+                     h:Math.round((Math.max(...ys)-Math.min(...ys))*sy) };
+  _mePManualQuad = _mePQpts.map(p=>({ x:Math.round(p.x*sx), y:Math.round(p.y*sy) }));
+}
+
+// 4pt canvas events
+const _mePCanvas = document.getElementById('mePCanvas');
+if (_mePCanvas) {
+  _mePCanvas.addEventListener('pointerdown', e => {
+    if (_mePMode!=='4pt') return;
+    _mePQClickMoved=false; _mePQPDownX=e.clientX; _mePQPDownY=e.clientY;
+  });
+  _mePCanvas.addEventListener('pointermove', e => {
+    if (_mePMode!=='4pt') return;
+    if (Math.hypot(e.clientX-_mePQPDownX, e.clientY-_mePQPDownY)>5) _mePQClickMoved=true;
+  });
+  _mePCanvas.addEventListener('click', e => {
+    if (_mePMode!=='4pt'||_mePQClickMoved||_mePQDragIdx>=0) return;
+    if (_mePQpts.length>=4) return;
+    const r=_mePCanvas.getBoundingClientRect();
+    _mePQpts.push({x:e.clientX-r.left, y:e.clientY-r.top});
+    mePUpdateQuadSvg(); mePUpdateQSteps();
+    if (_mePQpts.length===4) { mePSetManualFromQuad(); document.getElementById('mePConfirmBtn').disabled=false; }
   });
 }
 
-function _meSetManualRectFromQuad() {
-  const c  = _meCanvas();
-  const ox = c._offX || 0, oy = c._offY || 0;   // letterbox offsets
-  const xs = _meQpts.map(p => p.x - ox);          // image-relative display coords
-  const ys = _meQpts.map(p => p.y - oy);
-  // _meRect stores natural-image-space coords (same convention as _meRenderSel)
-  _meRect = {
-    x: Math.round(Math.max(0, Math.min(...xs)) * _meScaleX),
-    y: Math.round(Math.max(0, Math.min(...ys)) * _meScaleY),
-    w: Math.round((Math.max(...xs) - Math.min(...xs)) * _meScaleX),
-    h: Math.round((Math.max(...ys) - Math.min(...ys)) * _meScaleY)
-  };
-  _meHasRect = true;
-  // Store perspective quad in natural image coordinates (offset-corrected)
-  window._meManualQuad = _meQpts.map(p => ({
-    x: Math.round(Math.max(0, p.x - ox) * _meScaleX),
-    y: Math.round(Math.max(0, p.y - oy) * _meScaleY)
-  }));
-}
-
-/* ── Setup drag for quad circles ── */
-(function _setupQptDrag() {
-  function setup(i) {
-    const c = document.getElementById('meQpt-'+i);
+// Drag quad points
+for (let i=0; i<4; i++) {
+  const c = document.getElementById('mePQpt'+i);
+  if (!c) continue;
+  ((_i) => {
     c.addEventListener('pointerdown', e => {
-      if (_meTool !== 'quad' || !_meQpts[i]) return;
-      e.preventDefault(); e.stopPropagation();
-      _meQDragIdx = i; _meQClickMoved = true;
-      c.setPointerCapture(e.pointerId);
+      if (_mePMode!=='4pt'||!_mePQpts[_i]) return;
+      e.preventDefault(); e.stopPropagation(); _mePQDragIdx=_i; _mePQClickMoved=true; c.setPointerCapture(e.pointerId);
     });
     c.addEventListener('pointermove', e => {
-      if (_meQDragIdx !== i) return;
+      if (_mePQDragIdx!==_i) return;
       e.preventDefault();
-      const canvas = _meCanvas();
-      const r = canvas.getBoundingClientRect();
-      _meQpts[i] = {
-        x: Math.max(0, Math.min(canvas.width,  e.clientX - r.left)),
-        y: Math.max(0, Math.min(canvas.height, e.clientY - r.top))
-      };
-      _meUpdateQuadSvg();
-      if (_meQpts.length === 4) _meSetManualRectFromQuad();
+      const canvas=document.getElementById('mePCanvas');
+      const r=canvas.getBoundingClientRect();
+      _mePQpts[_i]={x:Math.max(0,Math.min(canvas.width,e.clientX-r.left)), y:Math.max(0,Math.min(canvas.height,e.clientY-r.top))};
+      mePUpdateQuadSvg();
+      if (_mePQpts.length===4) mePSetManualFromQuad();
     });
-    c.addEventListener('pointerup', e => { e.preventDefault(); _meQDragIdx = -1; });
-    c.addEventListener('pointercancel', () => { _meQDragIdx = -1; });
-  }
-  for (let i=0; i<4; i++) setup(i);
-})();
+    c.addEventListener('pointerup', e => { e.preventDefault(); _mePQDragIdx=-1; });
+    c.addEventListener('pointercancel', () => { _mePQDragIdx=-1; });
+  })(i);
+}
 
-/* ══════════════════════════════════════════════════════════════
-   RECTANGLE MODE HELPERS
-══════════════════════════════════════════════════════════════ */
-function _meClampBox({x,y,w,h}) {
-  const c = _meCanvas();
-  const cw = c.width, ch = c.height;
+// ════════════════════════════════════════════════════════════════════
+// PLATE MODAL — Rectangle Mode
+// ════════════════════════════════════════════════════════════════════
+function mePClampBox({x,y,w,h}) {
+  const canvas=document.getElementById('mePCanvas');
+  const cw=canvas.width, ch=canvas.height;
   w=Math.max(20,Math.min(w,cw)); h=Math.max(6,Math.min(h,ch));
   x=Math.max(0,Math.min(x,cw-w)); y=Math.max(0,Math.min(y,ch-h));
   return {x,y,w,h};
 }
-function _mePtrXY(e) {
-  const c = _meCanvas();
-  const r = c.getBoundingClientRect();
-  const src = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
-  return { x: src.clientX - r.left, y: src.clientY - r.top };
-}
-function _meRenderSel() {
-  const el = _meSelRect();
-  if (!_meSelBox) { el.style.display='none'; return; }
-  const {x,y,w,h} = _meSelBox;
-  el.style.left=x+'px'; el.style.top=y+'px';
-  el.style.width=w+'px'; el.style.height=h+'px';
-  el.style.display='block';
-  const sw = Math.round(w*_meScaleX), sh = Math.round(h*_meScaleY);
-  document.getElementById('meSelDimsBadge').textContent = sw+' × '+sh+' px';
-  _meRect = {
-    x: Math.round(x*_meScaleX), y: Math.round(y*_meScaleY),
-    w: sw, h: sh
-  };
-  window._meManualQuad = null;
-  _meHasRect = true;
-  _meRemSel().style.display='inline-flex';
-  _meSelProc().style.display='inline-flex';
+
+function mePRenderSel() {
+  const selRect=document.getElementById('mePSelRect');
+  if (!_mePSelBox) { selRect.style.display='none'; return; }
+  // In 4pt mode we don't show the blue rect box — quad SVG handles visuals
+  selRect.style.display='none';
+  const canvas=document.getElementById('mePCanvas');
+  const {x,y,w,h}=_mePSelBox;
+  const sx=_mePNatW/canvas.width, sy=_mePNatH/canvas.height;
+  const rw=Math.round(w*sx), rh=Math.round(h*sy);
+  _mePManualRect={x:Math.round(x*sx),y:Math.round(y*sy),w:rw,h:rh};
 }
 
-/* ══════════════════════════════════════════════════════════════
-   CANVAS DRAW HELPERS
-══════════════════════════════════════════════════════════════ */
-function _meGetPos(e) {
-  const c = _meCanvas();
-  const r = c.getBoundingClientRect();
-  return {
-    x: (e.clientX||0) - r.left - (c._offX||0),
-    y: (e.clientY||0) - r.top  - (c._offY||0)
-  };
-}
-function _meDrawRectOnCanvas(r, color) {
-  const c=_meCanvas(), ctx=_meCtx();
-  const ox=c._offX||0, oy=c._offY||0;
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.setLineDash([5,4]);
-  ctx.strokeRect(r.x+ox, r.y+oy, r.w, r.h);
-  ctx.fillStyle='rgba(0,212,255,0.07)'; ctx.fillRect(r.x+ox, r.y+oy, r.w, r.h);
-}
-function _meDrawPencilPath(points, color) {
-  if (!points || points.length < 2) return;
-  const c=_meCanvas(), ctx=_meCtx();
-  const ox=c._offX||0, oy=c._offY||0;
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.beginPath();
-  ctx.moveTo(points[0].x+ox, points[0].y+oy);
-  for (let i=1;i<points.length;i++) ctx.lineTo(points[i].x+ox, points[i].y+oy);
-  ctx.closePath();
-  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.setLineDash([4,3]);
-  ctx.stroke();
-  ctx.fillStyle='rgba(255,176,32,0.10)'; ctx.fill();
-}
-function _meDrawDetected(x,y,w,h) {
-  const c=_meCanvas(), ctx=_meCtx();
-  const ox=c._offX||0, oy=c._offY||0;
-  const cx=x/_meScaleX, cy=y/_meScaleY, cw=w/_meScaleX, ch=h/_meScaleY;
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.strokeStyle='#00e676'; ctx.lineWidth=2; ctx.setLineDash([6,4]);
-  ctx.strokeRect(cx+ox, cy+oy, cw, ch);
-  ctx.fillStyle='rgba(0,230,118,0.07)'; ctx.fillRect(cx+ox, cy+oy, cw, ch);
-}
-function meClearRect() {
-  _meHasRect=false; _meHasPencil=false; _mePencilPoints=[];
-  _meSelBox=null; window._meManualQuad=null;
-  _meRemSel().style.display='none'; _meSelProc().style.display='none';
-  const c=_meCanvas(); if(c) _meCtx().clearRect(0,0,c.width,c.height);
-  _meSelRect().style.display='none';
-  if (_meTool==='quad') _meResetQuadInternal();
+function mePShowSelRect(x,y,w,h) {
+  // Auto-detected plate: show as 4-point quad (no blue box)
+  _mePSelBox=mePClampBox({x,y,w,h});
+  const canvas=document.getElementById('mePCanvas');
+  const sx=_mePNatW/canvas.width, sy=_mePNatH/canvas.height;
+  const rw=Math.round(w*sx), rh=Math.round(h*sy);
+  _mePManualRect={x:Math.round(x*sx),y:Math.round(y*sy),w:rw,h:rh};
+  _mePManualQuad=null;
+  // Place 4 corner dots on detected rect
+  const pts=[{x:x,y:y},{x:x+w,y:y},{x:x+w,y:y+h},{x:x,y:y+h}];
+  _mePQpts=pts;
+  mePUpdateQuadSvg();
+  mePUpdateQSteps();
+  document.getElementById('mePConfirmBtn').disabled=false;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   AUTO DETECT (SILENT)
-══════════════════════════════════════════════════════════════ */
-async function _meAutoDetectSilent() {
-  if(!_meStudioId) { setTimeout(_meAutoDetectSilent, 600); return; }
-  try {
-    const r=await fetch(`/studio/api/detect-plate/${_meStudioId}`);
-    const d=await r.json();
-    // In quad mode the canvas must stay clean so the SVG polygon is clearly
-    // visible. Skip drawing the green auto-detect rectangle in quad mode only.
-    if(d.detected && _meTool !== 'quad') _meDrawDetected(d.x,d.y,d.width,d.height);
-  } catch(e) {}
+function mePPtrXY(e) {
+  const canvas=document.getElementById('mePCanvas');
+  const r=canvas.getBoundingClientRect();
+  const src=e.touches?e.touches[0]:(e.changedTouches?e.changedTouches[0]:e);
+  return {x:src.clientX-r.left, y:src.clientY-r.top};
 }
 
-/* ══════════════════════════════════════════════════════════════
-   MODE / MANUAL TOGGLE
-══════════════════════════════════════════════════════════════ */
-function meModeClick(btn) {
-  document.querySelectorAll('.me-mode-btn').forEach(b=>b.classList.remove('me-active'));
-  btn.classList.add('me-active'); _meCurMode = btn.dataset.mode;
-}
-function meToggleManual() {
-  _meManual = !_meManual;
-  _meCanvas().style.pointerEvents = _meManual ? 'auto' : 'none';
-  // SVG circles have their own pointer-events:auto; SVG container stays none
-  document.getElementById('meManualToggle').classList.toggle('me-active', _meManual);
-  document.getElementById('meManualTools').style.display = _meManual ? 'block' : 'none';
-  if(!_meManual) { meClearRect(); }
-  // Ensure quad SVG is visible when manual is active and tool is quad
-  if (_meManual && _meTool==='quad') _meQuadSvg().style.display='block';
-  // If re-enabling, restore canvas pointer events
-  if (_meManual) { _meCanvas().style.pointerEvents = 'auto'; }
-}
+const _mePSelSX=0, _mePSelSY=0;
 
-/* ══════════════════════════════════════════════════════════════
-   PROCESS
-══════════════════════════════════════════════════════════════ */
-async function meDoProcess(manualBox) {
-  if(!_meStudioId || _meProcessing) {
-    if(!_meStudioId) _meShowStatus('Image loading... please wait a moment','info');
-    return;
-  }
-  _meProcessing=true;
 
-  let imgCategory = 'exterior';
-  if (_meIsInterior) imgCategory = 'interior';
-  else if (!ME_EXTERIOR_TYPES.includes(_meImgType)) imgCategory = 'exterior';
-
-  const activeBtn = _meIsInterior
-    ? document.getElementById('meInteriorBtn')
-    : document.getElementById('meProcessBtn');
-  activeBtn.disabled=true;
-  activeBtn.innerHTML='<span style="animation:spin .7s linear infinite;display:inline-block;">⏳</span> Processing...';
-
-  _meResult().style.display='none';
-  _meStatus().style.display='none';
-
-  if (!_meIsInterior) {
-    _meSetStep(1,'active'); _meSetProgress(10,'Step 1: Number plate detect & remove...');
-    await _meSleep(300);
-    _meSetStep(2,'active'); _meSetProgress(40,'Step 2: Background remove...');
-    await _meSleep(200);
-    _meSetStep(3,'active'); _meSetProgress(70,'Step 3: Showroom background apply...');
-  } else {
-    _meSetProgress(30,'Detecting number plate...');
-  }
+// ════════════════════════════════════════════════════════════════════
+// PLATE MODAL — Confirm (call backend, update working image)
+// ════════════════════════════════════════════════════════════════════
+async function mePConfirmPlate() {
+  if (!_meViId || (!_mePManualRect && !(_mePManualQuad && _mePManualQuad.length===4))) return;
+  document.getElementById('mePConfirmBtn').disabled = true;
+  document.getElementById('mePConfirmBtn').innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:meSpin .6s linear infinite;margin-right:4px;"></span> Hiding…';
 
   try {
     const body = {
-      mode: _meCurMode,
-      car_size_pct: parseInt(document.getElementById('meCarSize').value),
-      image_category: imgCategory
+      mode:   document.getElementById('mePlateModeSelect').value,
+      manual: _mePManualRect,
+      quad:   (_mePManualQuad && _mePManualQuad.length===4) ? _mePManualQuad : null,
+      use_processed: _meHasProcessed  // tell server to use already-processed image if available
     };
-    if(manualBox) {
-      body.manual = manualBox;
-      // Include quad points if 4-point mode was used
-      if (window._meManualQuad && window._meManualQuad.length === 4) {
-        body.quad = window._meManualQuad;
-      }
-    }
-    const r = await fetch(`/studio/api/process-car/${_meStudioId}`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
+    const r = await fetch(`/admin/api/vehicles/images/${_meViId}/apply-plate`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
     });
     const d = await r.json();
-    _meSetProgress(100,'Done!');
-    if(d.success) {
-      if (!_meIsInterior) {
-        _meSetStep(1,'done'); _meSetStep(2,'done'); _meSetStep(3,'done');
-      }
-      await _meSleep(200);
-      _meProcImg().src = d.processed_url+'?t='+Date.now();
-      _meProcImg().style.display='block';
-      _meProcPH().style.display='none';
-      _meProcImg().style.opacity='0';
-      _meProcImg().onload = () => { _meProcImg().style.transition='opacity 0.4s'; _meProcImg().style.opacity='1'; };
-      _meSaveBtn().style.display='flex';
-      _meProgress().style.display='none';
-
-      let html='✅ <strong>Done!</strong><br>';
-      if(d.plate) {
-        html+=`🔲 Plate <strong>fully hidden</strong> at (${d.plate.x},${d.plate.y}) — ${d.plate.width}×${d.plate.height}px<br>`;
-        // In quad mode keep the canvas clean (polygon SVG is the visual guide).
-        if (_meTool !== 'quad') _meDrawDetected(d.plate.x,d.plate.y,d.plate.width,d.plate.height);
+    if (d.success) {
+      _meProcessedUrl = d.processed_url + '?t=' + Date.now();
+      _meHasProcessed = true;
+      document.getElementById('meProcessedImg').src = _meProcessedUrl;
+      document.getElementById('meToggleBar').style.display = 'flex';
+      document.getElementById('meSaveBtn').disabled = false;
+      meShowView('processed');
+      meClosePlateModal();
+      if (_mePlateBlurPending) {
+        _mePlateBlurPending = false;
+        meSetStatus('✅ Plate hidden! Ab background blur ho raha hai…', 'success');
+        setTimeout(() => meDoBlurBg(), 300);
       } else {
-        html+='ℹ️ No plate detected automatically. Use Manual Select to mark the plate.<br>';
-      }
-      if (imgCategory === 'interior') {
-        html+='🪑 Full-screen display preserved, original background kept!';
-      } else {
-        html+='🖼️ Background removed<br>🏢 Showroom floor background applied!';
-      }
-      _meResult().innerHTML=html; _meResult().style.display='block';
-    } else {
-      ['meS1','meS2','meS3'].forEach(id=>document.getElementById(id).className='me-step');
-      _meProgress().style.display='none';
-      _meShowStatus('❌ '+d.message+' — Try using Manual Select to mark the plate.','error');
-      if(!_meManual) meToggleManual();
-    }
-  } catch(e) {
-    _meProgress().style.display='none';
-    _meShowStatus('❌ Error: '+e.message,'error');
-  } finally {
-    _meProcessing=false;
-    activeBtn.disabled=false;
-    activeBtn.innerHTML = _meIsInterior ? '🔲 Hide Number Plate' : '⚡ Auto Process Car';
-  }
-}
-
-/* ── Plate Only / BG Only category shortcuts ─────────────────────────── */
-async function meDoProcessCategory(category) {
-  if(!_meStudioId || _meProcessing) {
-    if(!_meStudioId) _meShowStatus('Image loading... please wait a moment','info');
-    return;
-  }
-  _meProcessing = true;
-
-  const btnId = category === 'plate_only' ? 'mePlateOnlyBtn' : 'meBgOnlyBtn';
-  const btn = document.getElementById(btnId);
-  const origLabel = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span style="animation:spin .7s linear infinite;display:inline-block;">⏳</span> Processing...';
-
-  _meResult().style.display = 'none';
-  _meStatus().style.display = 'none';
-
-  if (category === 'plate_only') {
-    _meSetStep(1,'active'); _meSetProgress(30,'Detecting & hiding number plate...');
-  } else {
-    _meSetStep(2,'active'); _meSetProgress(30,'Removing background...');
-    await _meSleep(200);
-    _meSetStep(3,'active'); _meSetProgress(60,'Applying showroom background...');
-  }
-
-  try {
-    const body = {
-      mode: _meCurMode,
-      car_size_pct: parseInt(document.getElementById('meCarSize').value),
-      image_category: category
-    };
-    const r = await fetch(`/studio/api/process-car/${_meStudioId}`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
-    });
-    const d = await r.json();
-    _meSetProgress(100,'Done!');
-    if(d.success) {
-      if (category === 'plate_only') {
-        _meSetStep(1,'done');
-      } else {
-        _meSetStep(2,'done'); _meSetStep(3,'done');
-      }
-      await _meSleep(200);
-      _meProcImg().src = d.processed_url+'?t='+Date.now();
-      _meProcImg().style.display='block';
-      _meProcPH().style.display='none';
-      _meProcImg().style.opacity='0';
-      _meProcImg().onload = () => { _meProcImg().style.transition='opacity 0.4s'; _meProcImg().style.opacity='1'; };
-      _meSaveBtn().style.display='flex';
-      _meProgress().style.display='none';
-
-      let html='✅ <strong>Done!</strong><br>';
-      if(category === 'plate_only') {
-        if(d.plate) {
-          html+=`🔲 Plate <strong>fully hidden</strong> at (${d.plate.x},${d.plate.y}) — ${d.plate.width}×${d.plate.height}px<br>`;
-          if(_meTool !== 'quad') _meDrawDetected(d.plate.x,d.plate.y,d.plate.width,d.plate.height);
-        } else {
-          html+='ℹ️ No plate detected. Use Manual Select to mark it.<br>';
-        }
-        html+='🖼️ Original background preserved!';
-      } else {
-        html+='🖼️ Background removed<br>🏢 Showroom floor background applied!<br>🔲 Number plate unchanged (original).';
-      }
-      _meResult().innerHTML=html; _meResult().style.display='block';
-    } else {
-      ['meS1','meS2','meS3'].forEach(id=>document.getElementById(id).className='me-step');
-      _meProgress().style.display='none';
-      _meShowStatus('❌ '+d.message,'error');
-    }
-  } catch(e) {
-    _meProgress().style.display='none';
-    _meShowStatus('❌ Error: '+e.message,'error');
-  } finally {
-    _meProcessing = false;
-    btn.disabled = false;
-    btn.innerHTML = origLabel;
-  }
-}
-
-async function meDoProcessManual() {
-  if(!_meHasRect) return;
-  let manual;
-
-  if (_meTool === 'quad' && _meQpts.length === 4) {
-    // Use bounding box of quad (server will use quad for perspective warp)
-    // Subtract letterbox offsets before scaling to natural-image coords
-    const _c = _meCanvas(), _ox = _c._offX||0, _oy = _c._offY||0;
-    const xs = _meQpts.map(p => p.x - _ox), ys = _meQpts.map(p => p.y - _oy);
-    manual = {
-      x: Math.round(Math.max(0, Math.min(...xs)) * _meScaleX),
-      y: Math.round(Math.max(0, Math.min(...ys)) * _meScaleY),
-      w: Math.round((Math.max(...xs) - Math.min(...xs)) * _meScaleX),
-      h: Math.round((Math.max(...ys) - Math.min(...ys)) * _meScaleY)
-    };
-  } else if (_meTool === 'pencil' && _meHasPencil && _mePencilPoints.length > 3) {
-    manual = {
-      x: Math.round(_meRect.x * _meScaleX),
-      y: Math.round(_meRect.y * _meScaleY),
-      w: Math.round(_meRect.w * _meScaleX),
-      h: Math.round(_meRect.h * _meScaleY)
-    };
-  } else {
-    manual = {
-      x: Math.round(_meRect.x * _meScaleX),
-      y: Math.round(_meRect.y * _meScaleY),
-      w: Math.round(_meRect.w * _meScaleX),
-      h: Math.round(_meRect.h * _meScaleY)
-    };
-  }
-
-  await meDoProcess(manual);
-}
-
-/* ══════════════════════════════════════════════════════════════
-   SAVE BACK
-══════════════════════════════════════════════════════════════ */
-async function meSaveBack() {
-  if(!_meStudioId || !_meViId) return;
-  _meSaveBtn().disabled=true; _meSaveBtn().innerHTML='⏳ Saving...';
-  try {
-    const r = await fetch('/studio/api/mask-editor/save-back', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({studio_id:_meStudioId, vi_id:_meViId})
-    });
-    const d = await r.json();
-    if(d.ok) {
-      _meShowStatus('✅ Saved successfully! Image updated in vehicle gallery.','success');
-      _meSaveBtn().innerHTML='✅ Saved!';
-      _meSaveBtn().disabled=false;
-      if(typeof maskEditorOnSave === 'function') maskEditorOnSave(_meViId, d.image_url);
-      else {
-        document.querySelectorAll(`[data-vi-id="${_meViId}"] img, img[data-vi-id="${_meViId}"]`).forEach(img=>{
-          img.src = d.image_url;
-        });
-        setTimeout(() => { closeMaskEditor(); location.reload(); }, 1200);
+        meSetStatus('✅ Plate hidden! Review then click "Save to Vehicle".', 'success');
       }
     } else {
-      _meShowStatus('❌ Save failed: '+(d.error||'unknown'),'error');
-      _meSaveBtn().disabled=false; _meSaveBtn().innerHTML='💾 Save to Vehicle';
+      meSetStatus('⚠ ' + (d.message || 'Plate apply failed'), 'error');
     }
   } catch(e) {
-    _meShowStatus('❌ Error: '+e.message,'error');
-    _meSaveBtn().disabled=false; _meSaveBtn().innerHTML='💾 Save to Vehicle';
+    meSetStatus('❌ Error: ' + e.message, 'error');
   }
+  document.getElementById('mePConfirmBtn').disabled = false;
+  document.getElementById('mePConfirmBtn').innerHTML = '🔲 Hide Plate';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   HELPERS
-══════════════════════════════════════════════════════════════ */
-function _meSetStep(n,state){
-  const ids=['meS1','meS2','meS3'];
-  document.getElementById(ids[n-1]).className='me-step '+state;
+// ── Spinner keyframes
+if (!document.getElementById('meSpinStyle')) {
+  const s=document.createElement('style');
+  s.id='meSpinStyle';
+  s.textContent='@keyframes meSpin{to{transform:rotate(360deg)}}';
+  document.head.appendChild(s);
 }
-function _meSetProgress(pct,label){
-  _meProgress().style.display='block';
-  _mePFill().style.width=pct+'%';
-  _mePLabel().textContent=label;
-}
-function _meShowStatus(msg, type) {
-  const sb=_meStatus();
-  sb.className=''; sb.style.display='block';
-  const colors={info:'rgba(0,212,255,0.1)',success:'rgba(0,230,118,0.1)',error:'rgba(255,77,28,0.1)'};
-  const borders={info:'rgba(0,212,255,0.25)',success:'rgba(0,230,118,0.25)',error:'rgba(255,77,28,0.25)'};
-  const txts={info:'#00d4ff',success:'#00e676',error:'#ff4d1c'};
-  sb.style.background=colors[type]||colors.info;
-  sb.style.border='1px solid '+(borders[type]||borders.info);
-  sb.style.color=txts[type]||txts.info;
-  sb.innerHTML=msg;
-}
-function _meSleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-/* Close on overlay click / Escape */
-document.getElementById('maskEditorOverlay').addEventListener('click', function(e){
-  if(e.target===this) closeMaskEditor();
-});
-document.addEventListener('keydown', e=>{
-  if(e.key==='Escape' && document.getElementById('maskEditorOverlay').style.display==='flex') closeMaskEditor();
-});
 </script>
