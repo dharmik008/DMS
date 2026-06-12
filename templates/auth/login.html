@@ -1,49 +1,588 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Forgot Password — Caryanams</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Caryanams</title>
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+<style>
+/* Role selector tabs */
+.role-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 4px;
+}
+.role-tab {
+  flex: 1;
+  padding: 10px 6px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Inter', sans-serif;
+}
+.role-tab i { font-size: 16px; }
+.role-tab.active {
+  background: #fff;
+  color: #002366;
+  box-shadow: 0 2px 8px rgba(0,35,102,0.12);
+}
+.role-tab[data-role="admin"].active { color: #7c3aed; }
+.role-tab[data-role="dealer"].active { color: #0369a1; }
+.role-tab[data-role="user"].active { color: #059669; }
+
+/* Admin panel notice */
+.admin-notice {
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #6d28d9;
+  margin-bottom: 16px;
+  display: none;
+}
+.admin-notice i { margin-right: 6px; }
+
+/* ── POLICY CHECKBOX STYLES (additive, isolated) ── */
+.policy-agree-wrap {
+  background: #f8faff;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.policy-agree-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.55;
+  user-select: none;
+}
+.policy-agree-label input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: #002366;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.policy-agree-label a {
+  color: #002366;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.policy-agree-label a:hover { color: #0369a1; }
+.policy-agree-error {
+  display: none;
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 8px;
+  font-weight: 500;
+}
+.policy-agree-error i { margin-right: 4px; }
+/* ── END POLICY CHECKBOX STYLES ── */
+/* ── VALIDATION STYLES ── */
+.field-error {
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 5px;
+  display: none;
+  font-weight: 500;
+}
+.field-error i { margin-right: 4px; }
+.form-group input.input-invalid {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.12) !important;
+}
+.form-group input.input-valid {
+  border-color: #16a34a !important;
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.1) !important;
+}
+/* ── END VALIDATION STYLES ── */
+</style>
 </head>
 <body>
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for cat, msg in messages %}
-  <div style="padding:12px 24px;font-size:14px;font-weight:500;background:{% if cat=='success' %}#d1fae5;color:#065f46{% else %}#fee2e2;color:#991b1b{% endif %}">{{ msg }}</div>
-  {% endfor %}
-{% endwith %}
-
-<div class="auth-wrapper">
-  <div class="auth-card" style="max-width:420px;margin:80px auto">
-    <div style="text-align:center;margin-bottom:28px">
-      <div style="width:56px;height:56px;background:linear-gradient(135deg,#1a73e8,#0f5cc7);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;color:#fff">
-        <i class="fas fa-lock"></i>
+<div class="auth-layout">
+  <!-- Left Panel -->
+  <div class="auth-panel">
+    <div class="auth-brand">
+      <div class="brand-logo">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Caryanams" class="logo-login">
       </div>
-      <h1 style="font-size:24px;font-weight:800;color:#0f172a;margin:0">Forgot Password?</h1>
-      <p style="color:#64748b;font-size:14px;margin-top:8px">Enter your email and we'll send you a reset link.</p>
+      <div class="brand-name">Caryanams</div>
     </div>
-
-    <form method="POST" action="{{ url_for('auth.forgot_password') }}">
-      <div style="margin-bottom:20px">
-        <label style="font-size:13px;font-weight:600;color:#0f172a;display:block;margin-bottom:6px">Email Address</label>
-        <input type="email" name="email" required autofocus placeholder="you@example.com"
-          style="width:100%;padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;transition:border-color .2s;box-sizing:border-box"
-          onfocus="this.style.borderColor='#1a73e8'" onblur="this.style.borderColor='#e2e8f0'">
+    <div class="auth-hero">
+      <div class="hero-title">India's Premier<br>Automobile Platform</div>
+      <div class="hero-sub">DMS for Dealers. Marketplace for Buyers.</div>
+      <div class="hero-features">
+        <div class="feat"><i class="fas fa-check-circle"></i> Complete Dealer Management System</div>
+        <div class="feat"><i class="fas fa-check-circle"></i> Live Marketplace — Caryanams</div>
+        <div class="feat"><i class="fas fa-check-circle"></i> CRM, Finance &amp; Document Tools</div>
+        <div class="feat"><i class="fas fa-check-circle"></i> GST Invoicing &amp; EMI Calculator</div>
       </div>
-      <button type="submit" style="width:100%;padding:13px;background:#1a73e8;color:#fff;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;transition:background .2s"
-        onmouseover="this.style.background='#0f5cc7'" onmouseout="this.style.background='#1a73e8'">
-        <i class="fas fa-paper-plane"></i> Send Reset Link
-      </button>
-    </form>
+    </div>
+    <div class="auth-panel-cars">
+      <div class="floating-car c1"><i class="fas fa-car"></i></div>
+      <div class="floating-car c2"><i class="fas fa-car-side"></i></div>
+      <div class="floating-car c3"><i class="fas fa-truck"></i></div>
+    </div>
+  </div>
 
-    <div style="text-align:center;margin-top:20px;font-size:14px;color:#64748b">
-      <a href="{{ url_for('auth.login') }}" style="color:#1a73e8;font-weight:600">
-        <i class="fas fa-arrow-left" style="font-size:12px"></i> Back to Login
-      </a>
+  <!-- Right Panel -->
+  <div class="auth-form-panel">
+    <div class="auth-form-wrap">
+      <div class="form-header">
+        <h1>Welcome Back</h1>
+        <p>Sign in to your Caryanams account</p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }}">
+              <i class="fas fa-{% if cat == 'success' %}check-circle{% elif cat == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+              {{ msg }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- Role Selector -->
+      <div class="role-tabs">
+        <button type="button" class="role-tab active" data-role="dealer" onclick="selectRole('dealer')">
+          <i class="fas fa-store"></i> Dealer
+        </button>
+        <button type="button" class="role-tab" data-role="user" onclick="selectRole('user')">
+          <i class="fas fa-user"></i> User
+        </button>
+        <button type="button" class="role-tab" data-role="admin" onclick="selectRole('admin')">
+          <i class="fas fa-shield-alt"></i> Admin
+        </button>
+      </div>
+
+      <!-- Admin redirect notice -->
+      <div class="admin-notice" id="adminNotice">
+        <i class="fas fa-info-circle"></i>
+        Admin login uses a separate secure panel. Click <strong>Go to Admin Panel</strong> below.
+      </div>
+
+      <!-- Dealer/User login form -->
+      <div id="normalLoginForm">
+        <form method="POST" action="{{ url_for('auth.login') }}" id="mainLoginForm" novalidate>
+          <input type="hidden" name="selected_role" id="selectedRoleInput" value="dealer">
+          <input type="hidden" name="return_url" value="{{ request.args.get('returnUrl', '') }}">
+          <div class="form-group">
+            <label><i class="fas fa-envelope"></i> Email Address</label>
+            <input type="email" name="email" id="loginEmail" placeholder="you@example.com" required autofocus oninput="vLoginEmail()" onblur="vLoginEmail()">
+            <div class="field-error" id="loginEmailErr"><i class="fas fa-exclamation-circle"></i> <span id="loginEmailErrTxt">Please enter a valid email address.</span></div>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-lock"></i> Password</label>
+            <div class="pass-wrap">
+              <input type="password" name="password" id="password" placeholder="Enter your password" required oninput="vLoginPass()" onblur="vLoginPass()">
+              </div>
+            <div class="field-error" id="loginPassErr"><i class="fas fa-exclamation-circle"></i> <span id="loginPassErrTxt">Password is required.</span></div>
+            <div style="display:none">
+              <button type="button" onclick="togglePass()" class="pass-toggle"><i class="fas fa-eye" id="passIcon"></i></button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+              <input type="checkbox" name="remember" style="accent-color:#002366"> Remember me
+            </label>
+            <a href="#" onclick="openForgotModal();return false;" style="font-size:13px;color:#002366;font-weight:600;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Forgot password?</a>
+          </div>
+
+          <!-- ── POLICY AGREEMENT CHECKBOX (additive only) ── -->
+          <div class="policy-agree-wrap">
+            <label class="policy-agree-label">
+              <input type="checkbox" id="policyAgreeCheck" name="policy_agreed">
+              <span>
+                I have read and agree to the
+                <a href="{{ url_for('policies.privacy_policy') }}" target="_blank" rel="noopener">Privacy Policy</a>
+                and
+                <a href="{{ url_for('policies.refund_policy') }}" target="_blank" rel="noopener">Refund &amp; Cancellation Policy</a>
+                of Caryanams.
+              </span>
+            </label>
+            <div class="policy-agree-error" id="policyAgreeError">
+              <i class="fas fa-exclamation-circle"></i> Please accept the Privacy Policy and Refund Policy to continue.
+            </div>
+          </div>
+          <!-- ── END POLICY AGREEMENT CHECKBOX ── -->
+
+          <button type="submit" class="btn-auth" onclick="return validateLoginForm(event)">
+            <span>Sign In</span> <i class="fas fa-arrow-right"></i>
+          </button>
+        </form>
+
+        <div class="auth-divider"><span>or</span></div>
+
+        <div class="auth-footer">
+          Don't have an account? <a href="{{ url_for('auth.register') }}">Create one →</a>
+        </div>
+      </div>
+
+      <!-- Admin redirect button -->
+      <div id="adminLoginSection" style="display:none">
+        <a href="{{ url_for('admin.login') }}" class="btn-auth" style="display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;background:#7c3aed;">
+          <i class="fas fa-shield-alt"></i> <span>Go to Admin Panel</span>
+        </a>
+        <div class="auth-footer" style="margin-top:16px">
+          Not an admin? <a href="#" onclick="selectRole('dealer')">Login as Dealer/User</a>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
+
+<script>
+function selectRole(role) {
+  document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('[data-role="' + role + '"]').classList.add('active');
+  document.getElementById('selectedRoleInput').value = role;
+  const adminNotice  = document.getElementById('adminNotice');
+  const normalForm   = document.getElementById('normalLoginForm');
+  const adminSection = document.getElementById('adminLoginSection');
+  if (role === 'admin') {
+    adminNotice.style.display  = 'block';
+    normalForm.style.display   = 'none';
+    adminSection.style.display = 'block';
+  } else {
+    adminNotice.style.display  = 'none';
+    normalForm.style.display   = 'block';
+    adminSection.style.display = 'none';
+  }
+}
+
+function togglePass() {
+  const p = document.getElementById('password');
+  const i = document.getElementById('passIcon');
+  p.type = p.type === 'password' ? 'text' : 'password';
+  i.className = p.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+function fillDemo(email, pass, role) {
+  selectRole(role);
+  document.querySelector('[name="email"]').value    = email;
+  document.querySelector('[name="password"]').value = pass;
+}
+
+/* ── VALIDATION HELPERS ── */
+function _showErr(inputId, errId, msg) {
+  const inp = document.getElementById(inputId);
+  const err = document.getElementById(errId);
+  if (msg) { const s = document.getElementById(errId+'Txt'); if(s) s.textContent = msg; }
+  if (inp) { inp.classList.add('input-invalid'); inp.classList.remove('input-valid'); }
+  if (err) err.style.display = 'block';
+  return false;
+}
+function _clearErr(inputId, errId) {
+  const inp = document.getElementById(inputId);
+  const err = document.getElementById(errId);
+  if (inp) { inp.classList.remove('input-invalid'); inp.classList.add('input-valid'); }
+  if (err) err.style.display = 'none';
+  return true;
+}
+
+function vLoginEmail() {
+  const val = (document.getElementById('loginEmail').value || '').trim();
+  if (!val) return _showErr('loginEmail','loginEmailErr','Email address is required.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return _showErr('loginEmail','loginEmailErr','Please enter a valid email (e.g. abc@gmail.com).');
+  return _clearErr('loginEmail','loginEmailErr');
+}
+function vLoginPass() {
+  const val = document.getElementById('password').value;
+  if (!val) return _showErr('password','loginPassErr','Password is required.');
+  if (val.length < 6) return _showErr('password','loginPassErr','Password must be at least 6 characters.');
+  return _clearErr('password','loginPassErr');
+}
+
+function validateLoginForm(event) {
+  const emailOk = vLoginEmail();
+  const passOk  = vLoginPass();
+  const checkbox = document.getElementById('policyAgreeCheck');
+  const policyErr = document.getElementById('policyAgreeError');
+  let policyOk = checkbox.checked;
+  policyErr.style.display = policyOk ? 'none' : 'block';
+  if (!emailOk || !passOk || !policyOk) {
+    event.preventDefault();
+    const first = document.querySelector('.input-invalid');
+    if (first) first.scrollIntoView({ behavior:'smooth', block:'center' });
+    else if (!policyOk) policyErr.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    return false;
+  }
+  return true;
+}
+
+document.getElementById('policyAgreeCheck').addEventListener('change', function() {
+  if (this.checked) document.getElementById('policyAgreeError').style.display = 'none';
+});
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FORGOT PASSWORD MODAL  (additive – no existing code changed)
+═══════════════════════════════════════════════════════════════ -->
+<style>
+#fpOverlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+  z-index:9000; align-items:center; justify-content:center;
+}
+#fpOverlay.fp-open { display:flex; }
+#fpBox {
+  background:#fff; border-radius:18px; padding:36px 32px 32px;
+  width:100%; max-width:440px; box-shadow:0 20px 60px rgba(0,0,0,.25);
+  position:relative; font-family:'Inter',sans-serif;
+}
+#fpBox h2 { margin:0 0 6px; font-size:20px; color:#0f172a; font-weight:700; }
+#fpBox .fp-sub { font-size:13px; color:#64748b; margin-bottom:22px; line-height:1.5; }
+.fp-step { display:none; }
+.fp-step.fp-active { display:block; }
+.fp-field { margin-bottom:16px; }
+.fp-field label { display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:6px; letter-spacing:.3px; }
+.fp-field input {
+  width:100%; box-sizing:border-box; padding:11px 14px; border:1.5px solid #e2e8f0;
+  border-radius:9px; font-size:14px; color:#1e293b; outline:none; transition:border .2s;
+  font-family:'Inter',sans-serif;
+}
+.fp-field input:focus { border-color:#002366; box-shadow:0 0 0 3px rgba(0,35,102,.1); }
+.fp-field input.fp-invalid { border-color:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.1); }
+.fp-field input.fp-valid  { border-color:#16a34a; box-shadow:0 0 0 3px rgba(22,163,74,.08); }
+.fp-err { color:#dc2626; font-size:12px; margin-top:5px; font-weight:500; display:none; }
+.fp-msg { padding:10px 14px; border-radius:9px; font-size:13px; font-weight:500; margin-bottom:16px; display:none; }
+.fp-msg.fp-success { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+.fp-msg.fp-error   { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.fp-btn {
+  width:100%; padding:13px; background:#002366; color:#fff; border:none;
+  border-radius:10px; font-size:15px; font-weight:700; cursor:pointer;
+  font-family:'Inter',sans-serif; transition:background .2s; margin-top:4px;
+}
+.fp-btn:hover { background:#0369a1; }
+.fp-btn:disabled { background:#94a3b8; cursor:not-allowed; }
+.fp-close {
+  position:absolute; top:14px; right:16px; background:none; border:none;
+  font-size:20px; color:#94a3b8; cursor:pointer; line-height:1;
+  padding:4px 8px; border-radius:6px; transition:color .15s;
+}
+.fp-close:hover { color:#0f172a; }
+.fp-back { background:none; border:none; color:#002366; font-size:13px; font-weight:600;
+  cursor:pointer; padding:0; margin-bottom:18px; font-family:'Inter',sans-serif; }
+.fp-back:hover { text-decoration:underline; }
+.fp-passrow { position:relative; }
+.fp-passrow input { padding-right:42px; }
+.fp-eye { position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  background:none; border:none; cursor:pointer; color:#64748b; font-size:15px; }
+</style>
+
+<div id="fpOverlay" onclick="if(event.target===this)closeForgotModal()">
+  <div id="fpBox">
+    <button class="fp-close" onclick="closeForgotModal()" title="Close">&times;</button>
+
+    <!-- ── Step 1: Verify email + phone ── -->
+    <div class="fp-step fp-active" id="fpStep1">
+      <h2><i class="fas fa-key" style="color:#002366;font-size:17px;margin-right:8px"></i>Forgot Password</h2>
+      <p class="fp-sub">Enter the email address and mobile number you registered with. Both must match.</p>
+      <div class="fp-msg" id="fpMsg1"></div>
+      <div class="fp-field">
+        <label><i class="fas fa-envelope" style="margin-right:5px"></i>Registered Email</label>
+        <input type="email" id="fpEmail" placeholder="you@example.com" oninput="fpClearErr('fpEmail','fpEmailErr')">
+        <div class="fp-err" id="fpEmailErr"></div>
+      </div>
+      <div class="fp-field">
+        <label><i class="fas fa-mobile-alt" style="margin-right:5px"></i>Registered Phone / Mobile Number</label>
+        <input type="tel" id="fpPhone" placeholder="10-digit phone / mobile number" maxlength="10" oninput="fpClearErr('fpPhone','fpPhoneErr')">
+        <div class="fp-err" id="fpPhoneErr"></div>
+      </div>
+      <button class="fp-btn" id="fpVerifyBtn" onclick="fpVerify()">
+        <i class="fas fa-check-circle" style="margin-right:7px"></i>Verify My Identity
+      </button>
+    </div>
+
+    <!-- ── Step 2: Set new password ── -->
+    <div class="fp-step" id="fpStep2">
+      <button class="fp-back" onclick="fpGoStep1()"><i class="fas fa-arrow-left" style="margin-right:5px"></i>Back</button>
+      <h2><i class="fas fa-lock" style="color:#002366;font-size:17px;margin-right:8px"></i>Set New Password</h2>
+      <p class="fp-sub">Choose a strong password (at least 6 characters).</p>
+      <div class="fp-msg" id="fpMsg2"></div>
+      <div class="fp-field">
+        <label><i class="fas fa-lock" style="margin-right:5px"></i>New Password</label>
+        <div class="fp-passrow">
+          <input type="password" id="fpNewPass" placeholder="Enter new password" oninput="fpClearErr('fpNewPass','fpNewPassErr')">
+          <button type="button" class="fp-eye" onclick="fpToggle('fpNewPass',this)"><i class="fas fa-eye"></i></button>
+        </div>
+        <div class="fp-err" id="fpNewPassErr"></div>
+      </div>
+      <div class="fp-field">
+        <label><i class="fas fa-lock" style="margin-right:5px"></i>Confirm Password</label>
+        <div class="fp-passrow">
+          <input type="password" id="fpConfPass" placeholder="Repeat new password" oninput="fpClearErr('fpConfPass','fpConfPassErr')">
+          <button type="button" class="fp-eye" onclick="fpToggle('fpConfPass',this)"><i class="fas fa-eye"></i></button>
+        </div>
+        <div class="fp-err" id="fpConfPassErr"></div>
+      </div>
+      <button class="fp-btn" id="fpResetBtn" onclick="fpReset()">
+        <i class="fas fa-save" style="margin-right:7px"></i>Change Password
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ── Forgot-password modal state ── */
+var _fpToken = null;
+
+function openForgotModal() {
+  fpGoStep1();
+  document.getElementById('fpOverlay').classList.add('fp-open');
+  setTimeout(function(){ document.getElementById('fpEmail').focus(); }, 120);
+}
+function closeForgotModal() {
+  document.getElementById('fpOverlay').classList.remove('fp-open');
+}
+function fpGoStep1() {
+  document.getElementById('fpStep1').classList.add('fp-active');
+  document.getElementById('fpStep2').classList.remove('fp-active');
+  ['fpEmail','fpPhone','fpNewPass','fpConfPass'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value = '';
+    el && el.classList.remove('fp-invalid','fp-valid');
+  });
+  ['fpEmailErr','fpPhoneErr','fpNewPassErr','fpConfPassErr','fpMsg1','fpMsg2'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el){ el.style.display='none'; el.textContent=''; el.className = el.className.replace(/fp-(success|error)/g,'').trim(); }
+  });
+  _fpToken = null;
+}
+
+function fpShowMsg(id, type, text) {
+  var el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'fp-msg fp-' + type;
+  el.style.display = 'block';
+}
+function fpFieldErr(inputId, errId, msg) {
+  var inp = document.getElementById(inputId);
+  var err = document.getElementById(errId);
+  inp.classList.add('fp-invalid'); inp.classList.remove('fp-valid');
+  err.textContent = msg; err.style.display = 'block';
+}
+function fpClearErr(inputId, errId) {
+  var inp = document.getElementById(inputId);
+  var err = document.getElementById(errId);
+  if(inp){ inp.classList.remove('fp-invalid'); }
+  if(err){ err.style.display = 'none'; }
+}
+function fpToggle(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.querySelector('i').className = inp.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+function fpVerify() {
+  var email = (document.getElementById('fpEmail').value || '').trim();
+  var phone = (document.getElementById('fpPhone').value || '').trim();
+  var ok = true;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    fpFieldErr('fpEmail','fpEmailErr','Please enter a valid email address.'); ok = false;
+  }
+  var digits = phone.replace(/\D/g,'');
+  if (!digits || digits.length !== 10) {
+    fpFieldErr('fpPhone','fpPhoneErr','Please enter a valid 10-digit mobile number.'); ok = false;
+  }
+  if (!ok) return;
+
+  var btn = document.getElementById('fpVerifyBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:7px"></i>Verifying...';
+
+  fetch('/auth/api/forgot-password/verify', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ email: email, phone: phone })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle" style="margin-right:7px"></i>Verify My Identity';
+    if (data.success) {
+      _fpToken = data.token;
+      document.getElementById('fpStep1').classList.remove('fp-active');
+      document.getElementById('fpStep2').classList.add('fp-active');
+      setTimeout(function(){ document.getElementById('fpNewPass').focus(); }, 80);
+    } else {
+      fpShowMsg('fpMsg1', 'error', data.message || 'Verification failed. Please check your details.');
+    }
+  })
+  .catch(function() {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle" style="margin-right:7px"></i>Verify My Identity';
+    fpShowMsg('fpMsg1', 'error', 'Network error. Please try again.');
+  });
+}
+
+function fpReset() {
+  var np = document.getElementById('fpNewPass').value;
+  var cp = document.getElementById('fpConfPass').value;
+  var ok = true;
+  if (!np || np.length < 6) {
+    fpFieldErr('fpNewPass','fpNewPassErr','Password must be at least 6 characters.'); ok = false;
+  }
+  if (!cp) {
+    fpFieldErr('fpConfPass','fpConfPassErr','Please confirm your password.'); ok = false;
+  } else if (np !== cp) {
+    fpFieldErr('fpConfPass','fpConfPassErr','Passwords do not match.'); ok = false;
+  }
+  if (!ok) return;
+
+  var btn = document.getElementById('fpResetBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:7px"></i>Saving...';
+
+  fetch('/auth/api/forgot-password/reset', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ token: _fpToken, password: np, confirm: cp })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-save" style="margin-right:7px"></i>Change Password';
+    if (data.success) {
+      fpShowMsg('fpMsg2','success', '✓ ' + data.message);
+      document.getElementById('fpResetBtn').style.display = 'none';
+      setTimeout(function(){ closeForgotModal(); }, 2000);
+    } else {
+      fpShowMsg('fpMsg2','error', data.message || 'Something went wrong. Please try again.');
+    }
+  })
+  .catch(function() {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-save" style="margin-right:7px"></i>Change Password';
+    fpShowMsg('fpMsg2','error','Network error. Please try again.');
+  });
+}
+
+/* Close modal on Escape key */
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeForgotModal();
+});
+</script>
+
 </body>
 </html>
