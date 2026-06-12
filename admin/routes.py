@@ -2280,6 +2280,248 @@ def api_reorder_vehicle_images():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# VEHICLE IMAGE EDITOR APIs  (Blur BG + Number Plate Hide + Save)
+# Registered at /admin/api/vehicles/images/<image_id>/...
+# Used by mask_editor_modal.html
+# ══════════════════════════════════════════════════════════════════════════════
+
+@admin_bp.route('/api/vehicles/images/<int:image_id>/detect-plate')
+@require_permission_api('vehicles')
+def api_vehicle_detect_plate(image_id):
+    """Auto-detect number plate bounding box on a vehicle image."""
+    from models import VehicleImage
+    from background.utils import detect_number_plate
+    from PIL import Image as _PILImg
+
+    vi = VehicleImage.query.get_or_404(image_id)
+    path = os.path.join(current_app.root_path, 'static', 'images', 'uploads', vi.filename)
+    if not os.path.exists(path):
+        return jsonify({'detected': False, 'message': 'File not found on disk'}), 404
+    try:
+        iw, ih = _PILImg.open(path).size
+    except Exception as e:
+        return jsonify({'detected': False, 'message': str(e)}), 400
+    plate = detect_number_plate(path)
+    if plate:
+        x, y, w, h = plate
+        return jsonify({'detected': True, 'x': x, 'y': y, 'width': w, 'height': h,
+                        'img_width': iw, 'img_height': ih})
+    return jsonify({'detected': False, 'img_width': iw, 'img_height': ih,
+                    'message': 'Auto-detection failed. Use manual selection.'})
+
+
+@admin_bp.route('/api/vehicles/images/<int:image_id>/blur-bg', methods=['POST'])
+@require_permission_api('vehicles')
+def api_vehicle_blur_bg(image_id):
+    """
+    AI background removal + depth-of-field blur applied to vehicle image.
+    Result saved as temp processed file; call save-processed to commit.
+    """
+    from models import VehicleImage
+    from PIL import Image as _PILImg
+    from background.utils import (
+        remove_bg_ai, apply_60_percent_background_blur,
+        keep_largest_component, remove_persons_and_objects,
+        remove_connected_persons, trim_side_cars, trim_top_objects,
+        remove_thin_protrusions, restore_tyres, restore_windshield
+    )
+
+    vi = VehicleImage.query.get_or_404(image_id)
+    src_path = os.path.join(current_app.root_path, 'static', 'images', 'uploads', vi.filename)
+    if not os.path.exists(src_path):
+        return jsonify({'success': False, 'error': 'Source file not found'}), 404
+
+    result, method = remove_bg_ai(src_path, quality='standard')
+    if result is None:
+        try:
+            result = _PILImg.open(src_path).convert('RGBA')
+            method = 'original_kept'
+        except Exception:
+            return jsonify({'success': False, 'error': 'BG removal failed'}), 500
+
+    try:
+        result = keep_largest_component(result)
+        result = remove_persons_and_objects(result)
+        result = remove_connected_persons(result)
+        result = trim_side_cars(result)
+        result = trim_top_objects(result)
+        result = remove_thin_protrusions(result)
+        result = restore_tyres(result)
+        result = restore_windshield(result)
+    except Exception as _e:
+        current_app.logger.warning(f'[admin blur_bg] mask cleanup (non-fatal): {_e}')
+
+    pf = os.path.join(current_app.root_path, 'static', 'processed')
+    os.makedirs(pf, exist_ok=True)
+    out_fname = f'vblur_{image_id}_{uuid.uuid4().hex[:8]}.jpg'
+    out_path  = os.path.join(pf, out_fname)
+    try:
+        blurred = apply_60_percent_background_blur(src_path, result)
+        blurred = blurred.convert('RGB')
+        # Apply tiled Caryanams watermark
+        try:
+            from PIL import ImageDraw, ImageFont
+            wm_layer = _PILImg.new('RGBA', blurred.size, (0, 0, 0, 0))
+            draw = ImageDraw.Draw(wm_layer)
+            W, H = blurred.size
+            font_paths_bold = [
+                '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+                '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+                'C:/Windows/Fonts/arialbd.ttf',
+            ]
+            font_paths_reg = [
+                '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+                '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+                'C:/Windows/Fonts/arial.ttf',
+            ]
+            def _load_font(paths, size):
+                for fp in paths:
+                    try: return ImageFont.truetype(fp, size)
+                    except: continue
+                return ImageFont.load_default()
+            sz1 = max(26, int(min(W, H) * 0.05))
+            sz2 = max(14, int(min(W, H) * 0.025))
+            font1 = _load_font(font_paths_bold, sz1)
+            font2 = _load_font(font_paths_reg, sz2)
+            color1 = (160, 160, 160, 100)
+            color2 = (180, 140, 60, 120)
+            _tmp = ImageDraw.Draw(_PILImg.new('RGBA', (1, 1)))
+            def tsz(f, t):
+                bb = _tmp.textbbox((0, 0), t, font=f)
+                return bb[2]-bb[0], bb[3]-bb[1]
+            tw1, th1 = tsz(font1, 'Caryanams')
+            tw2, th2 = tsz(font2, 'Driven by Trust')
+            tile_w = max(tw1, tw2) + int(W * 0.12)
+            tile_h = th1 + th2 + int(H * 0.08)
+            step_x = tile_w
+            step_y = tile_h
+            y = -step_y
+            while y < H + step_y:
+                x = -step_x
+                while x < W + step_x:
+                    draw.text((x, y), 'Caryanams', fill=color1, font=font1)
+                    draw.text((x + (tw1 - tw2)//2, y + th1 + 4), 'Driven by Trust', fill=color2, font=font2)
+                    x += step_x
+                y += step_y
+            blurred = _PILImg.alpha_composite(blurred.convert('RGBA'), wm_layer).convert('RGB')
+        except Exception as wm_e:
+            current_app.logger.warning(f'[admin blur_bg] watermark failed (non-fatal): {wm_e}')
+        blurred.save(out_path, 'JPEG', quality=95)
+    except Exception as e:
+        current_app.logger.error(f'[admin blur_bg] blur failed: {e}')
+        try:
+            _PILImg.open(src_path).convert('RGB').save(out_path, 'JPEG', quality=95)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Processing failed'}), 500
+
+    return jsonify({'success': True, 'processed_url': '/static/processed/' + out_fname, 'method': method})
+
+
+@admin_bp.route('/api/vehicles/images/<int:image_id>/apply-plate', methods=['POST'])
+@require_permission_api('vehicles')
+def api_vehicle_apply_plate(image_id):
+    """
+    Hide number plate on a vehicle image (manual rect or 4-pt quad).
+    If use_processed=True, applies on top of most recent temp blur for this image.
+    """
+    from models import VehicleImage
+    from background.utils import detect_number_plate, apply_plate_removal
+
+    vi = VehicleImage.query.get_or_404(image_id)
+    data          = request.get_json(silent=True) or {}
+    mode          = data.get('mode', 'caryanams')
+    manual        = data.get('manual')
+    quad          = data.get('quad')
+    use_processed = data.get('use_processed', False)
+
+    src_path = os.path.join(current_app.root_path, 'static', 'images', 'uploads', vi.filename)
+    if use_processed:
+        pf = os.path.join(current_app.root_path, 'static', 'processed')
+        candidates = [os.path.join(pf, fn) for fn in os.listdir(pf)
+                      if fn.startswith(f'vblur_{image_id}_')] if os.path.isdir(pf) else []
+        if candidates:
+            src_path = max(candidates, key=os.path.getmtime)
+
+    if not os.path.exists(src_path):
+        return jsonify({'success': False, 'message': 'Source file not found'}), 404
+
+    if manual:
+        plate = (int(manual.get('x', 0)), int(manual.get('y', 0)),
+                 int(manual.get('w', 0)), int(manual.get('h', 0)))
+    else:
+        plate = detect_number_plate(src_path)
+
+    if not plate:
+        return jsonify({'success': False, 'message': 'No plate detected. Use draw mode.'}), 400
+
+    pf = os.path.join(current_app.root_path, 'static', 'processed')
+    os.makedirs(pf, exist_ok=True)
+    out_fname = f'vplate_{image_id}_{uuid.uuid4().hex[:8]}.png'
+    out_path  = os.path.join(pf, out_fname)
+    ok = apply_plate_removal(src_path, out_path, *plate, mode=mode, quad=quad)
+    if ok and os.path.exists(out_path):
+        return jsonify({
+            'success':       True,
+            'processed_url': '/static/processed/' + out_fname,
+            'plate':         {'x': plate[0], 'y': plate[1], 'width': plate[2], 'height': plate[3]},
+            'message':       '✅ Plate hidden!'
+        })
+    return jsonify({'success': False, 'message': 'Plate removal failed.'}), 500
+
+
+@admin_bp.route('/api/vehicles/images/<int:image_id>/save-processed', methods=['POST'])
+@require_permission_api('vehicles')
+def api_vehicle_save_processed(image_id):
+    """
+    Copy a temp processed image (blur/plate) back to the VehicleImage file,
+    replacing it in-place so the DB filename stays unchanged.
+    Body: { processed_url: '/static/processed/vblur_xxx.jpg' }
+    """
+    from models import VehicleImage, Vehicle
+    from extensions import db as _db
+    from PIL import Image as _PILImg
+    import shutil
+
+    vi = VehicleImage.query.get_or_404(image_id)
+    data          = request.get_json(silent=True) or {}
+    processed_url = data.get('processed_url', '')
+    if not processed_url:
+        return jsonify({'success': False, 'error': 'processed_url required'}), 400
+
+    url_path = processed_url.split('?')[0].lstrip('/')
+    src_path = os.path.join(current_app.root_path, url_path)
+    if not os.path.exists(src_path):
+        return jsonify({'success': False, 'error': 'Processed file not found on disk'}), 404
+
+    dest_path = os.path.join(current_app.root_path, 'static', 'images', 'uploads', vi.filename)
+    ext_dest  = os.path.splitext(vi.filename)[1].lower()
+    try:
+        if ext_dest in ('.jpg', '.jpeg'):
+            _PILImg.open(src_path).convert('RGB').save(dest_path, 'JPEG', quality=92)
+        else:
+            shutil.copy2(src_path, dest_path)
+    except Exception as e:
+        current_app.logger.error(f'[admin save_processed] failed: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    try:
+        from datetime import datetime as _dt
+        v = Vehicle.query.get(vi.vehicle_id)
+        if v and v.image_filename == vi.filename:
+            v.updated_at = _dt.utcnow()
+            _db.session.commit()
+    except Exception:
+        pass
+
+    log_admin_action(f'Saved processed image for vehicle image {image_id}', 'Vehicles')
+    return jsonify({
+        'success':   True,
+        'vi_id':     image_id,
+        'image_url': f'/static/images/uploads/{vi.filename}?t={uuid.uuid4().hex[:8]}'
+    })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # SUB-ADMIN MANAGEMENT
 # ══════════════════════════════════════════════════════════════════════════════
 
