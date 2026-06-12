@@ -2682,3 +2682,73 @@ def process_plate_and_background(image_path, output_path, mode='caryanams', manu
         tb.print_exc()
         print(f'[process_plate_and_background] FAILED: {e}')
         return False, None
+
+
+# ─── Blur Background (Depth-of-Field Effect) ──────────────────────────────────
+
+def apply_60_percent_background_blur(original_image_path, masked_image_rgba):
+    """
+    Takes original image and a masked car image (RGBA with transparent background).
+    Returns new image with:
+    - Car fully sharp (original clarity, EXACT same position)
+    - Real background blurred
+    - Original composition preserved (no car repositioning)
+
+    This creates a professional focus/depth-of-field effect where the car
+    stands out with a beautifully blurred background while maintaining
+    the exact original composition.
+
+    Process:
+    1. Load original image (full color, preserves composition)
+    2. Use mask to identify car vs background pixels
+    3. Apply Gaussian blur to background ONLY
+    4. Keep car area from original (sharp)
+    5. Return as RGB image (no transparency)
+    """
+    try:
+        import cv2 as _cv2
+
+        # Load images
+        original = Image.open(original_image_path).convert('RGB')
+        masked = masked_image_rgba.convert('RGBA')
+
+        # Ensure same size
+        if original.size != masked.size:
+            original = original.resize(masked.size, Image.LANCZOS)
+
+        # Convert to numpy arrays
+        orig_cv = _cv2.cvtColor(np.array(original), _cv2.COLOR_RGB2BGR)
+
+        # Get alpha channel from masked image (car = 255, background = 0)
+        alpha_mask = np.array(masked.split()[3])
+
+        # Create binary mask: car = 255, background = 0
+        car_mask = (alpha_mask > 128).astype(np.uint8) * 255
+
+        # Apply realistic moderate blur to background
+        # 31x31 kernel = moderate, realistic blur
+        blur_strength = 31
+        blurred_bg = _cv2.GaussianBlur(orig_cv, (blur_strength, blur_strength), 0)
+
+        # Create smooth mask for blending (feathered edges)
+        k = _cv2.getStructuringElement(_cv2.MORPH_ELLIPSE, (5, 5))
+        feathered_mask = _cv2.morphologyEx(car_mask, _cv2.MORPH_CLOSE, k)
+        feathered_mask = _cv2.GaussianBlur(feathered_mask, (15, 15), 0)
+        feathered_mask_3ch = _cv2.cvtColor(feathered_mask, _cv2.COLOR_GRAY2BGR).astype(float) / 255.0
+
+        # IMPORTANT: Keep car pixels from ORIGINAL image (sharp)
+        # Only blend background (blurred)
+        # This preserves exact original car position and orientation
+        final = (orig_cv * feathered_mask_3ch + blurred_bg * (1.0 - feathered_mask_3ch)).astype(np.uint8)
+
+        # Convert back to RGB PIL Image
+        result_rgb = _cv2.cvtColor(final, _cv2.COLOR_BGR2RGB)
+        return Image.fromarray(result_rgb, 'RGB')
+
+    except Exception as e:
+        print(f'[apply_60_percent_background_blur] error: {e}')
+        # Fallback: return original image as RGB
+        try:
+            return Image.open(original_image_path).convert('RGB')
+        except Exception:
+            return masked_image_rgba.convert('RGB')
