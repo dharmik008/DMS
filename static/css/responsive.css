@@ -1,0 +1,2020 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARYANAMS — GLOBAL RESPONSIVE STYLESHEET
+   Covers: Admin Panel, Sub-Admin, Dealer DMS, Marketplace, Mini Website,
+           Auth Pages, Masking Studio, Modals, Tables, Forms, Navigation
+   Breakpoints:
+     Mobile  : ≤ 767px
+     Tablet  : 768px – 1023px
+     Desktop : ≥ 1024px
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 0. Base safe-area & touch improvements ──────────────────────────────── */
+:root {
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Touch target minimum — applies globally */
+button,
+a,
+input[type="submit"],
+input[type="button"],
+input[type="checkbox"],
+input[type="radio"],
+select,
+.btn,
+.nav-item,
+.tab-btn,
+.stage-tab,
+.role-btn,
+.demo-card {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Scrollable table wrapper — applied everywhere */
+.table-wrapper,
+.table-wrap,
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+/* Images always scale down */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent overflow on inputs */
+input,
+textarea,
+select {
+  max-width: 100%;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   1. ADMIN / SUB-ADMIN PANEL  (admin.css augmentation)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1a. Remove the desktop min-width that causes mobile overflow ── */
+body {
+  /* Override the hardcoded min-width:900px in admin.css on small screens */
+}
+
+@media (max-width: 1023px) {
+  /* Admin body */
+  body {
+    min-width: 0 !important;
+  }
+  html {
+    overflow-x: hidden !important;
+  }
+}
+
+/* ── 1b. Sidebar — slide-out drawer on tablet + mobile ── */
+@media (max-width: 1023px) {
+  .sidebar {
+    transform: translateX(-100%) !important;
+    z-index: 300 !important;
+    position: fixed !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5) !important;
+  }
+  .sidebar.open {
+    transform: translateX(0) !important;
+  }
+  .main-wrapper {
+    margin-left: 0 !important;
+  }
+  .sidebar-toggle {
+    display: flex !important;
+  }
+  /* Dark overlay backdrop */
+  body.sidebar-open::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 299;
+    pointer-events: all;
+  }
+}
+
+/* ── 1c. Topbar ── */
+@media (max-width: 1023px) {
+  .topbar {
+    padding: 10px 16px !important;
+    gap: 8px !important;
+  }
+  .topbar-title {
+    font-size: 15px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+  }
+  .topbar-right {
+    gap: 6px !important;
+  }
+  .search-box input {
+    width: 120px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar-title {
+    max-width: 120px !important;
+  }
+  .search-box {
+    display: none !important;
+  }
+  .theme-toggle {
+    font-size: 16px !important;
+  }
+}
+
+/* ── 1d. Content area ── */
+@media (max-width: 1023px) {
+  .content {
+    padding: 18px 16px !important;
+  }
+}
+@media (max-width: 640px) {
+  .content {
+    padding: 12px !important;
+  }
+}
+
+/* ── 1e. Page header ── */
+@media (max-width: 767px) {
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .page-header-left h1 {
+    font-size: 18px !important;
+  }
+  .page-header-right {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .page-header-right .btn,
+  .page-header-right a.btn {
+    flex: 1 !important;
+    min-width: 120px !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── 1f. Stats / metric cards grid ── */
+@media (max-width: 1023px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .stat-card {
+    padding: 14px !important;
+  }
+  .stat-value {
+    font-size: 22px !important;
+  }
+}
+
+/* ── 1g. Charts grid ── */
+@media (max-width: 1023px) {
+  .charts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+/* ── 1h. Card headers ── */
+@media (max-width: 767px) {
+  .card-header {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    padding: 14px 16px !important;
+  }
+  .card-header .btn,
+  .card-header a.btn {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+  }
+  .card-title {
+    font-size: 14px !important;
+  }
+}
+
+/* ── 1i. Tables — horizontal scroll + tighter cells on mobile ── */
+@media (max-width: 1023px) {
+  table th,
+  table td {
+    font-size: 13px !important;
+    padding: 10px 10px !important;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 640px) {
+  table th,
+  table td {
+    font-size: 12px !important;
+    padding: 8px 8px !important;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
+  td > div,
+  td > .action-row {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+}
+
+/* ── 1j. Action icon-buttons ── */
+@media (max-width: 480px) {
+  a[style*="inline-flex"][style*="border-radius:8px"],
+  button[style*="inline-flex"][style*="border-radius:8px"] {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 12px !important;
+    min-height: 30px !important;
+    min-width: 30px !important;
+  }
+}
+
+/* ── 1k. Form grids ── */
+@media (max-width: 1023px) {
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+}
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  .form-control,
+  .form-select {
+    font-size: 16px !important; /* prevent iOS zoom */
+  }
+}
+
+/* ── 1l. Settings grid ── */
+@media (max-width: 1023px) {
+  .settings-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+/* ── 1m. KYC list / detail ── */
+@media (max-width: 767px) {
+  .kyc-grid,
+  .doc-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .kyc-images-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+}
+@media (max-width: 480px) {
+  .kyc-images-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── 1n. Vehicle / gallery image grid ── */
+@media (max-width: 1023px) {
+  .vehicles-grid,
+  .img-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+@media (max-width: 480px) {
+  .vehicles-grid,
+  .img-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── 1o. Modals — full-screen on small devices ── */
+@media (max-width: 640px) {
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal,
+  .modal-lg {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 90vh !important;
+    overflow-y: auto;
+    margin: 0 !important;
+  }
+  .modal-header {
+    padding: 16px 18px !important;
+  }
+  .modal-body {
+    padding: 16px 18px !important;
+  }
+  .modal-footer {
+    padding: 12px 18px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .modal-footer .btn {
+    flex: 1 !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── 1p. Activity / audit log table ── */
+@media (max-width: 767px) {
+  .activity-item {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+}
+
+/* ── 1q. Import leads drag-drop area ── */
+@media (max-width: 640px) {
+  .drop-zone {
+    padding: 28px 16px !important;
+  }
+  .drop-icon {
+    font-size: 32px !important;
+  }
+}
+
+/* ── 1r. Lead stage tabs ── */
+@media (max-width: 767px) {
+  .stage-tabs-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .stage-tabs {
+    width: max-content;
+    gap: 4px !important;
+  }
+  .stage-tab {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+    white-space: nowrap;
+  }
+}
+
+/* ── 1s. Flash messages ── */
+@media (max-width: 640px) {
+  .flash-container {
+    padding: 0 12px !important;
+    margin-bottom: 10px !important;
+  }
+  .flash {
+    font-size: 13px !important;
+    padding: 10px 14px !important;
+  }
+}
+
+/* ── 1t. Dealer detail / view pages ── */
+@media (max-width: 1023px) {
+  .dealer-detail-grid,
+  .view-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+/* ── 1u. Document storage ── */
+@media (max-width: 767px) {
+  .doc-filter-bar {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .doc-filter-bar select,
+  .doc-filter-bar input {
+    width: 100% !important;
+  }
+}
+
+/* ── 1v. Sub-admin permission checkboxes ── */
+@media (max-width: 640px) {
+  .perm-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── 1w. Visitor logs table ── */
+@media (max-width: 767px) {
+  .visitor-log-row td:nth-child(n+4) {
+    display: none;
+  }
+}
+
+/* ── 1x. Topbar hscroll bar — hide on mobile ── */
+@media (max-width: 900px) {
+  #hscroll-bar {
+    display: none !important;
+  }
+}
+
+/* ── 1y. Admin login / sub-admin login pages ── */
+@media (max-width: 640px) {
+  .admin-login-wrap {
+    padding: 24px 16px !important;
+    margin: 16px !important;
+  }
+  .admin-login-title {
+    font-size: 22px !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2. DEALER DMS PANEL  (dms.css augmentation)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 2a. Sidebar (DMS) ── */
+@media (max-width: 1023px) {
+  /* DMS sidebar already has .open / overlay pattern — reinforce */
+  .sidebar {
+    width: 260px !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+  }
+}
+
+/* ── 2b. DMS topbar actions ── */
+@media (max-width: 1023px) {
+  .topbar-actions {
+    gap: 8px !important;
+  }
+  .topbar-date {
+    display: none !important;
+  }
+}
+@media (max-width: 640px) {
+  .btn-my-website {
+    display: none !important;
+  }
+  .topbar-user span {
+    display: none;
+  }
+}
+
+/* ── 2c. Dashboard stats (DMS) ── */
+@media (max-width: 1023px) {
+  .summary-grid,
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+@media (max-width: 480px) {
+  .summary-grid,
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .stat-card {
+    padding: 14px 12px !important;
+  }
+}
+
+/* ── 2d. DMS dashboard charts ── */
+@media (max-width: 1023px) {
+  .dashboard-charts,
+  .charts-row {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+/* ── 2e. Inventory grid ── */
+@media (max-width: 1023px) {
+  .vehicles-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
+  }
+}
+@media (max-width: 600px) {
+  .vehicles-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── 2f. Vehicle detail / gallery slider ── */
+@media (max-width: 767px) {
+  .vehicle-detail-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .pgs-slider {
+    height: 220px !important;
+  }
+  .pgs-thumbs {
+    gap: 6px !important;
+  }
+  .pgs-thumb {
+    width: 52px !important;
+    height: 40px !important;
+  }
+}
+
+/* ── 2g. Vehicle form ── */
+@media (max-width: 1023px) {
+  .vehicle-form-grid,
+  .form-two-col {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 640px) {
+  .vehicle-form-grid .form-group {
+    margin-bottom: 14px !important;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="date"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important; /* prevent iOS auto-zoom */
+    padding: 10px 12px !important;
+  }
+}
+
+/* ── 2h. Finance / deal form ── */
+@media (max-width: 767px) {
+  .finance-grid,
+  .deal-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  .finance-summary {
+    margin-top: 16px !important;
+  }
+}
+
+/* ── 2i. Lead form / CRM ── */
+@media (max-width: 767px) {
+  .lead-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── 2j. KYC Upload ── */
+@media (max-width: 767px) {
+  .kyc-upload-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .kyc-doc-card {
+    padding: 16px !important;
+  }
+}
+
+/* ── 2k. Agents table ── */
+@media (max-width: 640px) {
+  .agents-table th:nth-child(n+4),
+  .agents-table td:nth-child(n+4) {
+    display: none;
+  }
+}
+
+/* ── 2l. Reports page ── */
+@media (max-width: 1023px) {
+  .reports-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+/* ── 2m. Invoice ── */
+@media (max-width: 767px) {
+  .invoice-wrap {
+    padding: 16px !important;
+  }
+  .invoice-header {
+    flex-direction: column !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+  }
+  .invoice-meta {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media print {
+  .invoice-wrap {
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ── 2n. Website settings ── */
+@media (max-width: 767px) {
+  .ws-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+/* ── 2o. Subscription plan cards ── */
+@media (max-width: 767px) {
+  .plan-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+/* ── 2p. Documents grid ── */
+@media (max-width: 767px) {
+  .docs-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+}
+@media (max-width: 480px) {
+  .docs-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── 2q. Inquiry list ── */
+@media (max-width: 640px) {
+  .inquiry-card {
+    padding: 14px !important;
+  }
+  .inquiry-meta {
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   3. AUTH PAGES  (auth.css augmentation)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .auth-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .auth-panel {
+    display: none !important;
+  }
+  .auth-form-panel {
+    min-height: 100vh !important;
+    padding: 32px 24px !important;
+  }
+  .auth-form-wrap {
+    max-width: 440px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-form-panel {
+    padding: 24px 16px !important;
+  }
+  .form-header h1 {
+    font-size: 24px !important;
+  }
+  .hero-title {
+    font-size: 34px !important;
+  }
+  .demo-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .role-btns {
+    flex-direction: column !important;
+  }
+  .role-btn {
+    min-height: 48px !important;
+  }
+  .btn-auth {
+    font-size: 15px !important;
+    padding: 13px !important;
+  }
+}
+
+/* Role select page */
+@media (max-width: 640px) {
+  .role-select-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
+/* Register — multi-step form */
+@media (max-width: 640px) {
+  .register-steps {
+    flex-direction: row !important;
+    gap: 4px !important;
+    overflow-x: auto !important;
+  }
+  .step-item {
+    flex-shrink: 0 !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   4. MARKETPLACE / USER PANEL  (marketplace.css augmentation)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 4a. Navbar ── */
+@media (max-width: 767px) {
+  .navbar {
+    padding: 0 16px !important;
+    height: 60px !important;
+  }
+  .nav-links {
+    display: none !important;
+  }
+  .nav-links.open {
+    display: flex !important;
+    flex-direction: column !important;
+    position: fixed !important;
+    top: 60px !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: var(--navy, #002366) !important;
+    padding: 12px 0 !important;
+    z-index: 200 !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2) !important;
+  }
+  .nav-links li a {
+    padding: 12px 20px !important;
+    display: block !important;
+  }
+  .nav-mobile-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .nav-actions .btn-nav-dealer,
+  .nav-actions .btn-nav-login {
+    font-size: 12px !important;
+    padding: 7px 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-brand-text {
+    display: none !important;
+  }
+  .nav-actions .btn-nav-dealer {
+    display: none !important;
+  }
+}
+
+/* ── 4b. Hero section ── */
+@media (max-width: 1023px) {
+  .hero-inner {
+    grid-template-columns: 1fr !important;
+    text-align: center !important;
+  }
+  .hero-title {
+    font-size: 36px !important;
+  }
+  .hero-search-bar {
+    max-width: 100% !important;
+  }
+}
+@media (max-width: 640px) {
+  .hero-title {
+    font-size: 28px !important;
+  }
+  .hero-sub {
+    font-size: 14px !important;
+  }
+  .hero-section {
+    padding: 40px 16px !important;
+  }
+  .search-inputs {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .search-inputs select,
+  .search-inputs input {
+    width: 100% !important;
+  }
+}
+
+/* ── 4c. Car listing grid ── */
+@media (max-width: 1023px) {
+  .cars-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+  .listings-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .filters-sidebar {
+    position: static !important;
+    width: 100% !important;
+  }
+}
+@media (max-width: 600px) {
+  .cars-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
+/* ── 4d. Car detail page ── */
+@media (max-width: 1023px) {
+  .detail-layout {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  .detail-images {
+    max-height: 300px !important;
+  }
+}
+@media (max-width: 640px) {
+  .detail-specs-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .detail-actions {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .detail-actions .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── 4e. Gallery thumbnail slider (marketplace car detail) ── */
+@media (max-width: 640px) {
+  .pgs-slider {
+    height: 200px !important;
+    border-radius: 10px !important;
+  }
+  .pgs-thumbs {
+    gap: 6px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .pgs-thumb {
+    width: 48px !important;
+    height: 38px !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+/* ── 4f. Contact / about page ── */
+@media (max-width: 1023px) {
+  .contact-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+}
+
+/* ── 4g. Footer ── */
+@media (max-width: 1023px) {
+  .footer-inner {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 28px !important;
+  }
+}
+@media (max-width: 640px) {
+  .footer-inner {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  .footer-bottom {
+    flex-direction: column !important;
+    gap: 8px !important;
+    text-align: center !important;
+    padding: 16px !important;
+  }
+}
+
+/* ── 4h. Filter / sort bar ── */
+@media (max-width: 767px) {
+  .filter-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .filter-toolbar select,
+  .filter-toolbar input {
+    width: 100% !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   5. MINI WEBSITE  (minisite base inline styles augmentation)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 5a. Mini-site nav ── */
+@media (max-width: 767px) {
+  .ms-nav-inner {
+    height: 60px !important;
+    padding: 0 16px !important;
+    gap: 12px !important;
+  }
+  .ms-nav-links {
+    display: none !important;
+  }
+  .ms-nav-links.open {
+    display: flex !important;
+    flex-direction: column !important;
+    position: fixed !important;
+    top: 60px !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: var(--white, #fff) !important;
+    border-top: 1px solid var(--border, #e2e8f0) !important;
+    padding: 8px 0 !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,.1) !important;
+    z-index: 200 !important;
+  }
+  .ms-nav-links a {
+    padding: 12px 20px !important;
+    border-radius: 0 !important;
+    font-size: 15px !important;
+  }
+  .ms-hamburger {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 22px;
+  }
+  .ms-nav-cta .btn {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+  }
+}
+@media (max-width: 480px) {
+  .ms-nav-cta {
+    gap: 6px !important;
+  }
+  .ms-nav-cta .btn:first-child {
+    display: none !important;
+  }
+}
+
+/* ── 5b. Mini-site page wrapper ── */
+@media (max-width: 767px) {
+  .ms-page {
+    padding: 24px 16px !important;
+  }
+}
+
+/* ── 5c. Car grid ── */
+@media (max-width: 1023px) {
+  .car-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+}
+@media (max-width: 480px) {
+  .car-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* ── 5d. Car card touch improvements ── */
+@media (max-width: 767px) {
+  .car-card-body {
+    padding: 12px !important;
+  }
+  .car-card-name {
+    font-size: 15px !important;
+  }
+  .car-card-price {
+    font-size: 18px !important;
+  }
+  .car-card-footer {
+    padding: 10px 12px !important;
+  }
+}
+
+/* ── 5e. Mini-site footer ── */
+@media (max-width: 1023px) {
+  .ms-footer-inner {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 28px !important;
+  }
+}
+@media (max-width: 600px) {
+  .ms-footer-inner {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    padding: 32px 16px 24px !important;
+  }
+}
+
+/* ── 5f. Mini-site home hero ── */
+@media (max-width: 767px) {
+  .ms-hero {
+    padding: 40px 16px !important;
+    text-align: center !important;
+  }
+  .ms-hero-title {
+    font-size: 28px !important;
+  }
+  .ms-hero-sub {
+    font-size: 15px !important;
+  }
+  .ms-hero-actions {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+  .ms-hero-actions .btn {
+    width: 100% !important;
+    max-width: 300px !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── 5g. WhatsApp float button — safe area ── */
+.wa-float {
+  bottom: calc(28px + var(--safe-bottom)) !important;
+  right: calc(28px + var(--safe-right)) !important;
+}
+
+/* ── 5h. Mini-site car detail ── */
+@media (max-width: 1023px) {
+  .ms-detail-layout {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+}
+@media (max-width: 640px) {
+  .ms-specs-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .ms-contact-card {
+    padding: 16px !important;
+  }
+}
+
+/* ── 5i. Section headers ── */
+@media (max-width: 640px) {
+  .section-header h2 {
+    font-size: 22px !important;
+  }
+  .section-header p {
+    font-size: 14px !important;
+  }
+}
+
+/* ── 5j. About page ── */
+@media (max-width: 767px) {
+  .about-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   6. MASKING STUDIO  (background/remove page)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1023px) {
+  .studio-layout {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+  .studio-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .studio-toolbar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .studio-toolbar .btn {
+    flex: 1 !important;
+    min-width: 100px !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+  }
+  .studio-canvas-wrap {
+    height: 260px !important;
+  }
+  .bg-options-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+  .model-select-row {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .studio-tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 4px !important;
+  }
+  .studio-tab {
+    flex-shrink: 0 !important;
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+  }
+  .bg-options-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7. POLICIES PAGES  (privacy, refund)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .policy-container,
+  .policy-wrap {
+    padding: 24px 16px !important;
+    max-width: 100% !important;
+  }
+  .policy-container h1,
+  .policy-wrap h1 {
+    font-size: 22px !important;
+  }
+  .policy-container h2,
+  .policy-wrap h2 {
+    font-size: 18px !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   8. SHARED UTILITIES  (all panels)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Scroll helpers ── */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.no-wrap {
+  white-space: nowrap;
+}
+
+/* ── Button full-width on small ── */
+@media (max-width: 480px) {
+  .btn-block-mobile {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── Stack flex-row on mobile ── */
+@media (max-width: 640px) {
+  .stack-mobile {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .stack-mobile > * {
+    width: 100% !important;
+  }
+}
+
+/* ── Two-column grids collapse to one ── */
+@media (max-width: 640px) {
+  .grid-2,
+  .two-col-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* ── Pagination ── */
+@media (max-width: 480px) {
+  .pagination {
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+  .pagination a,
+  .pagination span {
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    min-width: 36px;
+    text-align: center;
+  }
+}
+
+/* ── Badge / pill ── */
+@media (max-width: 480px) {
+  .badge,
+  .pill,
+  .tag {
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+  }
+}
+
+/* ── Section padding ── */
+@media (max-width: 640px) {
+  section,
+  .section {
+    padding-top: 32px !important;
+    padding-bottom: 32px !important;
+  }
+}
+
+/* ── Cards ── */
+@media (max-width: 640px) {
+  .card {
+    border-radius: 10px !important;
+  }
+}
+
+/* ── Hide desktop decorations on tiny screens ── */
+@media (max-width: 480px) {
+  .hide-xs {
+    display: none !important;
+  }
+}
+
+/* ── Safe area padding for fixed bottom bars ── */
+.fixed-bottom-safe {
+  padding-bottom: calc(16px + var(--safe-bottom));
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   9. PRINT RESETS
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media print {
+  .sidebar,
+  .topbar,
+  .nav-mobile-toggle,
+  .ms-hamburger,
+  .wa-float,
+  .flash-container,
+  #hscroll-bar {
+    display: none !important;
+  }
+  .main-wrapper,
+  .main-content,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PATCH v2 — Targeted fixes for:
+   1. Status / Stage tabs (dealer + admin)
+   2. Admin action-button overflow
+   3. Table header filter bars
+   4. Checkbox sizing (global compact)
+   5. Admin reports layout (vertical stack)
+   6. Page-header button groups
+   7. Admin stats mini-grids
+   8. Filter-form bars
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   1. STATUS / STAGE TABS  — always horizontally scrollable, never wrap
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Override the flex-wrap:wrap that causes tabs to break to next line */
+.stage-tabs {
+  display: flex !important;
+  flex-wrap: nowrap !important;         /* single row always */
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  gap: 6px !important;
+  padding: 8px 12px !important;
+  scrollbar-width: none !important;    /* Firefox: hide scrollbar */
+  -ms-overflow-style: none !important; /* IE/Edge */
+  background: var(--bg-surface, #fff);
+  border-radius: var(--radius, 10px);
+  border: 1px solid var(--card-border, var(--border, #e5e7eb));
+  margin-bottom: 16px;
+}
+.stage-tabs::-webkit-scrollbar {
+  display: none !important; /* Chrome/Safari: hide scrollbar */
+}
+
+.stage-tab {
+  flex-shrink: 0 !important;           /* never squish */
+  white-space: nowrap !important;
+  padding: 7px 14px !important;
+  border-radius: 20px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  color: var(--text-secondary, #64748b) !important;
+  transition: background 0.15s, color 0.15s !important;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+.stage-tab:hover {
+  background: var(--bg-hover, rgba(0,35,102,.06)) !important;
+  color: var(--navy, #002366) !important;
+}
+.stage-tab.active {
+  background: var(--navy, #002366) !important;
+  color: #fff !important;
+}
+.stage-tab .count {
+  display: inline-block;
+  background: rgba(0,0,0,.09) !important;
+  padding: 1px 6px !important;
+  border-radius: 20px !important;
+  margin-left: 5px !important;
+  font-size: 11px !important;
+}
+.stage-tab.active .count {
+  background: rgba(255,255,255,.22) !important;
+}
+
+/* Admin vehicles page — inline filter tabs row */
+.filter-tab-row,
+div[style*="display:flex"][style*="gap:8px"] > .btn.filter-tab,
+div[style*="display:flex"] > button.filter-tab {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* Wrap the admin vehicles filter tab container to scroll */
+@media (max-width: 767px) {
+  /* Generic: any flex container that holds filter-tab buttons */
+  .filter-tab-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    padding-bottom: 2px !important;
+    scrollbar-width: none !important;
+  }
+  .filter-tab-wrap::-webkit-scrollbar { display: none !important; }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   2. ADMIN TABLE ACTION BUTTONS  — compact icon-only on mobile
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Compact inline action button cluster — works for 32-34px icon buttons */
+.action-btns,
+td > div[style*="display:flex"][style*="gap"] {
+  flex-wrap: nowrap !important;    /* don't wrap — keep on one line */
+  gap: 4px !important;
+}
+
+/* On very small screens, shrink icon buttons to 28px */
+@media (max-width: 480px) {
+  /* Target the icon action buttons (32px or 34px squares) */
+  td a[style*="width:34px"],
+  td a[style*="width:32px"],
+  td button[style*="width:34px"],
+  td button[style*="width:32px"] {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+    min-height: 28px !important;
+    min-width: 28px !important;
+    border-radius: 6px !important;
+  }
+}
+
+/* Page-header right side button clusters — keep on one scrollable row */
+.page-header-right,
+.page-header > div:last-child,
+.page-header > div[style*="display:flex"],
+.page-header > div[style*="gap:8px"] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
+@media (max-width: 640px) {
+  .page-header-right .btn,
+  .page-header > div[style*="display:flex"] > .btn,
+  .page-header > div[style*="display:flex"] > a.btn {
+    font-size: 12px !important;
+    padding: 7px 10px !important;
+  }
+  /* Hide label text, keep icon on very small */
+  .page-header .btn-label-hide {
+    display: none !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .page-header-right .btn,
+  .page-header > div > .btn,
+  .page-header > div > a.btn {
+    font-size: 11px !important;
+    padding: 6px 8px !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   3. TABLE + FILTER BARS above tables
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* table must be inside a scroll wrapper */
+.table-wrapper,
+.table-wrap {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  width: 100%;
+}
+
+/* Admin sales — table not in .table-wrapper, fix directly */
+.card > table.table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+
+/* Filter bar / form rows above tables */
+@media (max-width: 767px) {
+  form[style*="display:flex"][style*="gap"],
+  .filter-row,
+  div[style*="display:flex"][style*="flex-wrap:wrap"][style*="gap"] {
+    flex-wrap: wrap !important;
+  }
+
+  form[style*="display:flex"][style*="gap"] input[type="text"],
+  form[style*="display:flex"][style*="gap"] input[type="search"],
+  form[style*="display:flex"][style*="gap"] select {
+    flex: 1 1 140px !important;
+    min-width: 0 !important;
+    font-size: 14px !important;
+  }
+
+  /* Card header search inputs */
+  .card-header input[type="text"] {
+    flex: 1 1 120px !important;
+    min-width: 100px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  form[style*="display:flex"][style*="gap"] select {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   4. CHECKBOXES  — compact uniform size everywhere
+   ───────────────────────────────────────────────────────────────────────── */
+
+input[type="checkbox"] {
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  min-height: 15px !important;
+  accent-color: var(--accent, var(--navy, #002366)) !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  vertical-align: middle !important;
+}
+
+/* The "Select All" label in card headers */
+.card-header label input[type="checkbox"],
+th input[type="checkbox"],
+td input[type="checkbox"] {
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  min-height: 15px !important;
+  margin: 0 !important;
+}
+
+/* Prevent the 44px touch-target override from bloating checkbox size */
+input[type="checkbox"] {
+  min-height: 15px !important;  /* override the global 44px rule */
+  min-width: 15px !important;
+}
+
+/* Radio buttons - consistent too */
+input[type="radio"] {
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  min-height: 15px !important;
+  accent-color: var(--accent, var(--navy, #002366)) !important;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   5. ADMIN REPORTS PAGE  — vertical stacked cards (not 2-col grid)
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Reports grid: always single column, full-width cards */
+.reports-cards-grid,
+div[style*="grid-template-columns:repeat(2,1fr)"][style*="gap:16px"] {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 16px !important;
+}
+
+/* Widen the date inputs and stack them + button nicely */
+@media (max-width: 767px) {
+  .report-card-body,
+  .card > div[style*="padding:20px"] {
+    padding: 16px !important;
+  }
+  .report-date-row,
+  div[style*="display:flex"][style*="gap:8px"][style*="align-items:flex-end"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  div[style*="display:flex"][style*="gap:8px"][style*="align-items:flex-end"] input[type="date"] {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  div[style*="display:flex"][style*="gap:8px"][style*="align-items:flex-end"] button.btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   6. ADMIN STATS MINI GRIDS (vehicles, sales pages — repeat(3,1fr), repeat(4,1fr))
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  /* 4-col → 2-col */
+  div[style*="grid-template-columns:repeat(4,1fr)"],
+  div[style*="grid-template-columns:repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  /* 3-col → 2-col (then 1-col on tiny) */
+  div[style*="grid-template-columns:repeat(3,1fr)"],
+  div[style*="grid-template-columns:repeat(3, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 400px) {
+  div[style*="grid-template-columns:repeat(3,1fr)"],
+  div[style*="grid-template-columns:repeat(3, 1fr)"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Also fix admin-level .stats-grid */
+@media (max-width: 767px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .stat-card .stat-value {
+    font-size: 20px !important;
+  }
+  .stat-card .stat-label {
+    font-size: 11px !important;
+  }
+}
+@media (max-width: 400px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   7. DEALER DASHBOARD  — stats-grid, chart pair
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  /* dealer reports grid-2 charts */
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  /* inventory summary mini 2×2 inside chart container */
+  .chart-container div[style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   8. BULK ACTIONS BAR (admin leads)
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  #bulkBar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+  #bulkBar > div[style*="margin-left:auto"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+  #bulkDealerSelect {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  #bulkBar .btn {
+    flex: 1 !important;
+    justify-content: center !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   9. ADMIN DASHBOARD — recent dealers + deals 2-col row
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  div[style*="grid-template-columns:1fr 1fr"][style*="gap:16px"],
+  div[style*="grid-template-columns:1fr 1fr"][style*="gap:20px"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   10. DEALER DEALS PAGE — section-header + New Deal button
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .section-header {
+    flex-direction: row !important;
+    justify-content: flex-end !important;
+    margin-bottom: 12px !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   11. DEALER LEADS — filter-bar layout
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .filter-bar .search-box {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .filter-bar .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   12. ADMIN KYC LIST + DEALER REQUESTS — filter bar + status columns
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .kyc-filter-bar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .kyc-filter-bar select {
+    flex: 1 !important;
+    min-width: 120px !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   13. ADMIN SUB-ADMINS / AGENTS pages
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .perm-chips {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   14. DOCUMENT STORAGE
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .doc-type-filter {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    scrollbar-width: none !important;
+    padding-bottom: 4px !important;
+  }
+  .doc-type-filter::-webkit-scrollbar { display: none !important; }
+  .doc-type-filter button {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   15. TYPOGRAPHY SCALING
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .page-header-left h1 {
+    font-size: 18px !important;
+  }
+  .page-header-left p {
+    font-size: 12px !important;
+  }
+  .card-title {
+    font-size: 14px !important;
+  }
+  .stat-card .stat-value {
+    font-size: 20px !important;
+    line-height: 1.1 !important;
+  }
+  .stat-card .stat-label {
+    font-size: 11px !important;
+  }
+  .stat-card .stat-change {
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .page-header-left h1 { font-size: 16px !important; }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   16. OVERFLOW SAFETY — prevent any element from causing horizontal scroll
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .content,
+  .page-content,
+  main,
+  .main-wrapper,
+  .main-content {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   17. ADMIN DASHBOARD — dash-two-col (recent dealers + deals side by side)
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .dash-two-col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   18. TABLE OVERFLOW — ensure .card > table.table always scrolls
+   ───────────────────────────────────────────────────────────────────────── */
+.card .table-wrapper,
+.card .table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Tables that sit directly inside .card (no wrapper) – block + scroll */
+.card > table,
+.card > .table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   19. ADMIN VEHICLES — inline stats 4-col grid above table
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  div[style*="grid-template-columns:repeat(4,1fr)"],
+  div[style*="grid-template-columns:repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   20. SCROLLBAR HIDE on all scroll-tab containers
+   ───────────────────────────────────────────────────────────────────────── */
+.stage-tabs::-webkit-scrollbar,
+.filter-tab-wrap::-webkit-scrollbar {
+  display: none;
+  height: 0;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   21. DEALER AGENTS — full mobile responsive (agent table + add form)
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Agent ID badge */
+.badge[style*="monospace"] {
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 767px) {
+  /* Agent stats grid: 1 col on very small screens */
+  div[style*="grid-template-columns:1fr 1fr"][style*="gap:16px"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Agents table: hide email col, wrap nicely */
+  .table-wrap table th:nth-child(3),
+  .table-wrap table td:nth-child(3) {
+    display: none;
+  }
+
+  /* Agent form grid: single col */
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Action buttons wrap on small screens */
+  td div[style*="display:flex"] {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Agent stats: stack vertically */
+  div[style*="grid-template-columns:1fr 1fr"][style*="gap:16px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Agents table Agent-ID + email both hidden */
+  .table-wrap table th:nth-child(3),
+  .table-wrap table td:nth-child(3) {
+    display: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   22. DEALER DEAL FORM — mobile responsive
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  /* Deal form: stack left+right cols */
+  #dealForm .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* GST preview: 1-col on small */
+  #gstPreview > div {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* Loan fields form-grid: 1-col */
+  #loanFields .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Deal form submit buttons: full width stack */
+  #dealForm > div[style*="display:flex"] {
+    flex-direction: column !important;
+  }
+  #dealForm > div[style*="display:flex"] .btn {
+    width: 100% !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   23. DEALER LEAD FORM — mobile responsive
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  /* Lead form submit buttons: full width stack */
+  form[onsubmit*="validateLeadForm"] > div[style*="display:flex"],
+  div[style*="max-width:760px"] > form > div[style*="display:flex"] {
+    flex-direction: column !important;
+  }
+  form[onsubmit*="validateLeadForm"] > div[style*="display:flex"] .btn,
+  div[style*="max-width:760px"] > form > div[style*="display:flex"] .btn {
+    width: 100% !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   24. PHONE VALIDATION UI — inline error & formatted inputs
+   ───────────────────────────────────────────────────────────────────────── */
+
+input[name="phone"],
+input[name="customer_phone"] {
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+
+input[name="phone"]:invalid,
+input[name="customer_phone"]:invalid {
+  border-color: #e53e3e !important;
+  background: #fff5f5 !important;
+}
+
+/* Phone error message styling */
+div[id$="_phone_error"] {
+  padding: 4px 8px;
+  background: #fff5f5;
+  border-left: 3px solid #e53e3e;
+  border-radius: 0 4px 4px 0;
+  font-size: 11px;
+  color: #e53e3e;
+  font-weight: 500;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   25. DEALER DEALS TABLE — mobile responsive
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  /* Deals table: hide less critical cols */
+  .table-wrap table th:nth-child(6),
+  .table-wrap table td:nth-child(6) {
+    /* GST column — hide on mobile */
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-wrap table th:nth-child(5),
+  .table-wrap table td:nth-child(5) {
+    /* Payment mode — hide on very small */
+    display: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   26. DEALER INVENTORY — masking button removed, swap bar alignment
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  /* Image action buttons: wrap, don't overflow */
+  div[style*="display:flex"][style*="align-items:center"][style*="gap:8px"] {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+}
