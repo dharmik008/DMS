@@ -257,13 +257,6 @@ function maskEditorOnSave(viId, newImageUrl) {
     if (img) img.src = newImageUrl;
   }
   showToast('Image updated successfully!', 'success');
-
-  // ── Auto set as primary after mask edit ──────────────────────────────────
-  fetch(`/admin/api/vehicles/images/${viId}/set-primary`, { method: 'POST' })
-    .then(r => r.json())
-    .then(d => { if (d.success) showToast('Primary image auto-updated!', 'success'); })
-    .catch(() => {});
-
   setTimeout(() => { closeMaskEditor(); }, 1000);
 }
 </script>
