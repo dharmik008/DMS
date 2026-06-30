@@ -11,6 +11,7 @@ Flask-SQLAlchemy==3.1.1
 SQLAlchemy==2.0.31
 Flask-Migrate==4.0.7
 alembic==1.13.2
+psycopg2-binary==2.9.9          # PostgreSQL adapter (replaces SQLite)
 
 # ── Authentication & Forms ────────────────────────────────────────────────────
 Flask-Login==0.6.3
@@ -45,7 +46,7 @@ gunicorn==22.0.0
 # celery==5.4.0
 # redis==5.0.7
 # boto3==1.34.144
-# razorpay==1.4.1
+razorpay==1.4.1
 # ── Admin Reports ─────────────────────────────────────────────────────────────
 openpyxl==3.1.5
 reportlab==4.2.2
