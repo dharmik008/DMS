@@ -98,6 +98,7 @@
 
       <form method="POST" action="{{ url_for('auth.register') }}" id="regForm" novalidate onsubmit="return validateRegForm(event)">
         <input type="hidden" name="role" id="roleField" value="dealer">
+        <input type="hidden" name="return_url" value="{{ request.args.get('returnUrl', '') }}">
         
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div class="form-group" style="grid-column:1/-1">
