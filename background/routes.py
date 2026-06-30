@@ -8,22 +8,60 @@ import io
 import uuid
 import base64
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timedelta, timezone as _tz
+
+_IST = _tz(timedelta(hours=5, minutes=30))
+
+
+def _now_ist():
+    return datetime.now(_IST).replace(tzinfo=None)
+
+from functools import wraps
 
 from flask import (
     Blueprint, render_template, request, jsonify,
-    send_file, flash, redirect, url_for, current_app
+    send_file, flash, redirect, url_for, current_app, g, session
 )
 from PIL import Image
 
 from extensions import db
+
+from subscription_features import feature_required
+
+
+# ─── Dealer Auth Guard ────────────────────────────────────────────────────────
+# Reuses the same g.user session mechanism as dealer/routes.py.
+# Does NOT change dealer/routes.py; this is a thin local wrapper.
+
+def _studio_dealer_required(f):
+    """Require an active, non-suspended dealer session to access Studio routes."""
+    @wraps(f)
+    def _decorated(*args, **kwargs):
+        user = getattr(g, 'user', None)
+        if not user or user.get('role') != 'dealer':
+            session.clear()
+            if request.is_json or request.path.startswith('/studio/api/'):
+                return jsonify({'error': 'Authentication required'}), 401
+            flash('Please log in as a dealer to access Caryanams Studio.', 'error')
+            return redirect(url_for('auth.login'))
+        if not user.get('is_active', True):
+            session.clear()
+            if request.is_json or request.path.startswith('/studio/api/'):
+                return jsonify({'error': 'Account suspended'}), 403
+            flash('Your account has been suspended. Please contact the admin.', 'error')
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return _decorated
+
+
 from .utils import (
     remove_bg_ai, generate_mask_preview, apply_background_color,
     composite_car_on_static_bg, create_watermark_layer, hex_to_rgb,
     keep_largest_component, remove_persons_and_objects, remove_connected_persons,
     trim_side_cars, trim_top_objects, remove_thin_protrusions,
     restore_tyres, restore_windshield, clean_edges,
-    BACKGROUNDS, SWATCHES, STATIC_BG_PATH, allowed_file
+    BACKGROUNDS, SWATCHES, STATIC_BG_PATH, allowed_file,
+    apply_60_percent_background_blur
 )
 from utils.image_utils import save_uploaded_image, is_allowed_image
 
@@ -46,7 +84,7 @@ class StudioImage(db.Model):
     bg_removal_quality= db.Column(db.String(20),  default='standard')
     session_group     = db.Column(db.String(50),  default=None)
     frame_order       = db.Column(db.Integer,     default=0)
-    created_at        = db.Column(db.DateTime,    default=datetime.utcnow)
+    created_at        = db.Column(db.DateTime,    default=_now_ist)
 
 
 class StudioCreditLog(db.Model):
@@ -54,7 +92,7 @@ class StudioCreditLog(db.Model):
     id        = db.Column(db.Integer, primary_key=True, autoincrement=True)
     action    = db.Column(db.String(100))
     cost      = db.Column(db.Integer, default=0)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=_now_ist)
 
 
 # ─── Folder helpers ───────────────────────────────────────────────────────────
@@ -78,6 +116,8 @@ def _custom_bg_folder():
 # ─── Main Studio Page ─────────────────────────────────────────────────────────
 
 @background_bp.route('/')
+@_studio_dealer_required
+@feature_required('studio')
 def background_removal():
     return render_template('background/remove.html',
                            backgrounds=BACKGROUNDS,
@@ -87,6 +127,8 @@ def background_removal():
 # ─── Upload → No BG (with session grouping for 360°) ─────────────────────────
 
 @background_bp.route('/api/upload', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def direct_upload_no_bg():
     upload_folder    = _upload_folder()
     processed_folder = _processed_folder()
@@ -154,6 +196,8 @@ def direct_upload_no_bg():
 # ─── Remove BG (single) ───────────────────────────────────────────────────────
 
 @background_bp.route('/api/remove-bg/<image_id>', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def remove_bg_route(image_id):
     car  = StudioImage.query.get(image_id)
     if car is None:
@@ -211,6 +255,8 @@ def remove_bg_route(image_id):
 # ─── Remove BG Batch ──────────────────────────────────────────────────────────
 
 @background_bp.route('/api/remove-bg-batch', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def remove_bg_batch():
     data       = request.get_json(silent=True) or {}
     ids        = data.get('ids', [])
@@ -284,6 +330,8 @@ def remove_bg_batch():
 # ─── Apply Background ─────────────────────────────────────────────────────────
 
 @background_bp.route('/api/apply-bg/<image_id>', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def apply_bg_route(image_id):
     car  = StudioImage.query.get(image_id)
     if car is None:
@@ -294,6 +342,7 @@ def apply_bg_route(image_id):
     custom_color     = data.get('custom_color')
     custom_bg_path   = data.get('custom_bg_path')
     use_static_bg    = bool(data.get('use_static_bg', True))
+    use_blur_bg      = bool(data.get('use_blur_bg', False))
     lighting         = float(data.get('lighting', 1.0))
     shadow           = data.get('shadow', True)
     shadow_intensity = float(data.get('shadow_intensity', 0.85))
@@ -345,7 +394,10 @@ def apply_bg_route(image_id):
 
     processed_folder = _processed_folder()
 
-    if use_static_bg and os.path.exists(STATIC_BG_PATH):
+    if use_blur_bg:
+        result  = apply_60_percent_background_blur(car.original_path, fg)
+        bg_used = 'blur_real_background'
+    elif use_static_bg and os.path.exists(STATIC_BG_PATH):
         tint_color = None
         if bg_id and bg_id != 'studio_white':
             if bg_id == 'custom' and custom_color:
@@ -396,6 +448,8 @@ def apply_bg_route(image_id):
 # ─── Apply to All ─────────────────────────────────────────────────────────────
 
 @background_bp.route('/api/apply-to-all', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def apply_to_all():
     data             = request.json or {}
     ids              = data.get('ids', [])
@@ -513,6 +567,8 @@ def apply_to_all():
 # ─── Upload Custom BG Image ───────────────────────────────────────────────────
 
 @background_bp.route('/api/upload-bg-image', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def upload_bg_image():
     folder = _custom_bg_folder()
     f = request.files.get('bg_image')
@@ -540,6 +596,8 @@ def upload_bg_image():
 # ─── Static BG Thumb ─────────────────────────────────────────────────────────
 
 @background_bp.route('/api/static-bg-thumb')
+@_studio_dealer_required
+@feature_required('studio')
 def static_bg_thumb():
     if not os.path.exists(STATIC_BG_PATH):
         return jsonify({'error': 'Static BG not found'}), 404
@@ -557,6 +615,8 @@ def static_bg_thumb():
 # ─── Gallery ──────────────────────────────────────────────────────────────────
 
 @background_bp.route('/api/gallery')
+@_studio_dealer_required
+@feature_required('studio')
 def get_gallery():
     cars = StudioImage.query.filter_by(in_gallery=True)\
                 .order_by(StudioImage.created_at.desc()).all()
@@ -573,6 +633,8 @@ def get_gallery():
 
 
 @background_bp.route('/api/save-gallery', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def save_gallery():
     for cid in request.json.get('ids', []):
         car = StudioImage.query.get(cid)
@@ -588,6 +650,8 @@ def save_gallery():
 # Copies the processed file into static/images/uploads/ and updates the
 # vehicle's image_filename column — no manual re-upload needed.
 @background_bp.route('/api/save-to-inventory', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def save_to_inventory():
     import shutil
     try:
@@ -672,6 +736,8 @@ def save_to_inventory():
 
 
 @background_bp.route('/api/gallery/<image_id>', methods=['DELETE'])
+@_studio_dealer_required
+@feature_required('studio')
 def delete_gallery(image_id):
     car = StudioImage.query.get(image_id)
     for p in [car.original_path, car.nobg_path, car.processed_path]:
@@ -688,6 +754,8 @@ def delete_gallery(image_id):
 # ─── Download ─────────────────────────────────────────────────────────────────
 
 @background_bp.route('/api/download/<image_id>')
+@_studio_dealer_required
+@feature_required('studio')
 def download_image(image_id):
     car  = StudioImage.query.get(image_id)
     path = car.processed_path or car.original_path
@@ -700,6 +768,8 @@ def download_image(image_id):
 # ─── 360° Viewer ──────────────────────────────────────────────────────────────
 
 @background_bp.route('/api/car-360/<image_id>')
+@_studio_dealer_required
+@feature_required('studio')
 def car_360_view(image_id):
     car = StudioImage.query.get(image_id)
     frames = StudioImage.query.filter_by(session_group=car.session_group)\
@@ -724,6 +794,8 @@ def car_360_view(image_id):
 # ─── Watermark Only ───────────────────────────────────────────────────────────
 
 @background_bp.route('/api/watermark/<image_id>', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def watermark_route(image_id):
     car = StudioImage.query.get(image_id)
     src = car.processed_path or car.nobg_path or car.original_path
@@ -745,6 +817,8 @@ def watermark_route(image_id):
 # ─── Resize ───────────────────────────────────────────────────────────────────
 
 @background_bp.route('/api/resize/<image_id>', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def resize_route(image_id):
     car  = StudioImage.query.get(image_id)
     if car is None:
@@ -765,6 +839,8 @@ def resize_route(image_id):
 # ─── Credit Logs ──────────────────────────────────────────────────────────────
 
 @background_bp.route('/api/credit-logs')
+@_studio_dealer_required
+@feature_required('studio')
 def credit_logs():
     logs = StudioCreditLog.query.order_by(StudioCreditLog.timestamp.desc()).limit(100).all()
     return jsonify([{'action': l.action, 'cost': l.cost,
@@ -778,6 +854,8 @@ def credit_logs():
 # ════════════════════════════════════════════════════════════════
 
 @background_bp.route('/api/mask-editor/load-vehicle-image/<int:vi_id>')
+@_studio_dealer_required
+@feature_required('studio')
 def mask_editor_load(vi_id):
     """Return base64 of a VehicleImage so the mask editor can show it."""
     from models import VehicleImage
@@ -802,6 +880,8 @@ def mask_editor_load(vi_id):
 
 
 @background_bp.route('/api/mask-editor/upload-for-edit', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def mask_editor_upload():
     """
     Upload a vehicle image file (identified by vi_id) into Studio for editing.
@@ -848,6 +928,8 @@ def mask_editor_upload():
 
 
 @background_bp.route('/api/mask-editor/save-back', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def mask_editor_save_back():
     """
     After processing, copy the studio processed image back to the VehicleImage
@@ -890,8 +972,8 @@ def mask_editor_save_back():
     if vehicle and vehicle.image_filename == vi.filename:
         # Touch updated_at if field exists
         try:
-            from datetime import datetime as _dt
-            vehicle.updated_at = _dt.utcnow()
+            # datetime already imported
+            vehicle.updated_at = _now_ist()
         except Exception:
             pass
         db.session.commit()
@@ -908,6 +990,8 @@ def mask_editor_save_back():
 # ── Plate editor helper routes (called from mask editor JS) ───────────────────
 
 @background_bp.route('/api/detect-plate/<studio_id>')
+@_studio_dealer_required
+@feature_required('studio')
 def studio_detect_plate(studio_id):
     """Detect license plate on a StudioImage and return bounding box."""
     from .utils import detect_number_plate
@@ -932,6 +1016,8 @@ def studio_detect_plate(studio_id):
 
 
 @background_bp.route('/api/process-car/<studio_id>', methods=['POST'])
+@_studio_dealer_required
+@feature_required('studio')
 def studio_process_car(studio_id):
     """One-click: plate remove + BG remove + showroom BG. Returns processed image URL."""
     from .utils import process_plate_and_background
@@ -1015,6 +1101,8 @@ def studio_process_car(studio_id):
 
 
 @background_bp.route('/api/download-inline-studio/<studio_id>')
+@_studio_dealer_required
+@feature_required('studio')
 def studio_download_inline(studio_id):
     """Serve processed studio image inline (for canvas operations in mask editor)."""
     from flask import make_response
