@@ -1,367 +1,82 @@
-{% extends 'admin/base.html' %}
-{% block title %}Add Vehicle — AutoDMS{% endblock %}
-{% block page_title %}Add Vehicle{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Super Admin Login — Caryanams</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+  body { background: var(--bg, #0f0f0f); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'DM Sans', sans-serif; }
+  .login-wrap { width: 100%; max-width: 430px; padding: 24px; }
+  .login-logo { display: flex; align-items: center; gap: 14px; margin-bottom: 36px; justify-content: center; }
+  .logo-icon { width: 48px; height: 48px; background: linear-gradient(135deg, #6366F1, #8B5CF6); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(99,102,241,.35); }
+  .login-logo-text .name { display: block; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: var(--text-1, #fff); }
+  .login-logo-text .role { display: block; font-size: 12px; color: #a5b4fc; text-transform: uppercase; letter-spacing: .1em; }
+  .role-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.3); color: #a5b4fc; border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 600; margin-bottom: 20px; }
+  .login-card { background: var(--surface-1, #1a1a1a); border: 1px solid var(--border, #2a2a2a); border-radius: 18px; padding: 36px; }
+  .login-card h2 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--text-1, #fff); margin: 0 0 6px; }
+  .login-card p { color: var(--text-3, #888); font-size: 14px; margin: 0 0 28px; }
+  .login-field { margin-bottom: 18px; }
+  .login-field label { display: block; font-size: 13px; font-weight: 500; color: var(--text-2, #ccc); margin-bottom: 8px; }
+  .login-field input { width: 100%; padding: 12px 14px; background: var(--surface-2, #252525); border: 1px solid var(--border, #2a2a2a); border-radius: 10px; color: var(--text-1, #fff); font-size: 14px; outline: none; box-sizing: border-box; transition: border-color .2s; }
+  .login-field input:focus { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+  .login-btn { width: 100%; padding: 13px; background: linear-gradient(135deg, #6366F1, #8B5CF6); color: #fff; font-weight: 700; font-size: 15px; border: none; border-radius: 10px; cursor: pointer; font-family: 'Syne', sans-serif; letter-spacing: .02em; margin-top: 6px; transition: opacity .2s; }
+  .login-btn:hover { opacity: .88; }
+  .login-hint { margin-top: 20px; padding: 14px; background: var(--surface-2, #252525); border-radius: 10px; font-size: 13px; color: var(--text-3, #888); text-align: center; line-height: 1.7; }
+  .login-hint strong { color: var(--text-2, #ccc); }
+  .flash-login { padding: 12px 16px; border-radius: 10px; font-size: 13.5px; margin-bottom: 20px; }
+  .flash-login.error { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); color: #f87171; }
+  .flash-login.success { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); color: #4ade80; }
+  .divider { text-align: center; margin: 20px 0 0; }
+  .divider a { font-size: 13px; color: var(--text-3, #888); text-decoration: none; }
+  .divider a:hover { color: #6366F1; }
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-logo">
+    <div class="logo-icon" style="background:none;box-shadow:none;border:none;">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Caryanams" style="width:48px;height:48px;object-fit:contain;">
+    </div>
+    <div class="login-logo-text">
+      <span class="name">Caryanams</span>
+      <span class="role">👑 Super Admin Portal</span>
+    </div>
+  </div>
 
-{% block content %}
-<div class="page-header">
-  <div class="page-header-left"><h1>Add New Vehicle</h1><p>List a new vehicle on the platform</p></div>
-  <a href="{{ url_for('admin.all_vehicles') }}" class="btn btn-outline btn-sm">← Back</a>
+  <div class="login-card">
+    <h2>Super Admin Login</h2>
+    <p>Full system access. Sign in with your admin credentials.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash-login {{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('admin.login') }}">
+      <div class="login-field">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" placeholder="Enter admin username" autocomplete="username" required autofocus>
+      </div>
+      <div class="login-field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Enter password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="login-btn">Sign In as Super Admin →</button>
+    </form>
+  </div>
+
+  <div class="divider text-center">
+    <a href="{{ url_for('admin.sub_admin_login') }}" class="btn btn-primary">
+        🔑 Sub-Admin Login
+    </a>
+  </div>
+  <div class="divider" style="margin-top:10px">
+    <a href="{{ url_for('auth.login') }}">← Back to main site</a>
+  </div>
 </div>
-
-<div class="card">
-  <!-- enctype MUST be multipart/form-data for file uploads -->
-  <form method="POST" action="{{ url_for('admin.add_vehicle') }}" enctype="multipart/form-data" id="addVehicleForm">
-
-    <!-- ── Vehicle Details ──────────────────────────────────────── -->
-    <div style="margin-bottom:20px;">
-      <div class="card-title" style="margin-bottom:4px;">Vehicle Details</div>
-    </div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Dealer <span style="color:var(--red);">*</span></label>
-        <select class="form-control" name="dealer_id" required>
-          <option value="">Select Dealer</option>
-          {% for d in dealers %}<option value="{{ d.id }}">{{ d.display_id or ('D' ~ d.id) }} — {{ d.name }} ({{ d.company_name or d.city or "" }})</option>{% endfor %}
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Brand <span style="color:var(--red);">*</span></label>
-        <select class="form-control" name="brand" required>
-          <option value="">Select Brand</option>
-          <option>Maruti</option><option>Hyundai</option><option>Tata</option>
-          <option>Toyota</option><option>Honda</option><option>Kia</option>
-          <option>MG</option><option>BMW</option><option>Mercedes</option>
-          <option>Audi</option><option>Mahindra</option><option>Skoda</option>
-          <option>Volkswagen</option><option>Nissan</option><option>Renault</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Model <span style="color:var(--red);">*</span></label>
-        <input type="text" class="form-control" name="model" placeholder="e.g. Swift, Creta" required>
-      </div>
-      <div class="form-group">
-        <label>Variant</label>
-        <input type="text" class="form-control" name="variant" placeholder="e.g. VXI, SX, ZX+">
-      </div>
-      <div class="form-group">
-        <label>Year <span style="color:var(--red);">*</span></label>
-        <select class="form-control" name="year" required>
-          {% for y in range(2025,2014,-1) %}<option>{{ y }}</option>{% endfor %}
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Fuel Type <span style="color:var(--red);">*</span></label>
-        <select class="form-control" name="fuel" required>
-          <option>Petrol</option><option>Diesel</option>
-          <option>Electric</option><option>Hybrid</option><option>CNG</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Transmission</label>
-        <select class="form-control" name="transmission">
-          <option>Manual</option><option>Automatic</option><option>CVT</option>
-          <option>AMT</option><option>DCT</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Kilometers Driven</label>
-        <input type="number" class="form-control" name="km" placeholder="e.g. 25000" min="0">
-      </div>
-      <div class="form-group">
-        <label>Price (₹) <span style="color:var(--red);">*</span></label>
-        <input type="number" class="form-control" name="price" placeholder="e.g. 850000" required min="0">
-      </div>
-      <div class="form-group">
-        <label>Color</label>
-        <input type="text" class="form-control" name="color" placeholder="e.g. Pearl White">
-      </div>
-      <div class="form-group">
-        <label>Owner Count</label>
-        <select class="form-control" name="ownerCount">
-          <option value="1">1st Owner</option>
-          <option value="2">2nd Owner</option>
-          <option value="3">3rd Owner</option>
-          <option value="4">4th+ Owner</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Uploaded By</label>
-        <select class="form-control" name="uploadedByRole">
-          <option value="dealer">Dealer</option>
-          <option value="user">User / Seller</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Registration Number</label>
-        <input type="text" class="form-control" name="reg_number"
-          id="admin_reg_number"
-          placeholder="e.g. GJ 06 AB 1234"
-          oninput="formatNumberPlate(this)"
-          onblur="formatNumberPlate(this)"
-          autocomplete="off"
-          style="text-transform:uppercase;letter-spacing:2px;font-weight:700;font-family:monospace;font-size:15px;"
-          value="{{ form.get('reg_number','') if form else '' }}">
-        <small style="color:#6b7280;font-size:11px;">Auto-formatted: GJ 06 AB 1234</small>
-      </div>
-      <div class="form-group" style="grid-column:1/-1;">
-        <label>Description</label>
-        <textarea class="form-control" name="description" placeholder="Additional details about the vehicle..."></textarea>
-      </div>
-    </div>
-
-    <!-- ── Vehicle Condition Details ───────────────────────────────── -->
-    <div style="margin-top:32px;margin-bottom:16px;padding-top:24px;border-top:1px solid var(--border);">
-      <div class="card-title" style="margin-bottom:4px;">Vehicle Condition Details</div>
-      <p style="color:var(--text-3);font-size:0.82rem;">All fields are mandatory. Select "NA" if information is unavailable.</p>
-    </div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Accident History <span style="color:var(--red);">*</span></label>
-        <select class="form-control" name="accident_history" required>
-          <option value="">Select</option>
-          <option value="No">No</option>
-          <option value="Minor">Minor</option>
-          <option value="Major">Major</option>
-          <option value="NA">NA</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Loan / Hypothecation <span style="color:var(--red);">*</span></label>
-        <select class="form-control" name="loan_status" required>
-          <option value="">Select</option>
-          <option value="Active">Active</option>
-          <option value="Closed">Closed</option>
-          <option value="No Loan">No Loan</option>
-          <option value="NA">NA</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>RC &amp; Service Records <span style="color:var(--red);">*</span></label>
-        <select class="form-control" name="rc_service_records" required>
-          <option value="">Select</option>
-          <option value="Yes">Yes</option>
-          <option value="No">No</option>
-          <option value="Partial">Partial</option>
-          <option value="NA">NA</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Keys Available <span style="color:var(--red);">*</span></label>
-        <select class="form-control" name="keys_available" required>
-          <option value="">Select</option>
-          <option value="One">One</option>
-          <option value="Two">Two</option>
-          <option value="Three">Three</option>
-          <option value="NA">NA</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Body Panel Repainted / Replaced <span style="color:var(--red);">*</span></label>
-        <select class="form-control" name="body_panel_status" required>
-          <option value="">Select</option>
-          <option value="No">No</option>
-          <option value="Repainted">Repainted</option>
-          <option value="Replaced">Replaced</option>
-          <option value="NA">NA</option>
-        </select>
-      </div>
-      <div class="form-group" style="grid-column:1/-1;">
-        <label>Major Issues <span style="color:var(--red);">*</span></label>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;" id="majorIssuesGroup">
-          {% for opt in ['Engine','Gearbox','AC','Suspension','None','NA'] %}
-          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;">
-            <input type="checkbox" name="major_issues" value="{{ opt }}" style="width:16px;height:16px;">
-            {{ opt }}
-          </label>
-          {% endfor %}
-        </div>
-        <input type="hidden" id="majorIssuesGuard" name="_major_issues_required">
-      </div>
-    </div>
-
-    <!-- ── Image Upload ─────────────────────────────────────────── -->
-    <div style="margin-top:32px;margin-bottom:16px;padding-top:24px;border-top:1px solid var(--border);">
-      <div class="card-title" style="margin-bottom:4px;">Vehicle Images</div>
-      <p style="color:var(--text-3);font-size:0.82rem;">
-        Upload up to <strong style="color:var(--accent);">20 images</strong> per vehicle.
-        Supported formats: JPG, JPEG, PNG, WEBP.
-      </p>
-    </div>
-
-    <!-- Drop-zone / multi-file picker -->
-    <div class="vehicle-img-upload-zone" id="imgDropZone"
-         onclick="document.getElementById('vehicleImages').click()">
-      <div class="vehicle-img-upload-icon">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-      </div>
-      <div class="vehicle-img-upload-label">Click to select images or drag &amp; drop here</div>
-      <div class="vehicle-img-upload-hint">Max 20 images · JPG, JPEG, PNG, WEBP</div>
-      <!-- The actual multi-file input — hidden, triggered by zone click -->
-      <input type="file" id="vehicleImages" name="images" accept=".jpg,.jpeg,.png,.webp"
-             multiple style="display:none;">
-    </div>
-
-    <!-- Preview grid (populated by JS) -->
-    <div class="vehicle-img-preview-grid" id="imgPreviewGrid" style="display:none;margin-top:16px;"></div>
-    <div id="imgCountInfo" style="font-size:0.8rem;color:var(--text-3);margin-top:8px;"></div>
-
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Add Vehicle</button>
-      <a href="{{ url_for('admin.all_vehicles') }}" class="btn btn-outline">Cancel</a>
-    </div>
-  </form>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-(function() {
-  const MAX = 20;
-  const ALLOWED = ['jpg','jpeg','png','webp'];
-  const input      = document.getElementById('vehicleImages');
-  const dropZone   = document.getElementById('imgDropZone');
-  const previewGrid= document.getElementById('imgPreviewGrid');
-  const countInfo  = document.getElementById('imgCountInfo');
-  const form       = document.getElementById('addVehicleForm');
-
-  // Allow drag-over on zone
-  ['dragover','dragleave','drop'].forEach(evt => {
-    dropZone.addEventListener(evt, function(e) {
-      e.preventDefault();
-      if (evt === 'dragover') dropZone.classList.add('dragover');
-      else dropZone.classList.remove('dragover');
-      if (evt === 'drop' && e.dataTransfer.files.length) {
-        // Merge dragged files with existing input
-        const dt = new DataTransfer();
-        // Add existing
-        if (input.files) Array.from(input.files).forEach(f => dt.items.add(f));
-        // Add new (up to MAX)
-        Array.from(e.dataTransfer.files).forEach(f => {
-          if (dt.files.length < MAX) dt.items.add(f);
-        });
-        input.files = dt.files;
-        input.dispatchEvent(new Event('change'));
-      }
-    });
-  });
-
-  input.addEventListener('change', function() {
-    renderPreviews(Array.from(this.files));
-  });
-
-  function renderPreviews(files) {
-    previewGrid.innerHTML = '';
-    let valid = 0;
-    files.forEach((file, i) => {
-      const ext = file.name.split('.').pop().toLowerCase();
-      const ok  = ALLOWED.includes(ext) && file.size <= 10 * 1024 * 1024;
-      const card = document.createElement('div');
-      card.className = 'img-preview-card' + (ok ? '' : ' img-preview-error');
-
-      if (ok && file.type.startsWith('image/')) {
-        const img = document.createElement('img');
-        img.className = 'img-preview-thumb';
-        img.src = URL.createObjectURL(file);
-        card.appendChild(img);
-      } else {
-        const icon = document.createElement('div');
-        icon.className = 'img-preview-thumb img-preview-thumb-icon';
-        icon.textContent = ok ? '🖼️' : '❌';
-        card.appendChild(icon);
-      }
-
-      const name = document.createElement('div');
-      name.className = 'img-preview-name';
-      name.textContent = file.name.length > 18 ? file.name.substring(0,16)+'…' : file.name;
-      card.appendChild(name);
-
-      if (!ok) {
-        const err = document.createElement('div');
-        err.style.cssText = 'font-size:0.65rem;color:var(--red);text-align:center;margin-top:2px;';
-        err.textContent = ext && !ALLOWED.includes(ext) ? 'Invalid type' : 'Too large';
-        card.appendChild(err);
-      } else {
-        valid++;
-      }
-
-      // Remove button
-      const rm = document.createElement('button');
-      rm.type = 'button';
-      rm.className = 'img-preview-remove';
-      rm.textContent = '×';
-      rm.title = 'Remove';
-      rm.addEventListener('click', function(e) {
-        e.stopPropagation();
-        const dt = new DataTransfer();
-        Array.from(input.files).forEach((f, j) => { if (j !== i) dt.items.add(f); });
-        input.files = dt.files;
-        renderPreviews(Array.from(input.files));
-      });
-      card.appendChild(rm);
-
-      previewGrid.appendChild(card);
-    });
-
-    previewGrid.style.display = files.length ? 'grid' : 'none';
-    if (files.length > MAX) {
-      countInfo.innerHTML = '<span style="color:var(--orange);">⚠️ ' + files.length + ' images selected — only first ' + MAX + ' will be uploaded.</span>';
-    } else if (files.length > 0) {
-      countInfo.textContent = valid + ' of ' + files.length + ' image(s) selected';
-      countInfo.style.color = 'var(--text-3)';
-    } else {
-      countInfo.textContent = '';
-    }
-  }
-
-  form.addEventListener('submit', function(e) {
-    // Validate major_issues checkboxes
-    const checked = document.querySelectorAll('input[name="major_issues"]:checked');
-    if (checked.length === 0) {
-      e.preventDefault();
-      alert('Please select at least one option for Major Issues.');
-      return;
-    }
-    const files = Array.from(input.files);
-    const invalid = files.filter(f => {
-      const ext = f.name.split('.').pop().toLowerCase();
-      return !ALLOWED.includes(ext);
-    });
-    if (invalid.length) {
-      showToast(invalid.length + ' invalid file type(s) will be skipped (JPG/JPEG/PNG/WEBP only).', 'warn');
-    }
-    // Enforce max on submit
-    if (files.length > MAX) {
-      showToast('Only first ' + MAX + ' images will be saved.', 'warn');
-    }
-  });
-})();
-
-/* ── Number Plate Formatter ─────────────────────────────────────────────── */
-function formatNumberPlate(input) {
-  var raw = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-  var parts = [];
-  var pos = 0;
-  // Part 1: 2 letters (state code)
-  var p1 = raw.substring(pos, pos + 2).replace(/[^A-Z]/g, '');
-  if (p1) parts.push(p1);
-  pos += 2;
-  // Part 2: 2 digits (district)
-  var p2 = raw.substring(pos, pos + 2).replace(/[^0-9]/g, '');
-  if (p2) parts.push(p2);
-  pos += 2;
-  // Part 3: 1-3 letters (series)
-  var p3 = raw.substring(pos, pos + 3).replace(/[^A-Z]/g, '');
-  if (p3) parts.push(p3);
-  pos += 3;
-  // Part 4: 4 digits
-  var p4 = raw.substring(pos, pos + 4).replace(/[^0-9]/g, '');
-  if (p4) parts.push(p4);
-  var formatted = parts.join(' ');
-  if (input.value !== formatted) input.value = formatted;
-}
-document.addEventListener('DOMContentLoaded', function() {
-  var rf = document.getElementById('admin_reg_number');
-  if (rf && rf.value) formatNumberPlate(rf);
-});
-</script>
-{% endblock %}
+</body>
+</html>
