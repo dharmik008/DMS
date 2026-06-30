@@ -32,9 +32,9 @@
 {% block content %}
 <div class="ms-page">
   <div class="breadcrumb">
-    <a href="{{ url_for('minisite.home', website_name=website_name) }}">Home</a>
+    <a href="{{ url_for('minisite.home', dealer_name=dealer.name, website_name=website_name)  }}">Home</a>
     <span>/</span>
-    <a href="{{ url_for('minisite.inventory', website_name=website_name) }}">Inventory</a>
+    <a href="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}">Inventory</a>
     <span>/</span> {{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}
   </div>
 
@@ -180,7 +180,7 @@
     </div>
     <div class="car-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
       {% for car in similar %}
-      <a href="{{ url_for('minisite.car_detail', website_name=website_name, car_id=car.id) }}" class="car-card">
+      <a href="{{ url_for('minisite.car_detail', dealer_name=dealer.name, website_name=website_name, car_id=car.id)  }}" class="car-card">
         <div class="car-card-img">
           {% if car.display_image_url %}
             <img src="{{ car.display_image_url }}" alt="{{ car.make }}" loading="lazy"
