@@ -86,7 +86,7 @@
 
     <div class="car-grid" id="featuredGrid">
       {% for car in featured %}
-      <a href="{{ url_for('minisite.car_detail', website_name=website_name, car_id=car.id) }}" class="car-card" data-fuel="{{ car.fuel_type }}">
+      <a href="{{ url_for('minisite.car_detail', dealer_name=dealer.name, website_name=website_name, car_id=car.id)  }}" class="car-card" data-fuel="{{ car.fuel_type }}">
         <div class="car-card-img">
           {% if car.display_image_url %}
             <img src="{{ car.display_image_url }}" alt="{{ car.make }} {{ car.model }}" loading="lazy"
@@ -121,7 +121,7 @@
     </div>
 
     <div style="text-align:center;margin-top:36px">
-      <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" class="btn btn-primary" style="padding:14px 36px;font-size:15px">
+      <a href="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}" class="btn btn-primary" style="padding:14px 36px;font-size:15px">
         View All Cars <i class="fas fa-arrow-right"></i>
       </a>
     </div>
@@ -140,7 +140,7 @@
       <i class="fab fa-whatsapp"></i> WhatsApp Us
     </a>
     {% endif %}
-    <a href="{{ url_for('minisite.contact', website_name=website_name) }}" class="btn btn-primary" style="padding:14px 28px">
+    <a href="{{ url_for('minisite.contact', dealer_name=dealer.name, website_name=website_name)  }}" class="btn btn-primary" style="padding:14px 28px">
       <i class="fas fa-phone"></i> Call Now
     </a>
   </div>
