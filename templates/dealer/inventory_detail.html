@@ -309,6 +309,29 @@
       </div>
       {% endif %}
 
+      {# Condition Details #}
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title"><i class="fas fa-clipboard-check" style="color:var(--gold-accent);margin-right:8px"></i>Condition Details</div></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">
+            {% set cond_items = [
+              ('Accident History',    vehicle.get('accident_history','NA')),
+              ('Loan / Hypothecation',vehicle.get('loan_status','NA')),
+              ('RC & Service Records',vehicle.get('rc_service_records','NA')),
+              ('Keys Available',      vehicle.get('keys_available','NA')),
+              ('Body Panel Status',   vehicle.get('body_panel_status','NA')),
+              ('Major Issues',        vehicle.get('major_issues','None')),
+            ] %}
+            {% for label, val in cond_items %}
+            <div style="background:#f9fafb;border-radius:8px;padding:10px 12px;border:1px solid #e5e7eb;">
+              <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">{{ label }}</div>
+              <div style="font-size:13px;font-weight:600;color:#111827;">{{ val or 'NA' }}</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
       {# Action Buttons #}
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <a href="{{ url_for('dealer.edit_vehicle', vid=vehicle['id']) }}" class="btn btn-primary">
