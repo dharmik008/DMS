@@ -6,7 +6,12 @@
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone as _tz
+
+_IST = _tz(timedelta(hours=5, minutes=30))
+
+def _now_ist():
+    return datetime.now(_IST).replace(tzinfo=None)
 
 
 class VehicleImage(db.Model):
@@ -28,7 +33,7 @@ class VehicleImage(db.Model):
                   )
     filename    = db.Column(db.String(255), nullable=False)
     sort_order  = db.Column(db.Integer,     default=0)
-    created_at  = db.Column(db.DateTime,    default=datetime.utcnow)
+    created_at  = db.Column(db.DateTime,    default=_now_ist)
 
     vehicle = db.relationship(
         'Vehicle',
