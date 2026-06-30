@@ -33,7 +33,7 @@
 
 <div class="ms-page">
   <div class="breadcrumb">
-    <a href="{{ url_for('minisite.home', website_name=website_name) }}">Home</a>
+    <a href="{{ url_for('minisite.home', dealer_name=dealer.name, website_name=website_name)  }}">Home</a>
     <span>/</span> Inventory
   </div>
 
@@ -41,7 +41,7 @@
     <!-- FILTERS -->
     <aside class="filter-panel">
       <h3><i class="fas fa-sliders-h" style="color:#1a73e8;margin-right:8px"></i>Filters</h3>
-      <form method="GET" action="{{ url_for('minisite.inventory', website_name=website_name) }}">
+      <form method="GET" action="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}">
         <div class="filter-group">
           <label>Brand</label>
           <select name="brand">
@@ -84,7 +84,7 @@
           </select>
         </div>
         <button type="submit" class="filter-apply"><i class="fas fa-search"></i> Apply Filters</button>
-        <a href="{{ url_for('minisite.inventory', website_name=website_name) }}"><button type="button" class="filter-reset">Reset</button></a>
+        <a href="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}"><button type="button" class="filter-reset">Reset</button></a>
       </form>
     </aside>
 
@@ -98,7 +98,7 @@
 
       <div class="car-grid">
         {% for car in vehicles %}
-        <a href="{{ url_for('minisite.car_detail', website_name=website_name, car_id=car.id) }}" class="car-card">
+        <a href="{{ url_for('minisite.car_detail', dealer_name=dealer.name, website_name=website_name, car_id=car.id)  }}" class="car-card">
           <div class="car-card-img">
             {% if car.display_image_url %}
               <img src="{{ car.display_image_url }}" alt="{{ car.make }} {{ car.model }}" loading="lazy"
@@ -130,7 +130,7 @@
         {% else %}
         <div style="grid-column:1/-1;text-align:center;padding:80px 0;color:#64748b">
           <i class="fas fa-car" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:16px"></i>
-          No cars match your filters. <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" style="color:#1a73e8">Clear filters</a>
+          No cars match your filters. <a href="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}" style="color:#1a73e8">Clear filters</a>
         </div>
         {% endfor %}
       </div>
