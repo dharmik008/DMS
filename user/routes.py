@@ -9,6 +9,33 @@ from models import db, User, VehicleImage
 
 user_bp = Blueprint('user', __name__)
 
+
+def _log_user_action(action, module, status='Success', description=None):
+    """Best-effort activity logger for public-facing user actions (inquiries, etc.)."""
+    try:
+        from models import AdminLog
+        from utils.request_meta import get_request_meta
+        ip, browser, os_name, device = get_request_meta(request)
+        logged_user = g.user if getattr(g, 'user', None) else None
+        log = AdminLog(
+            user_id=logged_user.get('id') if logged_user else None,
+            admin_user=(logged_user.get('name') if logged_user else 'Guest') or 'Guest',
+            user_role='User' if logged_user else 'Guest',
+            action=action,
+            module=module,
+            description=description or action,
+            ip_address=ip,
+            device=device,
+            browser=browser,
+            timezone='Asia/Kolkata (IST)',
+            status=status,
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception:
+        pass
+
+
 @user_bp.before_request
 def track_visitor():
     from utils.visitor_tracker import log_visit
@@ -143,6 +170,8 @@ def inquire(vid):
     }
     
     inquiry_create(inquiry_data)
+    _log_user_action(f'Sent inquiry for {vehicle_name}', 'Inquiries',
+                      description=f'Inquiry from "{name}" for vehicle #{vid} ({vehicle_name})')
     flash('Inquiry sent successfully! The dealer will contact you soon.', 'success')
     return redirect(url_for('user.car_detail', vid=vid))
 
