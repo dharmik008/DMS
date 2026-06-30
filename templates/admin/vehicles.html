@@ -37,7 +37,7 @@
   <div class="table-wrapper">
   <table class="table" id="vTable">
     <thead>
-      <tr><th>ID</th><th>Image</th><th>Vehicle</th><th>Year</th><th>Fuel</th><th>Price</th><th>Approval</th><th>Status</th><th>Dealer</th><th>Added</th><th>Actions</th></tr>
+      <tr><th>ID</th><th>Image</th><th>Vehicle</th><th>Year</th><th>Fuel</th><th>Price</th><th>Condition</th><th>Approval</th><th>Status</th><th>Dealer</th><th>Added</th><th>Actions</th></tr>
     </thead>
     <tbody>
       {% for v in vehicles %}
@@ -66,8 +66,42 @@
         <td>{{ v.year }}</td>
         <td>{{ v.fuel_type or '—' }}</td>
         <td>₹{{ '{:,.0f}'.format(v.price|float) }}</td>
+        <td style="font-size:11px;line-height:1.7;">
+          {% set acc = v.accident_history or 'NA' %}
+          {# ── Unified Vehicle Condition Issue Scoring ── #}
+          {# 1. Accident History #}
+          {% if acc == 'Minor' %}{% set s_acc = 1 %}{% elif acc == 'Major' %}{% set s_acc = 2 %}{% else %}{% set s_acc = 0 %}{% endif %}
+          {# 2. Loan / Hypothecation #}
+          {% set loan = v.loan_status or 'NA' %}
+          {% if loan == 'Active' %}{% set s_loan = 1 %}{% else %}{% set s_loan = 0 %}{% endif %}
+          {# 3. RC & Service Records #}
+          {% set rc = v.rc_service_records or 'NA' %}
+          {% if rc == 'Partial' %}{% set s_rc = 1 %}{% elif rc == 'No' %}{% set s_rc = 2 %}{% else %}{% set s_rc = 0 %}{% endif %}
+          {# 4. Keys Available #}
+          {% set keys = v.keys_available or 'NA' %}
+          {% if keys == 'One' %}{% set s_keys = 1 %}{% else %}{% set s_keys = 0 %}{% endif %}
+          {# 5. Body Panel #}
+          {% set body = v.body_panel_status or 'NA' %}
+          {% if body == 'Repainted' %}{% set s_body = 1 %}{% elif body == 'Replaced' %}{% set s_body = 2 %}{% else %}{% set s_body = 0 %}{% endif %}
+          {# Total score #}
+          {% set issue_count = s_acc + s_loan + s_rc + s_keys + s_body %}
+          {% if issue_count == 0 %}
+            {% set condition_label = 'No Issues' %}
+          {% elif issue_count == 1 %}
+            {% set condition_label = 'Found 1 Issue' %}
+          {% else %}
+            {% set condition_label = 'Found ' ~ issue_count ~ ' Issues' %}
+          {% endif %}
+          <span style="display:inline-block;padding:2px 7px;border-radius:10px;font-weight:600;
+            {% if acc == 'No' %}background:#d1fae5;color:#065f46;
+            {% elif acc == 'Minor' %}background:#fef3c7;color:#92400e;
+            {% elif acc == 'Major' %}background:#fee2e2;color:#991b1b;
+            {% else %}background:#f3f4f6;color:#6b7280;{% endif %}">
+            🚗 {{ condition_label }}
+          </span><br>
+          <span style="color:var(--text-3);">🔑 {{ v.keys_available or 'NA' }}</span>
+        </td>
         <td>
-          <!-- Approval dropdown -->
           <select onchange="setVehicleApproval({{ v.id }}, this.value, this)"
             style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:12px;">
             <option value="pending"  {% if v.approval_status == 'pending'  %}selected{% endif %}>⏳ Pending</option>
