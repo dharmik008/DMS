@@ -2,16 +2,16 @@
 minisite/routes.py — Caryanams Mini Dealer Website
 
 Each dealer gets a public mini-website at:
-    /dealer/<website_name>/
+    /caryanams/<dealer_name>/<website_name>/
 
 Pages:
-  home          /dealer/<website_name>/
-  inventory     /dealer/<website_name>/inventory
-  car details   /dealer/<website_name>/car/<int:car_id>
-  about/profile /dealer/<website_name>/about
-  contact       /dealer/<website_name>/contact
-  deals         /dealer/<website_name>/deals
-  dashboard     /dealer/<website_name>/dashboard  ← NEW (dealer-only)
+  home          /caryanams/<dealer_name>/<website_name>/
+  inventory     /caryanams/<dealer_name>/<website_name>/inventory
+  car details   /caryanams/<dealer_name>/<website_name>/car/<int:car_id>
+  about/profile /caryanams/<dealer_name>/<website_name>/about
+  contact       /caryanams/<dealer_name>/<website_name>/contact
+  deals         /caryanams/<dealer_name>/<website_name>/deals
+  dashboard     /caryanams/<dealer_name>/<website_name>/dashboard
 
 Data is pulled live from the same DB — no duplication.
 Images are resolved from the same static folders as the DMS.
@@ -25,6 +25,7 @@ from flask import (
 )
 from models import db, User, Vehicle, VehicleImage, Inquiry, Lead, Deal
 from sqlalchemy import or_, func
+from subscription_features import feature_required, feature_allowed
 
 minisite_bp = Blueprint('minisite', __name__, template_folder='../templates/minisite')
 
@@ -140,6 +141,14 @@ def _get_dealer_by_wname(website_name: str):
     return dealer
 
 
+def _minisite_enabled(dealer: User) -> bool:
+    """Mini Website (the public storefront) is a Pro-plan-only feature."""
+    if not dealer:
+        return False
+    from subscription_features import plan_has_feature
+    return plan_has_feature(getattr(dealer, 'subscription_plan', None), 'mini_website')
+
+
 def _dealer_logo_ctx(dealer: User) -> dict:
     """Return logo display context for templates."""
     if dealer.website_logo:
@@ -208,15 +217,15 @@ def _require_dealer_auth(website_name_param='website_name'):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            website_name = kwargs.get(website_name_param) or args[0]
+            website_name = kwargs.get(website_name_param) or (args[1] if len(args) > 1 else args[0])
             uid = session.get('user_id')
             if not uid:
                 flash('Please log in to access the dashboard.', 'error')
-                return redirect(url_for('auth.login', returnUrl=request.path))
+                return redirect(url_for('auth.login', returnUrl=request.full_path.rstrip('?')))
             dealer = _get_dealer_by_wname(website_name)
             if not dealer or dealer.id != uid:
                 flash('Access denied.', 'error')
-                return redirect(url_for('auth.login', returnUrl=request.path))
+                return redirect(url_for('auth.login', returnUrl=request.full_path.rstrip('?')))
             return fn(*args, **kwargs)
         return wrapper
     return decorator
@@ -224,11 +233,11 @@ def _require_dealer_auth(website_name_param='website_name'):
 
 # ─── Home ─────────────────────────────────────────────────────────────────────
 
-@minisite_bp.route('/dealer/<website_name>/')
-@minisite_bp.route('/dealer/<website_name>')
-def home(website_name):
+@minisite_bp.route('/caryanams/<dealer_name>/<website_name>/')
+@minisite_bp.route('/caryanams/<dealer_name>/<website_name>')
+def home(dealer_name, website_name):
     dealer = _get_dealer_by_wname(website_name)
-    if not dealer:
+    if not dealer or not _minisite_enabled(dealer):
         return render_template('minisite/404.html'), 404
 
     featured = (
@@ -252,7 +261,7 @@ def home(website_name):
     return render_template(
         'minisite/home.html',
         dealer=dealer,
-        website_name=website_name,
+        website_name=website_name, dealer_name=dealer_name,
         featured=featured_dicts,
         **logo_ctx,
     )
@@ -260,10 +269,10 @@ def home(website_name):
 
 # ─── Inventory ────────────────────────────────────────────────────────────────
 
-@minisite_bp.route('/dealer/<website_name>/inventory')
-def inventory(website_name):
+@minisite_bp.route('/caryanams/<dealer_name>/<website_name>/inventory')
+def inventory(dealer_name, website_name):
     dealer = _get_dealer_by_wname(website_name)
-    if not dealer:
+    if not dealer or not _minisite_enabled(dealer):
         return render_template('minisite/404.html'), 404
 
     brand        = request.args.get('brand', '').strip()
@@ -309,7 +318,7 @@ def inventory(website_name):
     return render_template(
         'minisite/inventory.html',
         dealer=dealer,
-        website_name=website_name,
+        website_name=website_name, dealer_name=dealer_name,
         vehicles=vehicles,
         pagination=pagination,
         brands=brands,
@@ -321,10 +330,10 @@ def inventory(website_name):
 
 # ─── Car Details ──────────────────────────────────────────────────────────────
 
-@minisite_bp.route('/dealer/<website_name>/car/<int:car_id>')
-def car_detail(website_name, car_id):
+@minisite_bp.route('/caryanams/<dealer_name>/<website_name>/car/<int:car_id>')
+def car_detail(dealer_name, website_name, car_id):
     dealer = _get_dealer_by_wname(website_name)
-    if not dealer:
+    if not dealer or not _minisite_enabled(dealer):
         return render_template('minisite/404.html'), 404
 
     vehicle_obj = Vehicle.query.filter_by(id=car_id, dealer_id=dealer.id).first()
@@ -349,7 +358,7 @@ def car_detail(website_name, car_id):
     return render_template(
         'minisite/car_detail.html',
         dealer=dealer,
-        website_name=website_name,
+        website_name=website_name, dealer_name=dealer_name,
         vehicle=vehicle,
         similar=similar_dicts,
         **logo_ctx,
@@ -358,10 +367,10 @@ def car_detail(website_name, car_id):
 
 # ─── About / Profile ─────────────────────────────────────────────────────────
 
-@minisite_bp.route('/dealer/<website_name>/about')
-def about(website_name):
+@minisite_bp.route('/caryanams/<dealer_name>/<website_name>/about')
+def about(dealer_name, website_name):
     dealer = _get_dealer_by_wname(website_name)
-    if not dealer:
+    if not dealer or not _minisite_enabled(dealer):
         return render_template('minisite/404.html'), 404
 
     total_vehicles = Vehicle.query.filter_by(dealer_id=dealer.id, status='available').count()
@@ -370,7 +379,7 @@ def about(website_name):
     return render_template(
         'minisite/about.html',
         dealer=dealer,
-        website_name=website_name,
+        website_name=website_name, dealer_name=dealer_name,
         total_vehicles=total_vehicles,
         **logo_ctx,
     )
@@ -378,10 +387,10 @@ def about(website_name):
 
 # ─── Contact ──────────────────────────────────────────────────────────────────
 
-@minisite_bp.route('/dealer/<website_name>/contact', methods=['GET', 'POST'])
-def contact(website_name):
+@minisite_bp.route('/caryanams/<dealer_name>/<website_name>/contact', methods=['GET', 'POST'])
+def contact(dealer_name, website_name):
     dealer = _get_dealer_by_wname(website_name)
-    if not dealer:
+    if not dealer or not _minisite_enabled(dealer):
         return render_template('minisite/404.html'), 404
 
     if request.method == 'POST':
@@ -398,23 +407,23 @@ def contact(website_name):
         db.session.add(inq)
         db.session.commit()
         flash('Message sent! We will get back to you soon.', 'success')
-        return redirect(url_for('minisite.contact', website_name=website_name))
+        return redirect(url_for('minisite.contact', dealer_name=dealer_name, website_name=website_name))
 
     logo_ctx = _dealer_logo_ctx(dealer)
     return render_template(
         'minisite/contact.html',
         dealer=dealer,
-        website_name=website_name,
+        website_name=website_name, dealer_name=dealer_name,
         **logo_ctx,
     )
 
 
 # ─── Featured Deals ──────────────────────────────────────────────────────────
 
-@minisite_bp.route('/dealer/<website_name>/deals')
-def featured_deals(website_name):
+@minisite_bp.route('/caryanams/<dealer_name>/<website_name>/deals')
+def featured_deals(dealer_name, website_name):
     dealer = _get_dealer_by_wname(website_name)
-    if not dealer:
+    if not dealer or not _minisite_enabled(dealer):
         return render_template('minisite/404.html'), 404
 
     featured = (
@@ -429,7 +438,7 @@ def featured_deals(website_name):
     return render_template(
         'minisite/featured_deals.html',
         dealer=dealer,
-        website_name=website_name,
+        website_name=website_name, dealer_name=dealer_name,
         featured=featured_dicts,
         **logo_ctx,
     )
@@ -437,9 +446,10 @@ def featured_deals(website_name):
 
 # ─── Minisite Dashboard (dealer-authenticated) ────────────────────────────────
 
-@minisite_bp.route('/dealer/<website_name>/dashboard')
+@minisite_bp.route('/caryanams/<dealer_name>/<website_name>/dashboard')
 @_require_dealer_auth()
-def dashboard(website_name):
+@feature_required('mini_website')
+def dashboard(dealer_name, website_name):
     dealer = _get_dealer_by_wname(website_name)
 
     # ── Inventory overview ────────────────────────────────────────────────────
@@ -516,7 +526,7 @@ def dashboard(website_name):
     return render_template(
         'minisite/dashboard.html',
         dealer=dealer,
-        website_name=website_name,
+        website_name=website_name, dealer_name=dealer_name,
         # inventory
         total_vehicles=total_vehicles,
         available=available,
@@ -543,10 +553,10 @@ def dashboard(website_name):
 
 # ─── Inquiry / Lead Capture (AJAX) ───────────────────────────────────────────
 
-@minisite_bp.route('/dealer/<website_name>/inquiry', methods=['POST'])
-def submit_inquiry(website_name):
+@minisite_bp.route('/caryanams/<dealer_name>/<website_name>/inquiry', methods=['POST'])
+def submit_inquiry(dealer_name, website_name):
     dealer = _get_dealer_by_wname(website_name)
-    if not dealer:
+    if not dealer or not _minisite_enabled(dealer):
         return jsonify({'success': False, 'error': 'Dealer not found'}), 404
 
     vehicle_id = request.form.get('vehicle_id', type=int)
