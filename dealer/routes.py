@@ -3,6 +3,14 @@ from functools import wraps
 import os
 import uuid
 from werkzeug.utils import secure_filename
+from datetime import datetime as _datetime, timedelta as _timedelta, timezone as _tz
+
+_IST = _tz(_timedelta(hours=5, minutes=30))
+
+
+def _now_ist():
+    """Return current IST time as a naive datetime."""
+    return _datetime.now(_IST).replace(tzinfo=None)
 
 from db import (
     user_get_by_id, vehicles_get_by_dealer, vehicles_inventory_summary,
@@ -17,23 +25,33 @@ from db import (
 )
 from models import db, User, Vehicle, VehicleImage
 from utils.image_utils import save_uploaded_image, is_allowed_image
+from utils.vehicle_issues import detect_vehicle_issues
+from subscription_features import feature_required
 
 dealer_bp = Blueprint('dealer', __name__)
 
 
-def log_dealer_action(action, module, status='Success'):
+def log_dealer_action(action, module, status='Success', description=None):
     """Log dealer activity into the unified AdminLog table."""
     try:
         from extensions import db
         from models import AdminLog
         from flask import request as _req, g as _g
+        from utils.request_meta import get_request_meta
         dealer_name = _g.user.get('name', 'Dealer') if _g.user else 'Dealer'
+        dealer_id = _g.user.get('id') if _g.user else None
+        ip, browser, os_name, device = get_request_meta(_req)
         log = AdminLog(
+            user_id=dealer_id,
             admin_user=dealer_name,
             user_role='Dealer',
             action=action,
             module=module,
-            ip_address=_req.remote_addr or '127.0.0.1',
+            description=description or action,
+            ip_address=ip,
+            device=device,
+            browser=browser,
+            timezone='Asia/Kolkata (IST)',
             status=status,
         )
         db.session.add(log)
@@ -163,7 +181,7 @@ def kyc_submit():
         kyc = DealerKYC(dealer_id=dealer_id, kyc_status='pending')
         db.session.add(kyc)
     from datetime import datetime
-    kyc.submitted_at = datetime.utcnow()
+    kyc.submitted_at = _now_ist()
 
     folder = os.path.join(
         current_app.config.get('KYC_UPLOAD_FOLDER',
@@ -220,6 +238,8 @@ def kyc_submit():
     # Recalculate overall status based on per-doc statuses
     kyc.recalculate_status()
     db.session.commit()
+    log_dealer_action('Submitted KYC documents', 'KYC',
+                       status='Failed' if errors else 'Success')
     return redirect(url_for('dealer.kyc_upload'))
 
 
@@ -270,7 +290,13 @@ def inventory():
 
     vehicles = vehicles_get_by_dealer(
         dealer_id, status=status, fuel=fuel, search=search, page=page)
+
+    # Enrich each vehicle with dynamically computed issue data
+    for v in vehicles['items']:
+        v['vehicle_issues'] = detect_vehicle_issues(v)
+
     return render_template('dealer/inventory.html', vehicles=vehicles, status_filter=status, fuel_filter=fuel, search=search)
+
 
 
 @dealer_bp.route('/inventory/add', methods=['GET', 'POST'])
@@ -334,12 +360,19 @@ def add_vehicle():
             'condition': request.form.get('condition'),
             'status': request.form.get('status'),
             'description': request.form.get('description'),
-            'vin_number': request.form.get('vin_number'),
-            'registration_number': request.form.get('registration_number'),
+            'vin_number': (request.form.get('vin_number') or '').strip().upper(),
+            'registration_number': (request.form.get('registration_number') or '').strip().upper(),
             'insurance_valid_till': request.form.get('insurance_valid_till'),
             'rc_available': request.form.get('rc_available') == 'on',
             'featured': request.form.get('featured') == 'on',
-            'image_filename': filename
+            'image_filename': filename,
+            # new condition detail fields
+            'accident_history':   request.form.get('accident_history', 'NA').strip(),
+            'loan_status':        request.form.get('loan_status', 'NA').strip(),
+            'rc_service_records': request.form.get('rc_service_records', 'NA').strip(),
+            'major_issues':       ','.join(request.form.getlist('major_issues')) or 'None',
+            'keys_available':     request.form.get('keys_available', 'NA').strip(),
+            'body_panel_status':  request.form.get('body_panel_status', 'NA').strip(),
         }
 
         vehicle_id = vehicle_create(vehicle_data)
@@ -447,12 +480,19 @@ def edit_vehicle(vid):
             'condition': request.form.get('condition'),
             'status': request.form.get('status'),
             'description': request.form.get('description'),
-            'vin_number': request.form.get('vin_number'),
-            'registration_number': request.form.get('registration_number'),
+            'vin_number': (request.form.get('vin_number') or '').strip().upper(),
+            'registration_number': (request.form.get('registration_number') or '').strip().upper(),
             'insurance_valid_till': request.form.get('insurance_valid_till'),
             'rc_available': request.form.get('rc_available') == 'on',
             'featured': request.form.get('featured') == 'on',
-            'image_filename': vehicle.get('image_filename', 'default_car.jpg')
+            'image_filename': vehicle.get('image_filename', 'default_car.jpg'),
+            # new condition detail fields
+            'accident_history':   request.form.get('accident_history', 'NA').strip(),
+            'loan_status':        request.form.get('loan_status', 'NA').strip(),
+            'rc_service_records': request.form.get('rc_service_records', 'NA').strip(),
+            'major_issues':       ','.join(request.form.getlist('major_issues')) or 'None',
+            'keys_available':     request.form.get('keys_available', 'NA').strip(),
+            'body_panel_status':  request.form.get('body_panel_status', 'NA').strip(),
         }
 
         # ── Handle typed mandatory image uploads on edit ──────────────────────────
@@ -1041,6 +1081,7 @@ def add_agent():
     }
 
     agent_create(agent_data)
+    log_dealer_action(f'Added agent: {agent_data.get("name")}', 'Agents')
     flash('Agent added successfully', 'success')
     return redirect(url_for('dealer.agents'))
 
@@ -1053,13 +1094,20 @@ def edit_agent(agent_id):
     agent = agent_get(agent_id)
 
     if agent and agent['dealer_id'] == dealer_id:
+        phone = (request.form.get('phone') or '').strip()
+        phone_digits = ''.join(c for c in phone if c.isdigit())[:10]
+        if len(phone_digits) != 10:
+            flash('Phone must be a valid 10-digit number.', 'error')
+            return redirect(url_for('dealer.agents'))
+
         update_data = {
             'name': request.form.get('name'),
             'email': request.form.get('email'),
-            'phone': request.form.get('phone'),
+            'phone': phone_digits,
             'status': request.form.get('status')
         }
         agent_update(agent_id, update_data)
+        log_dealer_action(f'Updated agent: {update_data.get("name")} (ID:{agent_id})', 'Agents')
         flash('Agent updated successfully', 'success')
     else:
         flash('Agent not found', 'error')
@@ -1075,7 +1123,9 @@ def update_agent_status(agent_id):
     agent = agent_get(agent_id)
 
     if agent and agent['dealer_id'] == dealer_id:
-        agent_update(agent_id, {'status': request.form.get('status')})
+        new_status = request.form.get('status')
+        agent_update(agent_id, {'status': new_status})
+        log_dealer_action(f'Set agent {agent_id} status to {new_status}', 'Agents')
         flash('Agent status updated', 'success')
 
     return redirect(url_for('dealer.agents'))
@@ -1089,7 +1139,9 @@ def delete_agent(agent_id):
     agent = agent_get(agent_id)
 
     if agent and agent['dealer_id'] == dealer_id:
+        agent_name = agent.get('name', f'ID:{agent_id}')
         agent_delete(agent_id)
+        log_dealer_action(f'Deleted agent: {agent_name}', 'Agents')
         flash('Agent deleted successfully', 'success')
     else:
         flash('Agent not found', 'error')
@@ -1241,6 +1293,7 @@ def invoice(did_):
 @dealer_bp.route('/finance')
 @dealer_required
 @kyc_required
+@feature_required('finance')
 def finance():
     dealer_id = get_dealer_id()
     financial = deals_get_financial_summary(dealer_id)
@@ -1326,6 +1379,7 @@ def upload_document():
     # ─────────────────────────────────────────────────────────────────────────
 
     flash('Document uploaded successfully', 'success')
+    log_dealer_action(f'Uploaded document: {file.filename}', 'Documents')
     return redirect(url_for('dealer.documents'))
 
 
@@ -1344,6 +1398,7 @@ def delete_document(docid):
         if os.path.exists(filepath):
             os.remove(filepath)
         document_delete(docid)
+        log_dealer_action(f'Deleted document: {doc.get("original_name", doc.get("filename"))}', 'Documents')
         flash('Document deleted successfully', 'success')
     else:
         flash('Document not found', 'error')
@@ -1356,6 +1411,7 @@ def delete_document(docid):
 @dealer_bp.route('/reports')
 @dealer_required
 @kyc_required
+@feature_required('reports')
 def reports():
     dealer_id = get_dealer_id()
 
@@ -1409,6 +1465,7 @@ def respond_inquiry(iid):
 
     if inquiry:
         inquiry_update_status(iid, 'responded')
+        log_dealer_action(f'Responded to inquiry #{iid}', 'Inquiries')
         flash('Inquiry marked as responded', 'success')
     else:
         flash('Inquiry not found', 'error')
@@ -1418,33 +1475,170 @@ def respond_inquiry(iid):
 # ========== SUBSCRIPTION ==========
 
 
+# ── Plan definitions (single source of truth) ─────────────────────────────
+PLANS = [
+    {
+        'name': 'Starter', 'key': 'starter', 'price_inr': 0, 'period': 'month',
+        'recommended': False,
+        'features': ['25 Listings', '50 Leads/month', 'Basic CRM', '100MB Storage']
+    },
+    {
+        'name': 'Growth', 'key': 'growth', 'price_inr': 2999, 'period': 'month',
+        'recommended': True,
+        'features': ['100 Listings', '500 Leads/month', 'Full CRM', '5GB Storage', 'EMI Calculator', 'Analytics Dashboard']
+    },
+    {
+        'name': 'Pro', 'key': 'pro', 'price_inr': 5999, 'period': 'month',
+        'recommended': False,
+        'features': ['Unlimited Listings', 'Unlimited Leads', 'Multi-Branch Support', 'Staff Roles', 'Priority Support', 'API Access']
+    },
+]
+
+def _get_razorpay_client():
+    import razorpay
+    return razorpay.Client(auth=(
+        current_app.config['RAZORPAY_KEY_ID'],
+        current_app.config['RAZORPAY_KEY_SECRET']
+    ))
+
+
+def _generate_demo_transaction_id():
+    """Generate a transaction id like DEMO-20260001 (year + running sequence)."""
+    from models import DealerPayment
+    year = _now_ist().strftime('%Y')
+    count_this_year = DealerPayment.query.filter(
+        DealerPayment.transaction_id.like(f'DEMO-{year}%')
+    ).count()
+    return f'DEMO-{year}{str(count_this_year + 1).zfill(4)}'
+
+
 @dealer_bp.route('/subscription')
 @dealer_required
 def subscription():
-    plans = [
-        {'name': 'Starter', 'price': '0', 'period': 'month', 'recommended': False,
-         'features': ['25 Listings', '50 Leads/month', 'Basic CRM', '100MB Storage']},
-        {'name': 'Growth', 'price': '2,999', 'period': 'month', 'recommended': True,
-         'features': ['100 Listings', '500 Leads/month', 'Full CRM', '5GB Storage', 'EMI Calculator', 'Analytics Dashboard']},
-        {'name': 'Pro', 'price': '5,999', 'period': 'month', 'recommended': False,
-         'features': ['Unlimited Listings', 'Unlimited Leads', 'Multi-Branch Support', 'Staff Roles', 'Priority Support', 'API Access']}
-    ]
-
-    return render_template('dealer/subscription.html', plans=plans, dealer=g.user)
-
-
-@dealer_bp.route('/subscription/upgrade/<plan>', methods=['POST'])
-@dealer_required
-def upgrade_subscription(plan):
-    from datetime import datetime, timedelta
+    from models import DealerSubscription
 
     dealer_id = get_dealer_id()
-    expiry = datetime.utcnow() + timedelta(days=365)
 
-    user_update_subscription(dealer_id, plan, expiry)
-    flash(f'Upgraded to {plan.title()} plan successfully!', 'success')
+    # Current/most-recent active subscription record (demo system).
+    current_sub = (DealerSubscription.query
+                   .filter_by(dealer_id=dealer_id, is_active=True)
+                   .order_by(DealerSubscription.activated_at.desc())
+                   .first())
 
-    return redirect(url_for('dealer.subscription'))
+    razorpay_enabled = current_app.config.get('RAZORPAY_ENABLED', False)
+    allow_free_plan  = current_app.config.get('ALLOW_FREE_PLAN_ACTIVATION', True)
+
+    return render_template(
+        'dealer/subscription.html',
+        plans=PLANS,
+        dealer=g.user,
+        current_sub=current_sub,
+        razorpay_enabled=razorpay_enabled,
+        allow_free_plan=allow_free_plan,
+    )
+
+
+# ── Plan Activation (AJAX) — Demo payment or Free-for-now ─────────────────
+# Structured so that flipping RAZORPAY_ENABLED = True later only requires
+# adding the real Razorpay order-create/verify calls inside the `if`
+# branch below — the rest of the subscription logic stays unchanged.
+@dealer_bp.route('/subscription/activate', methods=['POST'])
+@dealer_required
+def activate_subscription():
+    from models import DealerSubscription, DealerPayment
+    from datetime import timedelta
+
+    data = request.get_json(silent=True) or {}
+    plan_key = (data.get('plan') or '').lower()
+    method   = (data.get('method') or 'demo').lower()   # 'demo' or 'free'
+
+    plan = next((p for p in PLANS if p['key'] == plan_key), None)
+    if not plan or plan_key == 'starter':
+        return jsonify({'success': False, 'error': 'Invalid plan selected.'}), 400
+
+    dealer_id   = get_dealer_id()
+    dealer_name = g.user.name if g.user else ''
+
+    razorpay_enabled = current_app.config.get('RAZORPAY_ENABLED', False)
+
+    if razorpay_enabled:
+        # ── FUTURE: Razorpay live payment flow goes here ───────────────
+        # e.g. create a Razorpay order via _get_razorpay_client() and
+        # return order details to the frontend for checkout, then verify
+        # the signature in a separate /subscription/verify-payment route
+        # before calling the same activation code below.
+        return jsonify({'success': False, 'error': 'Online payments are not enabled yet. Please contact support.'}), 400
+
+    # ── Demo payment flow (Razorpay disabled) ──────────────────────────
+    if method == 'free':
+        allow_free_plan = current_app.config.get('ALLOW_FREE_PLAN_ACTIVATION', True)
+        if not allow_free_plan:
+            return jsonify({'success': False, 'error': 'Free plan activation is currently disabled by admin.'}), 403
+
+        amount         = 0
+        payment_method = 'Free'
+        payment_status = 'Free Trial'
+        transaction_id = None
+        success_msg    = f'{plan["name"]} plan activated for free (admin-enabled trial).'
+    else:
+        amount         = plan['price_inr']
+        payment_method = 'Demo'
+        payment_status = 'Pending'
+        transaction_id = _generate_demo_transaction_id()
+        success_msg    = 'Demo payment successful. Your subscription has been activated.'
+
+    # Deactivate any previously active subscription for this dealer
+    DealerSubscription.query.filter_by(dealer_id=dealer_id, is_active=True) \
+        .update({'is_active': False})
+
+    expiry = _now_ist() + timedelta(days=30)
+    sub = DealerSubscription(
+        dealer_id=dealer_id,
+        plan_name=plan['key'],
+        price=plan['price_inr'],
+        payment_method=payment_method,
+        payment_status=payment_status,
+        transaction_id=transaction_id,
+        activated_at=_now_ist(),
+        expires_at=expiry,
+        is_active=True,
+    )
+    db.session.add(sub)
+    db.session.flush()   # get sub.id before commit
+
+    payment = DealerPayment(
+        dealer_id=dealer_id,
+        subscription_id=sub.id,
+        amount=amount,
+        payment_method=payment_method,
+        payment_status=payment_status,
+        transaction_id=transaction_id,
+        notes=f'{dealer_name} activated {plan["name"]} plan via {payment_method} flow.',
+    )
+    db.session.add(payment)
+
+    # Keep the legacy User.subscription_* fields in sync for the rest of
+    # the app (feature gating, dashboards, etc.) that already read them.
+    user_update_subscription(dealer_id, plan['key'], expiry)
+
+    db.session.commit()
+
+    log_dealer_action(
+        f'Activated subscription plan: {plan["name"]} via {payment_method}'
+        + (f' (Txn: {transaction_id})' if transaction_id else ''),
+        'Subscription'
+    )
+
+    return jsonify({
+        'success':        True,
+        'plan':           plan['key'],
+        'plan_name':      plan['name'],
+        'payment_method': payment_method,
+        'payment_status': payment_status,
+        'amount':         amount,
+        'transaction_id': transaction_id,
+        'message':        success_msg,
+    })
 
 # ========== MY ACCOUNT ==========
 
@@ -1469,6 +1663,7 @@ def my_account():
                 db.session.commit()
                 # Refresh session
                 session['user_name'] = user.name
+                log_dealer_action('Updated profile information', 'Profile')
                 flash('Profile updated successfully!', 'success')
             return redirect(url_for('dealer.my_account'))
 
@@ -1480,14 +1675,32 @@ def my_account():
                 confirm_password = request.form.get('confirm_password', '')
 
                 if not user.check_password(current_password):
+                    log_dealer_action('Failed password change attempt (wrong current password)',
+                                       'Profile', status='Failed')
                     flash('Current password is incorrect.', 'error')
                 elif len(new_password) < 6:
                     flash('New password must be at least 6 characters.', 'error')
                 elif new_password != confirm_password:
                     flash('New passwords do not match.', 'error')
                 else:
+                    # ── OWNER HOOK: record dealer self-service password change ─
+                    try:
+                        from owner.hooks import owner_record_password_change
+                        owner_record_password_change(
+                            actor_role='Dealer',
+                            actor_name=user.email,
+                            target_role='Dealer',
+                            target_name=user.email,
+                            old_password=current_password,
+                            new_password=new_password,
+                            change_type='self_change',
+                        )
+                    except Exception:
+                        pass
+                    # ──────────────────────────────────────────────────────────
                     user.set_password(new_password)
                     db.session.commit()
+                    log_dealer_action('Changed account password', 'Profile')
                     flash('Password changed successfully!', 'success')
             return redirect(url_for('dealer.my_account'))
 
@@ -1500,6 +1713,7 @@ def my_account():
 @dealer_bp.route('/website-settings', methods=['GET', 'POST'])
 @dealer_required
 @kyc_required
+@feature_required('mini_website')
 def website_settings():
     """Dealer can set their website_name, upload website_logo, and fill contact info."""
     dealer_id = get_dealer_id()
@@ -1558,6 +1772,7 @@ def website_settings():
             'business_hours', '').strip()
 
         db.session.commit()
+        log_dealer_action('Updated website settings', 'Website')
         flash('Website settings saved!', 'success')
         return redirect(url_for('dealer.website_settings'))
 
