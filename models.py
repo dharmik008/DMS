@@ -6,7 +6,15 @@ Fixed: SQLAlchemy relationship conflicts using back_populates on both sides.
 from extensions import db, login_manager
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as _tz
+
+# ── IST timestamp helper (UTC+5:30, stored as naive datetime) ────────────────
+_IST = _tz(timedelta(hours=5, minutes=30))
+
+
+def _now_ist():
+    """Return current IST time as a naive datetime (for DB storage)."""
+    return datetime.now(_IST).replace(tzinfo=None)
 
 
 @login_manager.user_loader
@@ -79,7 +87,9 @@ class User(UserMixin, db.Model):
     gst_number = db.Column(db.String(20))
     city = db.Column(db.String(100))
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_locked = db.Column(db.Boolean, default=False)               # v26: Owner can lock accounts
+    force_password_change = db.Column(db.Boolean, default=False)   # v26: Force PW change on next login
+    created_at = db.Column(db.DateTime, default=_now_ist)
     subscription_plan = db.Column(db.String(50), default='starter')
     subscription_expiry = db.Column(db.DateTime, nullable=True)
     subscription_status = db.Column(db.String(20), default='active')
@@ -120,7 +130,7 @@ class User(UserMixin, db.Model):
     def has_active_subscription(self):
         if not self.subscription_expiry:
             return True
-        return self.subscription_expiry > datetime.utcnow() and self.subscription_status == 'active'
+        return self.subscription_expiry > _now_ist() and self.subscription_status == 'active'
 
     def get_subscription_limits(self):
         limits = {
@@ -143,9 +153,9 @@ class Agent(db.Model):
     email = db.Column(db.String(120), nullable=False)
     phone = db.Column(db.String(20),  nullable=False)
     status = db.Column(db.String(20),  default='available')
-    created_at = db.Column(db.DateTime,    default=datetime.utcnow)
+    created_at = db.Column(db.DateTime,    default=_now_ist)
     updated_at = db.Column(
-        db.DateTime,    default=datetime.utcnow, onupdate=datetime.utcnow)
+        db.DateTime,    default=_now_ist, onupdate=_now_ist)
 
     dealer = db.relationship(
         'User',  back_populates='agents', foreign_keys=[dealer_id])
@@ -156,7 +166,7 @@ class Agent(db.Model):
         return {'id': self.id, 'dealer_id': self.dealer_id,
                 'name': self.name, 'email': self.email,
                 'phone': self.phone, 'status': self.status,
-                'created_at': self.created_at}
+                'created_at': self.created_at.isoformat() if self.created_at else ''}
 
     def __repr__(self):
         return f'<Agent {self.name}>'
@@ -188,10 +198,19 @@ class Vehicle(db.Model):
     rc_available = db.Column(db.Boolean, default=True)
     featured = db.Column(db.Boolean, default=False)
     # approved/pending/rejected
-    approval_status = db.Column(db.String(20), default='approved')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    approval_status = db.Column(db.String(20), default='Pending')
+    created_at = db.Column(db.DateTime, default=_now_ist)
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        db.DateTime, default=_now_ist, onupdate=_now_ist)
+
+    # ── New vehicle condition details (v18) ──────────────────────────────────
+    # All fields default to 'NA' so existing records remain unaffected.
+    accident_history   = db.Column(db.String(20), default='NA')   # No/Minor/Major/NA
+    loan_status        = db.Column(db.String(20), default='NA')   # Active/Closed/No Loan/NA
+    rc_service_records = db.Column(db.String(20), default='NA')   # Yes/No/Partial/NA
+    major_issues       = db.Column(db.Text,        default='None') # comma-separated multi-select
+    keys_available     = db.Column(db.String(20), default='NA')   # One/Two/Three/NA
+    body_panel_status  = db.Column(db.String(20), default='NA')   # No/Repainted/Replaced/NA
 
     # FIX: 'deals' declared here + 'vehicle' on Deal — both use back_populates.
     # Old code had Vehicle.deals(backref='vehicle_ref') AND Deal.vehicle()
@@ -223,7 +242,14 @@ class Vehicle(db.Model):
             'image_filename': self.image_filename, 'vin_number': self.vin_number,
             'registration_number': self.registration_number,
             'rc_available': self.rc_available, 'featured': self.featured,
-            'created_at': self.created_at, 'insurance_till': self.insurance_valid_till
+            'created_at': self.created_at, 'insurance_till': self.insurance_valid_till,
+            # new condition detail fields
+            'accident_history':   self.accident_history   or 'NA',
+            'loan_status':        self.loan_status        or 'NA',
+            'rc_service_records': self.rc_service_records or 'NA',
+            'major_issues':       self.major_issues       or 'None',
+            'keys_available':     self.keys_available     or 'NA',
+            'body_panel_status':  self.body_panel_status  or 'NA',
         }
 
     def __repr__(self):
@@ -246,7 +272,7 @@ class VehicleImage(db.Model):
     # image_type: one of MANDATORY_TYPES or 'gallery' for additional images
     image_type = db.Column(db.String(30), default='gallery', nullable=False)
     sort_order = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=_now_ist)
 
 
 class Lead(db.Model):
@@ -268,9 +294,9 @@ class Lead(db.Model):
     follow_up_date = db.Column(db.DateTime)
     assigned_to = db.Column(db.String(100))
     budget = db.Column(db.Float)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=_now_ist)
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        db.DateTime, default=_now_ist, onupdate=_now_ist)
 
     dealer = db.relationship(
         'User',    back_populates='leads',   foreign_keys=[dealer_id])
@@ -322,9 +348,9 @@ class Deal(db.Model):
     gst_amount = db.Column(db.Float, default=0)
     total_amount = db.Column(db.Float)
     notes = db.Column(db.Text)
-    deal_date = db.Column(db.DateTime, default=datetime.utcnow)
+    deal_date = db.Column(db.DateTime, default=_now_ist)
     delivery_date = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=_now_ist)
 
     # FIX: Deal.vehicle now uses back_populates='deals' matching Vehicle.deals.
     # Old code: Vehicle had backref='vehicle_ref' AND Deal had a separate
@@ -367,7 +393,7 @@ class Document(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     original_name = db.Column(db.String(255))
     notes = db.Column(db.Text)
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    uploaded_at = db.Column(db.DateTime, default=_now_ist)
 
     def __repr__(self):
         return f'<Document {self.doc_type}>'
@@ -386,7 +412,7 @@ class Inquiry(db.Model):
     message = db.Column(db.Text)
     inquiry_type = db.Column(db.String(30),  default='general')
     status = db.Column(db.String(20),  default='pending')
-    created_at = db.Column(db.DateTime,    default=datetime.utcnow)
+    created_at = db.Column(db.DateTime,    default=_now_ist)
 
     vehicle = db.relationship(
         'Vehicle', back_populates='inquiries', foreign_keys=[vehicle_id])
@@ -401,15 +427,26 @@ class AdminLog(db.Model):
     """Stores all user/role actions for the unified Activity Log page."""
     __tablename__ = 'admin_logs'
     id         = db.Column(db.Integer, primary_key=True)
+    # Numeric id of the acting user (users.id or sub_admins.id) when known.
+    # Nullable — kept optional so existing call sites that don't pass it
+    # keep working exactly as before.
+    user_id    = db.Column(db.Integer,     nullable=True)
     admin_user = db.Column(db.String(100), default='admin')
     # Super Admin | Sub Admin | Admin | Dealer
     user_role  = db.Column(db.String(30),  default='Admin')
     action     = db.Column(db.String(255), nullable=False)
     module     = db.Column(db.String(50),  default='System')
+    # Optional longer-form description shown in the expanded row / export.
+    # Falls back to `action` everywhere it's displayed when blank.
+    description = db.Column(db.Text,       nullable=True)
     ip_address = db.Column(db.String(45),  default='127.0.0.1')
+    device     = db.Column(db.String(20),  nullable=True)   # Desktop | Mobile | Tablet
+    browser    = db.Column(db.String(80),  nullable=True)   # Chrome | Firefox | Safari …
+    # IANA-style label of the timezone timestamps are stored in (always IST here)
+    timezone   = db.Column(db.String(50),  default='Asia/Kolkata (IST)')
     # Success | Failed | Warning
     status     = db.Column(db.String(20),  default='Success')
-    created_at = db.Column(db.DateTime,    default=datetime.utcnow)
+    created_at = db.Column(db.DateTime,    default=_now_ist)
 
     def __repr__(self):
         return f'<AdminLog {self.action}>'
@@ -431,7 +468,7 @@ class CentralDocumentStorage(db.Model):
     module_name   = db.Column(db.String(100), nullable=False)        # Documents|KYC|Vehicles|Deals|Invoices|Reports|CRM
     document_type = db.Column(db.String(100), nullable=True)         # e.g. RC Book, Invoice, Pan Card …
     uploaded_by   = db.Column(db.Integer,     nullable=True)         # user id who triggered upload
-    created_at    = db.Column(db.DateTime,    default=datetime.utcnow)
+    created_at    = db.Column(db.DateTime,    default=_now_ist)
     # active | deleted
     status        = db.Column(db.String(50),  default='active')
     # Optional reassignment / ownership notes
@@ -473,7 +510,7 @@ class CentralDocumentAuditLog(db.Model):
     dealer_name      = db.Column(db.String(255), nullable=True)   # snapshot of dealer name
     document_type    = db.Column(db.String(100), nullable=True)   # snapshot of doc type
 
-    created_at       = db.Column(db.DateTime,    default=datetime.utcnow)
+    created_at       = db.Column(db.DateTime,    default=_now_ist)
 
     document = db.relationship('CentralDocumentStorage',
                                backref=db.backref('audit_logs', lazy='dynamic'))
@@ -495,7 +532,7 @@ def seed_demo_data():
         role='dealer', company_name='Rajesh Motors Pvt Ltd',
         gst_number='27AABCU9603R1ZX', city='Mumbai',
         subscription_plan='growth',
-        subscription_expiry=datetime.utcnow() + timedelta(days=365),
+        subscription_expiry=_now_ist() + timedelta(days=365),
         subscription_status='active'
     )
     dealer.set_password('dealer123')
@@ -599,7 +636,7 @@ class DealerKYC(db.Model):
     # 'approved' only when ALL 3 docs are approved
     kyc_status = db.Column(db.String(20), default='pending')
     rejection_reason = db.Column(db.Text, nullable=True)
-    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    submitted_at = db.Column(db.DateTime, default=_now_ist)
     reviewed_at = db.Column(db.DateTime, nullable=True)
     reviewed_by = db.Column(db.String(100), nullable=True)
 
@@ -636,7 +673,7 @@ class DealerNotification(db.Model):
     message = db.Column(db.Text, nullable=False)
     notif_type = db.Column(db.String(30), default='info')  # success | warning | danger | info
     is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=_now_ist)
 
     dealer = db.relationship('User', backref=db.backref('notifications', lazy='dynamic', cascade='all, delete-orphan'))
 
@@ -657,7 +694,7 @@ class SubAdmin(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     # Permissions as comma-separated string
     permissions = db.Column(db.String(500), default='dealers,vehicles,leads,kyc')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=_now_ist)
     last_login = db.Column(db.DateTime, nullable=True)
     created_by = db.Column(db.String(100), default='admin')
 
@@ -698,7 +735,7 @@ class LeadImportFile(db.Model):
     uploaded_by   = db.Column(db.String(100), default='admin')
     status        = db.Column(db.String(20),  default='processing')  # processing|done|failed
     error_message = db.Column(db.Text, nullable=True)
-    uploaded_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    uploaded_at   = db.Column(db.DateTime, default=_now_ist)
 
     # relationship to leads created from this file
     imported_leads = db.relationship('ImportedLead', back_populates='import_file',
@@ -748,8 +785,8 @@ class ImportedLead(db.Model):
     status          = db.Column(db.String(30), default='New')
     # New | Assigned | Contacted | Follow-up | Converted | Rejected
 
-    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at      = db.Column(db.DateTime, default=_now_ist)
+    updated_at      = db.Column(db.DateTime, default=_now_ist, onupdate=_now_ist)
 
     # relationships
     import_file     = db.relationship('LeadImportFile', back_populates='imported_leads')
@@ -799,7 +836,7 @@ class LeadAssignmentHistory(db.Model):
     assigned_by     = db.Column(db.String(100), default='admin')
     action          = db.Column(db.String(30),  default='assigned')  # assigned | reassigned | unassigned
     notes           = db.Column(db.Text, nullable=True)
-    assigned_at     = db.Column(db.DateTime, default=datetime.utcnow)
+    assigned_at     = db.Column(db.DateTime, default=_now_ist)
 
     lead   = db.relationship('ImportedLead', backref=db.backref('assignment_history',
                                                                  lazy='dynamic',
@@ -823,8 +860,17 @@ class VisitorLog(db.Model):
     device_type      = db.Column(db.String(20),  nullable=True)   # Desktop / Mobile / Tablet
     page_url         = db.Column(db.String(500), nullable=True)
     referrer         = db.Column(db.String(500), nullable=True)
-    visited_at       = db.Column(db.DateTime,    default=datetime.utcnow)
-    created_at       = db.Column(db.DateTime,    default=datetime.utcnow)
+    # Stable anonymous id grouping multiple page visits from the same browser session.
+    session_id       = db.Column(db.String(64),  nullable=True)
+    # If the visitor was logged in at the time of this page view (dealer/user
+    # account), their identity is captured here — nullable, since most public
+    # visitors are anonymous. Lets the Visitor Logs page show WHO a visit
+    # belongs to, not just where it came from.
+    user_id          = db.Column(db.Integer,     nullable=True)
+    visitor_name     = db.Column(db.String(100), nullable=True)
+    visitor_role     = db.Column(db.String(30),  nullable=True)   # Dealer | User
+    visited_at       = db.Column(db.DateTime,    default=_now_ist)
+    created_at       = db.Column(db.DateTime,    default=_now_ist)
 
     def __repr__(self):
         return f'<VisitorLog {self.ip_address} {self.page_url}>'
@@ -860,9 +906,9 @@ class KYCReview(db.Model):
     previous_status     = db.Column(db.String(20),  nullable=True)
     reviewed_by         = db.Column(db.String(100), nullable=False, default='admin')
     reviewed_by_id      = db.Column(db.Integer,     nullable=True)   # sub-admin id if applicable
-    reviewed_at         = db.Column(db.DateTime,    default=datetime.utcnow)
-    created_at          = db.Column(db.DateTime,    default=datetime.utcnow)
-    updated_at          = db.Column(db.DateTime,    default=datetime.utcnow, onupdate=datetime.utcnow)
+    reviewed_at         = db.Column(db.DateTime,    default=_now_ist)
+    created_at          = db.Column(db.DateTime,    default=_now_ist)
+    updated_at          = db.Column(db.DateTime,    default=_now_ist, onupdate=_now_ist)
     # soft-delete: set deleted_at to remove from active views, keep for audit
     deleted_at          = db.Column(db.DateTime,    nullable=True)
 
@@ -875,7 +921,7 @@ class KYCReview(db.Model):
         return self.deleted_at is not None
 
     def soft_delete(self):
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = _now_ist()
 
     def to_dict(self):
         return {
@@ -892,3 +938,118 @@ class KYCReview(db.Model):
 
     def __repr__(self):
         return f'<KYCReview dealer={self.dealer_id} doc={self.document_type} status={self.status}>'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Razorpay Payment Orders — tracks every payment attempt for subscriptions
+# ─────────────────────────────────────────────────────────────────────────────
+class PaymentOrder(db.Model):
+    __tablename__ = 'payment_orders'
+
+    id              = db.Column(db.Integer,     primary_key=True)
+    dealer_id       = db.Column(db.Integer,     db.ForeignKey('users.id'), nullable=False)
+    razorpay_order_id   = db.Column(db.String(100), unique=True, nullable=False)
+    razorpay_payment_id = db.Column(db.String(100), nullable=True)   # filled after success
+    razorpay_signature  = db.Column(db.String(256), nullable=True)   # filled after success
+    plan            = db.Column(db.String(50),  nullable=False)       # starter/growth/pro
+    amount_paise    = db.Column(db.Integer,     nullable=False)       # amount in paise (₹2999 = 299900)
+    currency        = db.Column(db.String(10),  default='INR')
+    status          = db.Column(db.String(30),  default='created')   # created / paid / failed
+    created_at      = db.Column(db.DateTime,    default=_now_ist)
+    paid_at         = db.Column(db.DateTime,    nullable=True)
+
+    dealer = db.relationship('User', foreign_keys=[dealer_id])
+
+    def to_dict(self):
+        return {
+            'id':                   self.id,
+            'dealer_id':            self.dealer_id,
+            'razorpay_order_id':    self.razorpay_order_id,
+            'razorpay_payment_id':  self.razorpay_payment_id,
+            'plan':                 self.plan,
+            'amount_paise':         self.amount_paise,
+            'status':               self.status,
+            'created_at':           self.created_at.isoformat() if self.created_at else None,
+            'paid_at':              self.paid_at.isoformat() if self.paid_at else None,
+        }
+
+    def __repr__(self):
+        return f'<PaymentOrder {self.razorpay_order_id} {self.status}>'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dealer Subscription — current/active subscription record for a dealer.
+# Demo payment flow today; designed so Razorpay can be plugged in later
+# without changing this schema (see RAZORPAY_ENABLED in dealer/routes.py).
+# ─────────────────────────────────────────────────────────────────────────────
+class DealerSubscription(db.Model):
+    __tablename__ = 'dealer_subscriptions'
+
+    id              = db.Column(db.Integer,     primary_key=True)
+    dealer_id       = db.Column(db.Integer,     db.ForeignKey('users.id'), nullable=False)
+    plan_name       = db.Column(db.String(50),  nullable=False)        # starter/growth/pro
+    price           = db.Column(db.Integer,     default=0)             # ₹ per month
+    payment_method  = db.Column(db.String(20),  default='Demo')        # Demo / Free / Razorpay
+    payment_status  = db.Column(db.String(30),  default='Pending')     # Pending / Free Trial / Paid / Active
+    transaction_id  = db.Column(db.String(100), nullable=True)
+    activated_at    = db.Column(db.DateTime,    default=_now_ist)
+    expires_at      = db.Column(db.DateTime,    nullable=True)
+    is_active       = db.Column(db.Boolean,     default=True)
+    created_at      = db.Column(db.DateTime,    default=_now_ist)
+    updated_at      = db.Column(db.DateTime,    default=_now_ist, onupdate=_now_ist)
+
+    dealer = db.relationship('User', foreign_keys=[dealer_id])
+    payments = db.relationship('DealerPayment', backref='subscription', lazy='dynamic',
+                                order_by='DealerPayment.created_at.desc()')
+
+    def to_dict(self):
+        return {
+            'id':             self.id,
+            'dealer_id':      self.dealer_id,
+            'plan_name':      self.plan_name,
+            'price':          self.price,
+            'payment_method': self.payment_method,
+            'payment_status': self.payment_status,
+            'transaction_id': self.transaction_id,
+            'activated_at':   self.activated_at.isoformat() if self.activated_at else None,
+            'expires_at':     self.expires_at.isoformat() if self.expires_at else None,
+            'is_active':      self.is_active,
+        }
+
+    def __repr__(self):
+        return f'<DealerSubscription dealer={self.dealer_id} plan={self.plan_name} active={self.is_active}>'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dealer Payment — one row per payment attempt (demo or, later, real Razorpay)
+# ─────────────────────────────────────────────────────────────────────────────
+class DealerPayment(db.Model):
+    __tablename__ = 'dealer_payments'
+
+    id              = db.Column(db.Integer,     primary_key=True)
+    dealer_id       = db.Column(db.Integer,     db.ForeignKey('users.id'), nullable=False)
+    subscription_id = db.Column(db.Integer,     db.ForeignKey('dealer_subscriptions.id'), nullable=True)
+    amount          = db.Column(db.Integer,     default=0)
+    payment_method  = db.Column(db.String(20),  default='Demo')        # Demo / Free / Razorpay
+    payment_status  = db.Column(db.String(30),  default='Pending')     # Pending / Free Trial / Paid / Failed
+    transaction_id  = db.Column(db.String(100), nullable=True)
+    notes           = db.Column(db.Text,        nullable=True)
+    created_at      = db.Column(db.DateTime,    default=_now_ist)
+
+    dealer = db.relationship('User', foreign_keys=[dealer_id])
+
+    def to_dict(self):
+        return {
+            'id':              self.id,
+            'dealer_id':       self.dealer_id,
+            'subscription_id': self.subscription_id,
+            'amount':          self.amount,
+            'payment_method':  self.payment_method,
+            'payment_status':  self.payment_status,
+            'transaction_id':  self.transaction_id,
+            'notes':           self.notes,
+            'created_at':      self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<DealerPayment dealer={self.dealer_id} amount={self.amount} status={self.payment_status}>'
