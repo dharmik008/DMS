@@ -86,7 +86,7 @@
 
 <nav class="ms-nav">
   <div class="ms-nav-inner">
-    <a href="{{ url_for('minisite.home', website_name=website_name) }}" class="ms-logo">
+    <a href="{{ url_for('minisite.home', dealer_name=dealer.name, website_name=website_name)  }}" class="ms-logo">
       {% if logo_type == 'image' %}
         <img src="{{ url_for('static', filename='images/uploads/' ~ logo_value) }}" alt="Logo" />
       {% else %}
@@ -95,18 +95,19 @@
       <span>{{ dealer.website_name or dealer.name }}</span>
     </a>
     <div class="ms-nav-links" id="navLinks">
-      <a href="{{ url_for('minisite.home', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.home' else '' }}">Home</a>
+      <a href="{{ url_for('minisite.home', dealer_name=dealer.name, website_name=website_name)  }}" class="{{ 'active' if request.endpoint == 'minisite.home' else '' }}">Home</a>
       {% if current_user and current_user.role == 'dealer' and current_user.id == dealer.id %}
-      <a href="{{ url_for('minisite.dashboard', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.dashboard' else '' }}" style="background:#eff6ff;color:var(--primary)">
+      <a href="{{ url_for('minisite.dashboard', dealer_name=dealer.name, website_name=website_name)  }}" class="{{ 'active' if request.endpoint == 'minisite.dashboard' else '' }}" style="background:#eff6ff;color:var(--primary)">
         <i class="fas fa-chart-pie" style="font-size:12px"></i> Dashboard
       </a>
       {% endif %}
-      <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.inventory' else '' }}">Inventory</a>
-      <a href="{{ url_for('minisite.featured_deals', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.featured_deals' else '' }}">Deals</a>
-      <a href="{{ url_for('minisite.about', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.about' else '' }}">About Us</a>
-      <a href="{{ url_for('minisite.contact', website_name=website_name) }}" class="{{ 'active' if request.endpoint == 'minisite.contact' else '' }}">Contact</a>
+      <a href="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}" class="{{ 'active' if request.endpoint == 'minisite.inventory' else '' }}">Inventory</a>
+      <a href="{{ url_for('minisite.featured_deals', dealer_name=dealer.name, website_name=website_name)  }}" class="{{ 'active' if request.endpoint == 'minisite.featured_deals' else '' }}">Deals</a>
+      <a href="{{ url_for('minisite.about', dealer_name=dealer.name, website_name=website_name)  }}" class="{{ 'active' if request.endpoint == 'minisite.about' else '' }}">About Us</a>
+      <a href="{{ url_for('minisite.contact', dealer_name=dealer.name, website_name=website_name)  }}" class="{{ 'active' if request.endpoint == 'minisite.contact' else '' }}">Contact</a>
     </div>
     <div class="ms-nav-cta">
+      {% set _ms_return = request.full_path[:-1] if request.full_path.endswith('?') else request.full_path %}
       {% if dealer.whatsapp_number %}
       <a href="https://wa.me/91{{ dealer.whatsapp_number | replace('+91','') | replace(' ','') }}" target="_blank" class="btn btn-whatsapp">
         <i class="fab fa-whatsapp"></i> WhatsApp
@@ -129,14 +130,17 @@
               <i class="fas fa-chart-pie" style="color:#1a73e8;width:16px"></i> Dealer Dashboard
             </a>
             {% endif %}
-            <a href="{{ url_for('auth.logout') }}" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;font-size:13px;color:#ef4444;transition:background .15s;margin-top:4px" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
+            <a href="{{ url_for('auth.logout', returnUrl=_ms_return) }}" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;font-size:13px;color:#ef4444;transition:background .15s;margin-top:4px" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
               <i class="fas fa-sign-out-alt" style="width:16px"></i> Logout
             </a>
           </div>
         </div>
       {% else %}
-        <a href="{{ url_for('auth.login', returnUrl=request.path) }}" class="btn btn-outline">
+        <!-- <a href="{{ url_for('auth.login', returnUrl=_ms_return) }}" class="btn btn-outline">
           <i class="fas fa-sign-in-alt"></i> Login
+        </a> -->
+        <a href="{{ url_for('auth.register', returnUrl=_ms_return) }}" class="btn btn-primary">
+          <i class="fas fa-user-plus"></i> Register
         </a>
       {% endif %}
     </div>
@@ -158,10 +162,10 @@
     </div>
     <div>
       <h4>Quick Links</h4>
-      <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" style="display:block">Browse Inventory</a>
-      <a href="{{ url_for('minisite.featured_deals', website_name=website_name) }}" style="display:block">Featured Deals</a>
-      <a href="{{ url_for('minisite.about', website_name=website_name) }}" style="display:block">About Us</a>
-      <a href="{{ url_for('minisite.contact', website_name=website_name) }}" style="display:block">Contact</a>
+      <a href="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}" style="display:block">Browse Inventory</a>
+      <a href="{{ url_for('minisite.featured_deals', dealer_name=dealer.name, website_name=website_name)  }}" style="display:block">Featured Deals</a>
+      <a href="{{ url_for('minisite.about', dealer_name=dealer.name, website_name=website_name)  }}" style="display:block">About Us</a>
+      <a href="{{ url_for('minisite.contact', dealer_name=dealer.name, website_name=website_name)  }}" style="display:block">Contact</a>
     </div>
     <div>
       <h4>Contact Us</h4>
