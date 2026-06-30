@@ -83,7 +83,7 @@
       </thead>
       <tbody>
         {% for agent in agents %}
-        <tr>
+        <tr id="agent-row-{{ agent['id'] }}">
           <td>
             <span class="badge badge-navy" style="font-family:monospace;font-size:13px;letter-spacing:0.5px;padding:5px 10px;">
               {{ agent['dealer_seq_id'] }}
@@ -105,11 +105,17 @@
           </td>
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="btn btn-sm btn-primary" onclick="openEditModal({{ agent|tojson }})">
+              <button class="btn btn-sm btn-primary edit-agent-btn"
+                data-agent-id="{{ agent['id'] }}"
+                data-name="{{ agent['name']|e }}"
+                data-email="{{ agent['email']|e }}"
+                data-phone="{{ agent['phone']|e }}"
+                data-status="{{ agent['status']|e }}"
+                data-seq="{{ agent['dealer_seq_id'] }}">
                 <i class="fas fa-edit"></i> Edit
               </button>
               <form method="POST" action="{{ url_for('dealer.delete_agent', agent_id=agent['id']) }}" id="del_agent_{{ agent['id'] }}" style="display:inline">
-                <button type="button" onclick="confirmDelete('del_agent_{{ agent['id'] }}', 'Delete agent {{ agent['name'] }}? This will unassign their leads.')" class="btn btn-sm btn-danger btn-icon">
+                <button type="button" onclick="confirmDelete('del_agent_{{ agent['id'] }}', 'Delete agent {{ agent['name']|replace("'","\\'")|e }}? This will unassign their leads.')" class="btn btn-sm btn-danger btn-icon">
                   <i class="fas fa-trash"></i> Delete
                 </button>
               </form>
@@ -133,10 +139,11 @@
 <div id="editAgentModal" class="modal-overlay">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title"><i class="fas fa-user-edit" style="margin-right:8px;color:var(--gold-accent)"></i>Edit Agent</div>
+      <div class="modal-title" id="editModalTitle"><i class="fas fa-user-edit" style="margin-right:8px;color:var(--gold-accent)"></i>Edit Agent</div>
       <button class="modal-close" onclick="closeModal('editAgentModal')"><i class="fas fa-times"></i></button>
     </div>
     <form method="POST" id="editAgentForm" onsubmit="return validateAgentPhone('edit_phone')">
+      <input type="hidden" name="_method" value="POST">
       <div class="modal-body">
         <div class="form-group">
           <label>Full Name *</label>
@@ -202,28 +209,61 @@ function validateAgentPhone(inputId) {
   return true;
 }
 
-/* ── Modal helpers ──────────────────────────────────────────────────────── */
-function openEditModal(agent) {
-  document.getElementById('edit_name').value   = agent.name;
-  document.getElementById('edit_email').value  = agent.email;
-  var ph = (agent.phone || '').replace(/\D/g, '');
+/* ── Base edit URL (agent_id=0 placeholder replaced at runtime) ── */
+var _editBaseUrl = "{{ url_for('dealer.edit_agent', agent_id=0) }}";
+
+/* ── Open edit modal with all agent data ─────────────────────────────────── */
+function openEditModal(agentId, name, email, phone, status, seqId) {
+  document.getElementById('edit_name').value  = name  || '';
+  document.getElementById('edit_email').value = email || '';
+
+  // Clean phone: strip +91 country code prefix if present
+  var ph = (phone || '').replace(/\D/g, '');
   if (ph.length === 12 && ph.startsWith('91')) ph = ph.slice(2);
-  document.getElementById('edit_phone').value  = ph;
-  document.getElementById('edit_status').value = agent.status;
-  // Show which agent is being edited in the modal header
-  var titleEl = document.querySelector('#editAgentModal .modal-title');
-  if (titleEl) {
-    titleEl.innerHTML = '<i class="fas fa-user-edit" style="margin-right:8px;color:var(--gold-accent)"></i>Edit Agent <span style="font-size:12px;font-family:monospace;background:var(--navy);color:#fff;padding:2px 8px;border-radius:4px;margin-left:6px;">#' + agent.dealer_seq_id + '</span>';
+  if (ph.length > 10) ph = ph.slice(-10);
+  document.getElementById('edit_phone').value = ph;
+
+  // Set status dropdown
+  var statusSel = document.getElementById('edit_status');
+  for (var i = 0; i < statusSel.options.length; i++) {
+    statusSel.options[i].selected = (statusSel.options[i].value === status);
   }
+
+  // Update modal title with agent seq ID badge
+  var titleEl = document.getElementById('editModalTitle');
+  if (titleEl) {
+    titleEl.innerHTML = '<i class="fas fa-user-edit" style="margin-right:8px;color:var(--gold-accent)"></i>Edit Agent'
+      + (seqId ? ' <span style="font-size:12px;font-family:monospace;background:var(--navy);color:#fff;padding:2px 8px;border-radius:4px;margin-left:6px;">#' + seqId + '</span>' : '');
+  }
+
   // Reset validation state
   document.getElementById('edit_phone').style.borderColor = '';
   var err = document.getElementById('edit_phone_error');
   if (err) err.style.display = 'none';
-  // Set form action to correct agent edit URL using real DB id
-  document.getElementById('editAgentForm').action =
-    "{{ url_for('dealer.edit_agent', agent_id=0) }}".replace('/0', '/' + agent.id);
+
+  // Set form action URL
+  var form = document.getElementById('editAgentForm');
+  form.action = _editBaseUrl.replace('/0', '/' + agentId);
+
   openModal('editAgentModal');
+  setTimeout(function() { document.getElementById('edit_name').focus(); }, 150);
 }
+
+/* ── Delegate click on Edit buttons using data-attributes ─────────────────── */
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.edit-agent-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      openEditModal(
+        this.dataset.agentId,
+        this.dataset.name,
+        this.dataset.email,
+        this.dataset.phone,
+        this.dataset.status,
+        this.dataset.seq
+      );
+    });
+  });
+});
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
