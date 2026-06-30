@@ -70,7 +70,7 @@
                  oninput="updatePreview(this.value)" />
           <small>Only letters, numbers, hyphens and underscores. Spaces are auto-converted to hyphens.</small>
           <small style="color:#64748b;margin-top:3px;">
-            Your public URL will be: <strong id="urlHint">{{ minisite_url(dealer.website_name or 'yourname') }}</strong>
+            Your public URL will be: <strong id="urlHint">{{ minisite_url(dealer.name, dealer.website_name or 'yourname') }}</strong>
           </small>
         </div>
 
@@ -166,8 +166,8 @@
     <div class="url-box">
       <div class="url-label"><i class="fas fa-globe" style="margin-right:4px"></i> Your Website URL</div>
       <div class="url-value">
-        <a id="previewUrlLink" href="{{ minisite_url(wname) }}" target="_blank">
-          {{ minisite_url(wname) }}
+        <a id="previewUrlLink" href="{{ minisite_url(dealer.name, wname) }}" target="_blank">
+          {{ minisite_url(dealer.name, wname) }}
         </a>
       </div>
       <div class="url-actions">
@@ -175,9 +175,27 @@
           <i class="fas fa-copy" id="copyIcon"></i>
           <span id="copyText">Copy URL</span>
         </button>
-        <a class="btn-open" id="openBtn" href="{{ minisite_url(wname) }}" target="_blank">
+        <a class="btn-open" id="openBtn" href="{{ minisite_url(dealer.name, wname) }}" target="_blank">
           <i class="fas fa-external-link-alt"></i> Open Website
         </a>
+      </div>
+    </div>
+
+    <!-- Dealer Registration Link (share with customers) -->
+    {% set reg_link = request.host_url.rstrip('/') ~ url_for('auth.dealer_register', website_name=wname) %}
+    <div class="url-box" style="margin-top:14px;background:#f0fdf4;border-color:#bbf7d0;">
+      <div class="url-label" style="color:#16a34a;"><i class="fas fa-user-plus" style="margin-right:4px"></i> Customer Registration Link</div>
+      <div class="url-value" style="font-size:12px;">
+        <a id="regLinkEl" href="{{ reg_link }}" target="_blank" style="color:#16a34a;word-break:break-all;">
+          {{ reg_link }}
+        </a>
+      </div>
+      <div style="font-size:11px;color:#166534;margin:6px 0;">Share this link — customers register with their own username &amp; password and are linked to your dealership.</div>
+      <div class="url-actions">
+        <button class="btn-copy" onclick="copyRegLink()" type="button" style="background:#16a34a;">
+          <i class="fas fa-copy"></i>
+          <span>Copy Registration Link</span>
+        </button>
       </div>
     </div>
 
@@ -216,10 +234,12 @@ function slugify(raw) {
     .slice(0, 80);
 }
 
+const DEALER_NAME_SLUG = {{ dealer.name | lower | replace(' ', '') | tojson }};
+
 function buildFullUrl(slug) {
   if (!slug) return '';
   const base = APP_BASE_URL || window.location.origin;
-  return base.replace(/\/$/, '') + '/dealer/' + slug;
+  return base.replace(/\/$/, '') + '/caryanams/' + DEALER_NAME_SLUG + '/' + slug;
 }
 
 function updatePreview(raw) {
@@ -281,6 +301,19 @@ function fallbackCopy(text, onSuccess) {
   ta.focus(); ta.select();
   try { document.execCommand('copy'); onSuccess(); } catch(e) {}
   document.body.removeChild(ta);
+}
+
+function copyRegLink() {
+  const el = document.getElementById('regLinkEl');
+  const url = el ? el.href : '';
+  if (!url) return;
+  const copy = () => {
+    const btn = el.closest('.url-box').querySelector('.btn-copy');
+    if (btn) { btn.innerHTML = '<i class="fas fa-check"></i> <span>Copied!</span>'; setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i> <span>Copy Registration Link</span>'; }, 2200); }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(copy).catch(() => fallbackCopy(url, copy));
+  } else { fallbackCopy(url, copy); }
 }
 </script>
 {% endblock %}
