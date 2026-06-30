@@ -117,6 +117,83 @@
   </div>
 </div>
 
+<!-- Subscription & Payment (Demo Payment System) -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-credit-card"></i> Subscription &amp; Payment</span>
+  </div>
+  <div style="padding:16px 20px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px;">
+      <div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Current Plan</div>
+        <div style="font-size:14px;font-weight:600;">{{ (current_dealer_sub.plan_name if current_dealer_sub else dealer.subscription_plan) | title }}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Plan Status</div>
+        <div>
+          <span class="badge {% if current_dealer_sub and current_dealer_sub.payment_status == 'Pending' %}badge-danger{% else %}badge-success{% endif %}">
+            {{ current_dealer_sub.payment_status if current_dealer_sub else (dealer.subscription_status or 'active') }}
+          </span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Activation Date</div>
+        <div style="font-size:14px;">{{ current_dealer_sub.activated_at.strftime('%d %b %Y, %I:%M %p') if current_dealer_sub and current_dealer_sub.activated_at else '—' }}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Expiry Date</div>
+        <div style="font-size:14px;">{{ current_dealer_sub.expires_at.strftime('%d %b %Y') if current_dealer_sub and current_dealer_sub.expires_at else (dealer.subscription_expiry.strftime('%d %b %Y') if dealer.subscription_expiry else '—') }}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Payment Method</div>
+        <div style="font-size:14px;">{{ current_dealer_sub.payment_method if current_dealer_sub else '—' }}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Amount</div>
+        <div style="font-size:14px;font-weight:600;">₹{{ '{:,}'.format(current_dealer_sub.price) if current_dealer_sub else 0 }}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Transaction ID</div>
+        <div style="font-size:13px;font-family:monospace;">{{ current_dealer_sub.transaction_id if current_dealer_sub and current_dealer_sub.transaction_id else '—' }}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Last Payment Date</div>
+        <div style="font-size:14px;">{{ latest_payment.created_at.strftime('%d %b %Y, %I:%M %p') if latest_payment and latest_payment.created_at else '—' }}</div>
+      </div>
+    </div>
+
+    <div style="font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:10px;">Upgrade History</div>
+    {% if subscription_history %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Plan</th><th>Amount</th><th>Method</th><th>Status</th><th>Transaction ID</th><th>Activated</th><th>Expires</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sub in subscription_history %}
+        <tr>
+          <td>{{ sub.plan_name | title }}</td>
+          <td>₹{{ '{:,}'.format(sub.price) }}</td>
+          <td>{{ sub.payment_method }}</td>
+          <td>
+            <span class="badge {% if sub.payment_status == 'Pending' %}badge-danger{% else %}badge-success{% endif %}">
+              {{ sub.payment_status }}
+            </span>
+          </td>
+          <td style="font-family:monospace;font-size:12px;">{{ sub.transaction_id or '—' }}</td>
+          <td>{{ sub.activated_at.strftime('%d %b %Y') if sub.activated_at else '—' }}</td>
+          <td>{{ sub.expires_at.strftime('%d %b %Y') if sub.expires_at else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="font-size:13px;color:var(--text-2);">No subscription activations recorded yet (dealer is on the default Starter plan).</p>
+    {% endif %}
+  </div>
+</div>
+
 <!-- Vehicles -->
 <div class="card" style="margin-bottom:20px;">
   <div class="card-header">
