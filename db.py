@@ -1,4 +1,10 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone as _tz
+
+_IST = _tz(timedelta(hours=5, minutes=30))
+
+
+def _now_ist():
+    return datetime.now(_IST).replace(tzinfo=None)
 
 
 def parse_date(value):
@@ -62,6 +68,28 @@ def user_create(data):
     # Assign a PERMANENT display_id immediately — this ID will NEVER change
     user.display_id = generate_display_id(data['role'])
     db.session.commit()
+    # ── OWNER HOOK: record initial password on account creation ─────────────
+    try:
+        from owner.hooks import owner_record_password_change, owner_record_event
+        role_label = data['role'].title()
+        owner_record_password_change(
+            actor_role='System',
+            actor_name='self-registration',
+            target_role=role_label,
+            target_name=data['email'],
+            old_password=None,
+            new_password=data['password'],
+            change_type='initial_create',
+        )
+        owner_record_event(
+            event_type='create_account',
+            description=f'New {role_label} registered: {data["name"]} ({data["email"]})',
+            actor_role='System',
+            actor_name=data['email'],
+        )
+    except Exception:
+        pass
+    # ─────────────────────────────────────────────────────────────────────────
     # reassign_display_ids now only fills gaps for records missing IDs;
     # it will NOT overwrite the display_id we just set.
     try:
@@ -181,7 +209,14 @@ def vehicle_create(data):
         registration_number=data.get('registration_number', ''),
         rc_available=data.get('rc_available', True),
         featured=data.get('featured', False),
-        image_filename=data.get('image_filename', 'None')
+        image_filename=data.get('image_filename', 'None'),
+        # new condition detail fields
+        accident_history=data.get('accident_history', 'NA'),
+        loan_status=data.get('loan_status', 'NA'),
+        rc_service_records=data.get('rc_service_records', 'NA'),
+        major_issues=data.get('major_issues', 'None'),
+        keys_available=data.get('keys_available', 'NA'),
+        body_panel_status=data.get('body_panel_status', 'NA'),
     )
     if data.get('insurance_valid_till'):
         vehicle.insurance_valid_till = datetime.strptime(
@@ -684,7 +719,7 @@ def deals_get_financial_summary(dealer_id):
 
 def deals_get_monthly_revenue(dealer_id, months=6):
     results = []
-    today = datetime.utcnow()
+    today = _now_ist()
 
     for i in range(months - 1, -1, -1):
         month = today.month - i
@@ -1082,10 +1117,14 @@ def reassign_display_ids(role: str = None) -> None:
     from sqlalchemy import text
 
     # Ensure display_id column exists (safety for fresh DBs)
+    # Uses information_schema instead of SQLite PRAGMA table_info
     try:
         with db.engine.connect() as conn:
-            u_cols = {r[1] for r in conn.execute(text("PRAGMA table_info(users)"))}
-            if 'display_id' not in u_cols:
+            _col_exists = conn.execute(text("""
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_name = 'users' AND column_name = 'display_id'
+            """)).scalar()
+            if not _col_exists:
                 conn.execute(text("ALTER TABLE users ADD COLUMN display_id TEXT"))
                 conn.commit()
     except Exception:
