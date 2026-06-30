@@ -221,12 +221,13 @@
           <th style="width:130px;">Module</th>
           <th style="width:120px;">Date &amp; Time</th>
           <th style="width:110px;">IP Address</th>
+          <th style="width:120px;">Device</th>
           <th style="width:80px;">Status</th>
         </tr>
       </thead>
       <tbody>
         {% for log in logs %}
-        <tr class="al-row">
+        <tr class="al-row" data-log-id="{{ log.id }}">
           <td style="color:var(--text-3);font-size:0.75rem;">
             {{ (page_num - 1) * per_page + loop.index }}
           </td>
@@ -249,11 +250,14 @@
           <td>
             <div style="font-size:0.8rem;color:var(--text-2);white-space:nowrap;">
               {% if log.created_at %}
-                {# Convert UTC→IST (+5:30) for display #}
-                {% set ist = log.created_at + timedelta(hours=5, minutes=30) %}
-                <span>{{ ist.strftime('%d %b %Y') }}</span>
-                <span style="display:block;font-size:0.72rem;color:var(--text-3);margin-top:1px;">
-                  {{ ist.strftime('%I:%M %p') }} IST
+                <span class="al-ts-date"
+                      data-utc="{{ log.created_at.strftime('%Y-%m-%dT%H:%M:%S') }}+05:30">
+                  {{ log.created_at.strftime('%d %b %Y') }}
+                </span>
+                <span class="al-ts-time"
+                      data-utc="{{ log.created_at.strftime('%Y-%m-%dT%H:%M:%S') }}+05:30"
+                      style="display:block;font-size:0.72rem;color:var(--text-3);margin-top:1px;">
+                  {{ log.created_at.strftime('%I:%M %p') }}
                 </span>
               {% else %}
                 —
@@ -265,11 +269,17 @@
               {{ log.ip_address or '—' }}
             </code>
           </td>
+          <td>
+            <div style="font-size:0.78rem;color:var(--text-2);white-space:nowrap;">
+              {{ log.device or '—' }}
+              {% if log.browser %}<span style="display:block;font-size:0.7rem;color:var(--text-3);">{{ log.browser }}</span>{% endif %}
+            </div>
+          </td>
           <td>{{ status_badge(log.status or 'Success') }}</td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="8" style="text-align:center;padding:60px 20px;">
+          <td colspan="9" style="text-align:center;padding:60px 20px;">
             <div class="empty-state" style="padding:0;">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;display:block;opacity:0.25;color:var(--text-3);">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -489,6 +499,7 @@
 .al-row { transition: background 0.12s; }
 .al-row:hover { background: var(--bg-hover); }
 .al-row:hover .al-action-dot { background: var(--green); box-shadow: 0 0 0 3px rgba(46,232,154,0.15); }
+@keyframes al-fadein { from { opacity:0; background:rgba(99,102,241,0.08); } to { opacity:1; background:transparent; } }
 
 /* Page-header flex */
 .page-header {
@@ -529,6 +540,52 @@
 </style>
 
 <script>
+// ── Local-timezone timestamp rendering ─────────────────────────────────────
+// Server stores naive IST (Asia/Kolkata, UTC+5:30) timestamps. data-utc
+// carries the correct +05:30 offset (not UTC) so Date parsing is accurate.
+// We then render in the browser's own local timezone so every viewer sees
+// their own local date/time regardless of where the server is located.
+(function () {
+  var userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  var dateFmt = new Intl.DateTimeFormat(undefined, {
+    day: '2-digit', month: 'short', year: 'numeric',
+    timeZone: userTZ
+  });
+
+  var timeFmt = new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit', minute: '2-digit', hour12: true,
+    timeZone: userTZ
+  });
+
+  // Short TZ abbreviation for display (e.g. "IST", "EST", "PST")
+  var tzAbbr = (function () {
+    try {
+      var parts = new Intl.DateTimeFormat(undefined, {
+        timeZoneName: 'short', timeZone: userTZ
+      }).formatToParts(new Date());
+      var tz = parts.find(function (p) { return p.type === 'timeZoneName'; });
+      return tz ? tz.value : '';
+    } catch (e) { return ''; }
+  })();
+
+  document.querySelectorAll('.al-ts-date[data-utc]').forEach(function (el) {
+    try {
+      var d = new Date(el.dataset.utc);
+      if (!isNaN(d.getTime())) { el.textContent = dateFmt.format(d); }
+    } catch (e) {}
+  });
+
+  document.querySelectorAll('.al-ts-time[data-utc]').forEach(function (el) {
+    try {
+      var d = new Date(el.dataset.utc);
+      if (!isNaN(d.getTime())) {
+        el.textContent = timeFmt.format(d) + (tzAbbr ? ' ' + tzAbbr : '');
+      }
+    } catch (e) {}
+  });
+})();
+
 // Auto-submit filter form on Enter key in search
 document.querySelector('input[name="search"]').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); this.form.submit(); }
@@ -551,6 +608,130 @@ document.getElementById('filterForm').addEventListener('submit', function(e) {
       td.style.background = 'rgba(99,102,241,0.06)';
     }
   });
+})();
+
+// ── Real-Time Activity Log Polling ─────────────────────────────────────────
+// Polls /admin/api/activity-poll every 30 seconds and prepends new rows.
+// Only active on page 1 with no date/search filter (new rows are visible here).
+(function () {
+  var pageNum    = {{ page_num | int }};
+  var dateFilter = {{ date_filter | tojson }};
+  var searchVal  = {{ search | tojson }};
+  if (pageNum !== 1 || dateFilter || searchVal) return;
+
+  var roleFilter   = {{ role_filter   | tojson }};
+  var moduleFilter = {{ module_filter | tojson }};
+
+  // Timezone helpers
+  var _tz    = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  var _dFmt  = new Intl.DateTimeFormat(undefined, { day:'2-digit', month:'short', year:'numeric', timeZone:_tz });
+  var _tFmt  = new Intl.DateTimeFormat(undefined, { hour:'2-digit', minute:'2-digit', hour12:true, timeZone:_tz });
+  var _tzAbbr = (function(){
+    try {
+      var p = new Intl.DateTimeFormat(undefined, { timeZoneName:'short', timeZone:_tz }).formatToParts(new Date());
+      var t = p.find(function(x){ return x.type==='timeZoneName'; });
+      return t ? t.value : '';
+    } catch(e){ return ''; }
+  })();
+
+  function _fmtDate(iso){ try{ return _dFmt.format(new Date(iso)); }catch(e){ return ''; } }
+  function _fmtTime(iso){ try{ return _tFmt.format(new Date(iso))+(_tzAbbr?' '+_tzAbbr:''); }catch(e){ return ''; } }
+  function _esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function _roleBadge(r) {
+    var rl=(r||'').toLowerCase(), cls='badge-gray';
+    if(rl.indexOf('super')>-1) cls='badge-role-super';
+    else if(rl.indexOf('sub')>-1) cls='badge-role-sub';
+    else if(rl.indexOf('admin')>-1) cls='badge-role-admin';
+    else if(rl.indexOf('dealer')>-1) cls='badge-role-dealer';
+    return '<span class="badge '+cls+'">'+_esc(r)+'</span>';
+  }
+  function _moduleBadge(m) {
+    var ml=(m||'').toLowerCase(), cls='badge-gray';
+    if(ml.indexOf('dealer')>-1) cls='badge-blue';
+    else if(ml.indexOf('user')>-1) cls='badge-purple';
+    else if(ml.indexOf('vehicle')>-1) cls='badge-yellow-soft';
+    else if(ml.indexOf('lead')>-1) cls='badge-green';
+    else if(ml.indexOf('sale')>-1||ml.indexOf('deal')>-1) cls='badge-orange';
+    else if(ml.indexOf('auth')>-1) cls='badge-dark';
+    else if(ml.indexOf('kyc')>-1||ml.indexOf('subadmin')>-1) cls='badge-purple';
+    return '<span class="badge '+cls+'">'+_esc(m)+'</span>';
+  }
+  function _statusBadge(s) {
+    var sl=(s||'success').toLowerCase();
+    var cls=sl==='success'?'badge-green':sl==='failed'?'badge-red':sl==='warning'?'badge-orange':'badge-gray';
+    return '<span class="badge '+cls+'">'+_esc(s||'Success')+'</span>';
+  }
+
+  function _buildRow(log) {
+    var initial=(log.admin_user||'A')[0].toUpperCase();
+    var avatarCls='al-avatar-'+(log.user_role||'Admin').toLowerCase().replace(/\s+/g,'');
+    var tsDate=log.created_at?_fmtDate(log.created_at):'—';
+    var tsTime=log.created_at?_fmtTime(log.created_at):'';
+    return '<tr class="al-row" data-log-id="'+log.id+'" style="animation:al-fadein 0.5s ease;">'+
+      '<td style="color:var(--text-3);font-size:0.75rem;">&#8226;</td>'+
+      '<td>'+_roleBadge(log.user_role)+'</td>'+
+      '<td><div style="display:flex;align-items:center;gap:9px;">'+
+        '<div class="al-avatar '+avatarCls+'">'+initial+'</div>'+
+        '<span style="font-weight:500;font-size:0.85rem;color:var(--text-1);">'+_esc(log.admin_user)+'</span>'+
+      '</div></td>'+
+      '<td style="max-width:360px;"><div style="display:flex;align-items:flex-start;gap:8px;">'+
+        '<div class="al-action-dot" style="margin-top:4px;flex-shrink:0;"></div>'+
+        '<span style="font-size:0.85rem;color:var(--text-1);word-break:break-word;white-space:normal;">'+_esc(log.action)+'</span>'+
+      '</div></td>'+
+      '<td>'+_moduleBadge(log.module)+'</td>'+
+      '<td><div style="font-size:0.8rem;color:var(--text-2);white-space:nowrap;">'+
+        '<span class="al-ts-date">'+tsDate+'</span>'+
+        '<span class="al-ts-time" style="display:block;font-size:0.72rem;color:var(--text-3);margin-top:1px;">'+tsTime+'</span>'+
+      '</div></td>'+
+      '<td><code style="font-size:0.75rem;color:var(--text-2);background:var(--bg-base);padding:3px 8px;border-radius:5px;border:1px solid var(--border);">'+_esc(log.ip_address)+'</code></td>'+
+      '<td><div style="font-size:0.78rem;color:var(--text-2);white-space:nowrap;">'+
+        _esc(log.device||'—')+
+        (log.browser?'<span style="display:block;font-size:0.7rem;color:var(--text-3);">'+_esc(log.browser)+'</span>':'')+
+      '</div></td>'+
+      '<td>'+_statusBadge(log.status)+'</td>'+
+    '</tr>';
+  }
+
+  // Seed maxId from rows already on the page
+  var maxId = 0;
+  document.querySelectorAll('#activityTable tbody tr[data-log-id]').forEach(function(tr){
+    var id = parseInt(tr.dataset.logId||0);
+    if (id > maxId) maxId = id;
+  });
+
+  function poll() {
+    var url = '/admin/api/activity-poll?since_id='+maxId;
+    if (roleFilter)   url += '&role='+encodeURIComponent(roleFilter);
+    if (moduleFilter) url += '&module='+encodeURIComponent(moduleFilter);
+
+    fetch(url, {credentials:'same-origin'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !data.success || !data.rows.length) return;
+        var tbody = document.querySelector('#activityTable tbody');
+        if (!tbody) return;
+
+        // Remove empty-state placeholder row if present
+        var empty = tbody.querySelector('tr:not([data-log-id])');
+        if (empty) empty.remove();
+
+        // API returns newest-first; reverse so we prepend oldest-first
+        var rows = data.rows.slice().reverse();
+        rows.forEach(function(log) {
+          if (log.id <= maxId) return;
+          tbody.insertAdjacentHTML('afterbegin', _buildRow(log));
+          if (log.id > maxId) maxId = log.id;
+        });
+
+        // Update the total-records stat card (first .al-stat-val)
+        var statEl = document.querySelector('.al-stat-val');
+        if (statEl) statEl.textContent = data.total;
+      })
+      .catch(function(){});
+  }
+
+  setInterval(poll, 30000);
 })();
 </script>
 {% endblock %}
