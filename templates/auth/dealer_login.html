@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — {{ dealer.company_name or dealer.website_name or dealer.name }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+<style>
+.dealer-badge {
+  display:flex;align-items:center;gap:12px;
+  background:linear-gradient(135deg,#002366,#1a3a8f);
+  color:#fff;border-radius:14px;padding:14px 18px;margin-bottom:24px;
+}
+.dealer-badge-avatar {
+  width:44px;height:44px;border-radius:50%;background:#c9a84c;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:700;color:#002366;flex-shrink:0;
+}
+.dealer-badge-info { line-height:1.3; }
+.dealer-badge-label { font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:.5px; }
+.dealer-badge-name  { font-size:15px;font-weight:700; }
+.register-link { text-align:center;margin-top:18px;font-size:13px;color:#64748b; }
+.register-link a { color:#002366;font-weight:600;text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="auth-layout">
+  <div class="auth-panel">
+    <div class="auth-brand">
+      <div class="brand-logo">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Caryanams" style="height:48px;object-fit:contain;">
+      </div>
+      <div class="brand-name">Caryanams</div>
+    </div>
+    <div class="auth-hero">
+      <div class="hero-title">Welcome Back</div>
+      <div class="hero-sub">Login to explore dealer inventory</div>
+    </div>
+  </div>
+
+  <div class="auth-form-panel">
+    <div class="auth-form-wrap">
+      <div class="auth-form-header">
+        <div class="auth-form-title">Sign In</div>
+        <div class="auth-form-sub">Access via dealer link</div>
+      </div>
+
+      <!-- Dealer badge -->
+      <div class="dealer-badge">
+        <div class="dealer-badge-avatar">{{ (dealer.website_name or dealer.name or 'D')[0]|upper }}</div>
+        <div class="dealer-badge-info">
+          <div class="dealer-badge-label">Dealer Portal</div>
+          <div class="dealer-badge-name">{{ dealer.company_name or dealer.website_name or dealer.name }}</div>
+        </div>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div style="margin-bottom:16px;padding:12px 16px;border-radius:10px;font-size:13px;background:{% if cat=='error' %}#fee2e2{% elif cat=='success' %}#dcfce7{% else %}#dbeafe{% endif %};color:{% if cat=='error' %}#991b1b{% elif cat=='success' %}#166534{% else %}#1e40af{% endif %};">
+            {{ msg }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('auth.dealer_login', website_name=website_name) }}">
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" name="email" class="form-input" placeholder="you@example.com" required autofocus>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div style="position:relative;">
+            <input type="password" name="password" id="password" class="form-input" placeholder="Your password" required style="padding-right:42px;">
+            <button type="button" onclick="var i=document.getElementById('password');var e=document.getElementById('eye1');if(i.type==='password'){i.type='text';e.className='fas fa-eye-slash';}else{i.type='password';e.className='fas fa-eye';}"
+              style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;">
+              <i class="fas fa-eye" id="eye1"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn-auth" style="margin-top:8px;">
+          <i class="fas fa-sign-in-alt"></i> Login
+        </button>
+      </form>
+
+      <div class="register-link">
+        New here?
+        <a href="{{ url_for('auth.dealer_register', website_name=website_name) }}">Register via this link</a>
+      </div>
+      <div class="register-link" style="margin-top:8px;">
+        <a href="{{ url_for('auth.login') }}" style="color:#94a3b8;">Back to main login</a>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
