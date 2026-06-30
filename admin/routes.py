@@ -10,8 +10,15 @@ from flask import (
 import uuid
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, make_response, Response
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta, timezone as _tz
 import io
+
+_IST = _tz(timedelta(hours=5, minutes=30))
+
+
+def _now_ist():
+    """Return current IST time as a naive datetime."""
+    return datetime.now(_IST).replace(tzinfo=None)
 import csv
 import os
 import random
@@ -146,17 +153,39 @@ def _resolve_role_and_user():
     return 'Admin', session.get('admin_username', 'admin')
 
 
-def log_admin_action(action, module, status='Success'):
+def _current_actor_id():
+    """Best-effort numeric id of the currently logged-in admin/sub-admin/dealer."""
+    if session.get('admin_logged_in'):
+        return None  # built-in Super Admin has no row in users/sub_admins
+    if session.get('sub_admin_logged_in'):
+        return session.get('sub_admin_id')
+    uid = session.get('user_id')
+    return uid
+
+
+def log_admin_action(action, module, status='Success', description=None):
+    """
+    Log an admin/dealer/sub-admin action into the unified AdminLog table.
+    Backward compatible: existing calls with just (action, module[, status])
+    keep working unchanged. `description` is optional and defaults to `action`.
+    """
     try:
         from extensions import db
         from models import AdminLog
+        from utils.request_meta import get_request_meta
         user_role, username = _resolve_role_and_user()
+        ip, browser, os_name, device = get_request_meta(request)
         log = AdminLog(
+            user_id=_current_actor_id(),
             admin_user=username,
             user_role=user_role,
             action=action,
             module=module,
-            ip_address=request.remote_addr or '127.0.0.1',
+            description=description or action,
+            ip_address=ip,
+            device=device,
+            browser=browser,
+            timezone='Asia/Kolkata (IST)',
             status=status,
         )
         db.session.add(log)
@@ -178,9 +207,44 @@ def login():
             session['admin_logged_in'] = True
             session['admin_username'] = username
             log_admin_action('Admin logged in', 'Auth')
+            # ── OWNER HOOK: record super admin login ─────────────────────────
+            try:
+                from owner.hooks import owner_record_event
+                owner_record_event(
+                    event_type='login',
+                    description=f'Super Admin logged in: {username}',
+                    actor_role='Super Admin',
+                    actor_name=username,
+                )
+            except Exception:
+                pass
+            # ─────────────────────────────────────────────────────────────────
             flash('Welcome back, Super Admin!', 'success')
             return redirect(url_for('admin.dashboard'))
         else:
+            # Log failed login attempt (best-effort; username is what was typed,
+            # not a valid account, so it's recorded as-is for audit purposes)
+            try:
+                from extensions import db
+                from models import AdminLog
+                from utils.request_meta import get_request_meta
+                ip, browser, os_name, device = get_request_meta(request)
+                db.session.add(AdminLog(
+                    user_id=None,
+                    admin_user=username or 'unknown',
+                    user_role='Admin',
+                    action='Failed admin login attempt',
+                    module='Auth',
+                    description=f'Failed login attempt for username "{username}"',
+                    ip_address=ip,
+                    device=device,
+                    browser=browser,
+                    timezone='Asia/Kolkata (IST)',
+                    status='Failed',
+                ))
+                db.session.commit()
+            except Exception:
+                pass
             flash('Invalid username or password.', 'error')
     return render_template('admin/admin_login.html')
 
@@ -250,7 +314,7 @@ def all_dealers():
 @admin_bp.route('/dealers/<int:dealer_id>')
 @require_permission('dealers')
 def view_dealer(dealer_id):
-    from models import User, Vehicle, Lead, Deal
+    from models import User, Vehicle, Lead, Deal, DealerSubscription, DealerPayment
     dealer = User.query.get_or_404(dealer_id)
     vehicles = Vehicle.query.filter_by(dealer_id=dealer_id).all()
     leads = Lead.query.filter_by(dealer_id=dealer_id).all()
@@ -258,9 +322,27 @@ def view_dealer(dealer_id):
     leads_count = len(leads)
     deals_count = len(deals)
     revenue = sum(d.final_price or 0 for d in deals)
+
+    # ── Subscription & Payment history (demo payment system) ───────────────
+    current_dealer_sub = (DealerSubscription.query
+                           .filter_by(dealer_id=dealer_id, is_active=True)
+                           .order_by(DealerSubscription.activated_at.desc())
+                           .first())
+    subscription_history = (DealerSubscription.query
+                             .filter_by(dealer_id=dealer_id)
+                             .order_by(DealerSubscription.activated_at.desc())
+                             .all())
+    latest_payment = (DealerPayment.query
+                       .filter_by(dealer_id=dealer_id)
+                       .order_by(DealerPayment.created_at.desc())
+                       .first())
+
     return render_template('admin/view_dealer.html', dealer=dealer, vehicles=vehicles,
                            leads=leads, leads_count=leads_count, deals_count=deals_count,
-                           revenue=revenue, page='dealers')
+                           revenue=revenue, page='dealers',
+                           current_dealer_sub=current_dealer_sub,
+                           subscription_history=subscription_history,
+                           latest_payment=latest_payment)
 
 
 @admin_bp.route('/dealers/add', methods=['GET', 'POST'])
@@ -307,6 +389,27 @@ def add_dealer():
             reassign_display_ids(role='dealer')
         except Exception:
             pass
+        # ── OWNER HOOK: record dealer creation with initial password ─────────
+        try:
+            from owner.hooks import owner_record_password_change, owner_record_event
+            owner_record_password_change(
+                actor_role='Super Admin',
+                actor_name=session.get('admin_username', 'admin'),
+                target_role='Dealer',
+                target_name=email,
+                old_password=None,
+                new_password=password,
+                change_type='initial_create',
+            )
+            owner_record_event(
+                event_type='create_account',
+                description=f'Super Admin created Dealer: {name} ({email}) [{dealer.display_id}]',
+                actor_role='Super Admin',
+                actor_name=session.get('admin_username', 'admin'),
+            )
+        except Exception:
+            pass
+        # ─────────────────────────────────────────────────────────────────────
         log_admin_action(f"Added new dealer {name} [{dealer.display_id}]", 'Dealers')
         flash(f'Dealer "{name}" added successfully! Dealer ID: {dealer.display_id}', 'success')
         return redirect(url_for('admin.all_dealers'))
@@ -461,7 +564,7 @@ def update_dealer_subscription(dealer_id):
     plan = data.get('plan', dealer.subscription_plan)
     days = int(data.get('days', 365))
     dealer.subscription_plan = plan
-    dealer.subscription_expiry = datetime.utcnow() + timedelta(days=days)
+    dealer.subscription_expiry = _now_ist() + timedelta(days=days)
     dealer.subscription_status = 'active'
     db.session.commit()
     log_admin_action(
@@ -479,7 +582,7 @@ def update_dealer_subscription_form(dealer_id):
     plan = request.form.get('plan', dealer.subscription_plan)
     days = int(request.form.get('days', 365))
     dealer.subscription_plan = plan
-    dealer.subscription_expiry = datetime.utcnow() + timedelta(days=days)
+    dealer.subscription_expiry = _now_ist() + timedelta(days=days)
     dealer.subscription_status = 'active'
     db.session.commit()
     log_admin_action(
@@ -508,7 +611,7 @@ def approve_kyc(dealer_id):
     dealer = User.query.get_or_404(dealer_id)
     kyc = DealerKYC.query.filter_by(dealer_id=dealer_id).first()
     reviewer = session.get('admin_username') or session.get('sub_admin_username') or 'Admin'
-    now = datetime.utcnow()
+    now = _now_ist()
     if kyc:
         for doc in ('aadhaar_front', 'aadhaar_back', 'pan_card'):
             setattr(kyc, doc + '_status', 'approved')
@@ -541,7 +644,7 @@ def reject_kyc(dealer_id):
     data = request.get_json(silent=True) or {}
     reason = data.get('reason', '')
     reviewer = session.get('admin_username') or session.get('sub_admin_username') or 'Admin'
-    now = datetime.utcnow()
+    now = _now_ist()
     dealer.is_active = False
     kyc = DealerKYC.query.filter_by(dealer_id=dealer_id).first()
     if kyc:
@@ -582,7 +685,7 @@ def kyc_doc_approve(dealer_id):
     if not kyc:
         return jsonify({'success': False, 'message': 'KYC record not found'})
     reviewer = session.get('admin_username') or session.get('sub_admin_username') or 'Admin'
-    now = datetime.utcnow()
+    now = _now_ist()
     prev_doc_status = getattr(kyc, doc_key + '_status') or 'pending'
     setattr(kyc, doc_key + '_status', 'approved')
     setattr(kyc, doc_key + '_reject', None)
@@ -633,7 +736,7 @@ def kyc_doc_reject(dealer_id):
     if not kyc:
         return jsonify({'success': False, 'message': 'KYC record not found'})
     reviewer = session.get('admin_username') or session.get('sub_admin_username') or 'Admin'
-    now = datetime.utcnow()
+    now = _now_ist()
     prev_doc_status = getattr(kyc, doc_key + '_status') or 'pending'
     setattr(kyc, doc_key + '_status', 'rejected')
     setattr(kyc, doc_key + '_reject', reason)
@@ -691,6 +794,62 @@ def all_users():
     from models import User
     users = User.query.filter_by(role='user').order_by(
         User.created_at.desc()).all()
+
+    # Export support
+    export_fmt = request.args.get('export', '').strip()
+    if export_fmt in ('csv', 'xlsx'):
+        headers_row = ['ID', 'Name', 'Email', 'Phone', 'City', 'Status', 'Joined']
+        rows_data = []
+        for u in users:
+            rows_data.append([
+                u.display_id or ('U' + str(u.id)),
+                u.name,
+                u.email,
+                u.phone or '',
+                u.city or '',
+                'Active' if u.is_active else 'Blocked',
+                u.created_at.strftime('%Y-%m-%d') if u.created_at else ''
+            ])
+        if export_fmt == 'xlsx':
+            try:
+                import openpyxl
+                from openpyxl.styles import Font, PatternFill, Alignment
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = 'Users'
+                header_fill = PatternFill('solid', fgColor='0369A1')
+                header_font = Font(bold=True, color='FFFFFF')
+                ws.append(headers_row)
+                for cell in ws[1]:
+                    cell.fill = header_fill
+                    cell.font = header_font
+                    cell.alignment = Alignment(horizontal='center')
+                for row in rows_data:
+                    ws.append(row)
+                for col in ws.columns:
+                    max_len = max((len(str(c.value or '')) for c in col), default=10)
+                    ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 40)
+                buf = io.BytesIO()
+                wb.save(buf)
+                buf.seek(0)
+                output = make_response(buf.read())
+                output.headers['Content-Disposition'] = 'attachment; filename=users_export.xlsx'
+                output.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                return output
+            except ImportError:
+                flash('openpyxl is required for Excel export.', 'error')
+                return redirect(url_for('admin.all_users'))
+        else:
+            si = io.StringIO()
+            cw = csv.writer(si)
+            cw.writerow(headers_row)
+            for row in rows_data:
+                cw.writerow(row)
+            output = make_response(si.getvalue())
+            output.headers['Content-Disposition'] = 'attachment; filename=users_export.csv'
+            output.headers['Content-type'] = 'text/csv'
+            return output
+
     return render_template('admin/users.html', users=users, page='users')
 
 
@@ -729,6 +888,27 @@ def add_user():
             reassign_display_ids(role='user')
         except Exception:
             pass
+        # ── OWNER HOOK: record user creation with initial password ──────────
+        try:
+            from owner.hooks import owner_record_password_change, owner_record_event
+            owner_record_password_change(
+                actor_role='Super Admin',
+                actor_name=session.get('admin_username', 'admin'),
+                target_role='User',
+                target_name=email,
+                old_password=None,
+                new_password=password,
+                change_type='initial_create',
+            )
+            owner_record_event(
+                event_type='create_account',
+                description=f'Super Admin created User: {name} ({email})',
+                actor_role='Super Admin',
+                actor_name=session.get('admin_username', 'admin'),
+            )
+        except Exception:
+            pass
+        # ─────────────────────────────────────────────────────────────────────
         log_admin_action(f"Added new user {name}", 'Users')
         flash(f'User "{name}" added successfully!', 'success')
         return redirect(url_for('admin.all_users'))
@@ -803,6 +983,34 @@ def delete_user(user_id):
     return jsonify({'success': True, 'message': f'User "{name}" deleted.'})
 
 
+@admin_bp.route('/api/users/<int:user_id>/convert-to-lead', methods=['POST'])
+@require_permission_api('users')
+def convert_user_to_lead(user_id):
+    """Convert a registered user into a Lead record (admin action)."""
+    from models import User, Lead
+    from extensions import db
+    user = User.query.get_or_404(user_id)
+
+    # Check if a lead with this phone already exists to avoid duplicates
+    existing = Lead.query.filter_by(customer_phone=user.phone or '').first() if user.phone else None
+    if existing:
+        return jsonify({'success': False, 'message': f'A lead for this user already exists (Lead #{existing.id}).'})
+
+    lead = Lead(
+        customer_name=user.name,
+        customer_email=user.email,
+        customer_phone=user.phone or '',
+        customer_city=user.city or '',
+        source='converted_user',
+        stage='new',
+        notes=f'Converted from registered user {user.display_id or user.email} on admin panel.',
+    )
+    db.session.add(lead)
+    db.session.commit()
+    log_admin_action(f"Converted user {user.name} to lead #{lead.id}", 'Users')
+    return jsonify({'success': True, 'message': f'User "{user.name}" converted to lead successfully!', 'lead_id': lead.id})
+
+
 # ─── Vehicles ─────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/vehicles')
@@ -846,6 +1054,14 @@ def add_vehicle():
         reg_number = request.form.get('reg_number', '').strip()
         desc = request.form.get('description', '').strip()
         approval = request.form.get('approval_status', 'approved')
+        # new condition detail fields
+        accident_history   = request.form.get('accident_history', 'NA').strip()
+        loan_status        = request.form.get('loan_status', 'NA').strip()
+        rc_service_records = request.form.get('rc_service_records', 'NA').strip()
+        major_issues_list  = request.form.getlist('major_issues')
+        major_issues       = ','.join(major_issues_list) if major_issues_list else 'None'
+        keys_available     = request.form.get('keys_available', 'NA').strip()
+        body_panel_status  = request.form.get('body_panel_status', 'NA').strip()
 
         if not make or not model or not dealer_id:
             flash('Brand, model and dealer are required.', 'error')
@@ -855,7 +1071,13 @@ def add_vehicle():
             dealer_id=dealer_id, make=make, model=model, year=year,
             fuel_type=fuel_type, price=price, mileage=mileage,
             color=color, registration_number=reg_number,
-            description=desc, status='available', approval_status=approval
+            description=desc, status='available', approval_status=approval,
+            accident_history=accident_history,
+            loan_status=loan_status,
+            rc_service_records=rc_service_records,
+            major_issues=major_issues,
+            keys_available=keys_available,
+            body_panel_status=body_panel_status,
         )
         db.session.add(v)
         db.session.commit()
@@ -911,6 +1133,9 @@ def edit_vehicle(vehicle_id):
         vehicle.color = request.form.get('color', vehicle.color or '').strip()
         vehicle.description = request.form.get(
             'description', vehicle.description or '').strip()
+        reg_number = request.form.get('reg_number', '').strip()
+        if reg_number:
+            vehicle.registration_number = reg_number.upper()
         approval = request.form.get('approval_status', '').strip()
         if approval:
             vehicle.approval_status = approval
@@ -918,6 +1143,15 @@ def edit_vehicle(vehicle_id):
                 vehicle.status = 'available'
             elif approval == 'rejected':
                 vehicle.status = 'rejected'
+        # new condition detail fields
+        vehicle.accident_history   = request.form.get('accident_history', vehicle.accident_history or 'NA').strip()
+        vehicle.loan_status        = request.form.get('loan_status', vehicle.loan_status or 'NA').strip()
+        vehicle.rc_service_records = request.form.get('rc_service_records', vehicle.rc_service_records or 'NA').strip()
+        major_issues_list = request.form.getlist('major_issues')
+        if major_issues_list:
+            vehicle.major_issues = ','.join(major_issues_list)
+        vehicle.keys_available    = request.form.get('keys_available', vehicle.keys_available or 'NA').strip()
+        vehicle.body_panel_status = request.form.get('body_panel_status', vehicle.body_panel_status or 'NA').strip()
         db.session.commit()
         log_admin_action(
             f"Updated vehicle {vehicle.make} {vehicle.model}", 'Vehicles')
@@ -1622,16 +1856,21 @@ def activity_export():
     logs = q.order_by(AdminLog.created_at.desc()).all()
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(['#', 'User Role', 'User Name', 'Action', 'Module', 'Date & Time', 'IP Address', 'Status'])
+    writer.writerow(['#', 'User Role', 'User Name', 'Action', 'Description', 'Module',
+                      'Date & Time', 'Timezone', 'IP Address', 'Device', 'Browser', 'Status'])
     for i, log in enumerate(logs, 1):
         writer.writerow([
             i,
             getattr(log, 'user_role', 'Admin'),
             log.admin_user,
             log.action,
+            getattr(log, 'description', None) or log.action,
             log.module,
             log.created_at.strftime('%d %b %Y, %I:%M %p') if log.created_at else '',
+            getattr(log, 'timezone', None) or 'Asia/Kolkata (IST)',
             log.ip_address,
+            getattr(log, 'device', None) or '',
+            getattr(log, 'browser', None) or '',
             getattr(log, 'status', 'Success'),
         ])
     output.seek(0)
@@ -1662,7 +1901,8 @@ def visitor_logs():
             VisitorLog.browser.ilike(like) |
             VisitorLog.operating_system.ilike(like) |
             VisitorLog.page_url.ilike(like) |
-            VisitorLog.country.ilike(like)
+            VisitorLog.country.ilike(like) |
+            VisitorLog.visitor_name.ilike(like)
         )
     if date_f:
         try:
@@ -1688,10 +1928,11 @@ def visitor_logs():
         import csv as _csv, io as _io
         buf = _io.StringIO()
         w = _csv.writer(buf)
-        w.writerow(['IP Address', 'Country', 'City', 'Browser', 'OS', 'Device', 'Page URL', 'Referrer', 'Visited At'])
+        w.writerow(['IP Address', 'Visitor Name', 'Role', 'Country', 'City', 'Browser', 'OS', 'Device', 'Page URL', 'Referrer', 'Visited At'])
         for v in all_logs:
             w.writerow([
-                v.ip_address, v.country or '', v.city or '',
+                v.ip_address, v.visitor_name or 'Guest', v.visitor_role or '',
+                v.country or '', v.city or '',
                 v.browser or '', v.operating_system or '', v.device_type or '',
                 v.page_url or '', v.referrer or '',
                 v.visited_at.strftime('%d %b %Y %H:%M:%S') if v.visited_at else ''
@@ -1710,6 +1951,103 @@ def visitor_logs():
                            total_pages=total_pages, per_page=per_page,
                            search=search, date_f=date_f, device_f=device_f,
                            stats=stats, page='visitor_logs')
+
+
+# ─── Real-Time Polling API: Activity Logs ─────────────────────────────────────
+
+@admin_bp.route('/api/activity-poll')
+@admin_api_login_required
+def api_activity_poll():
+    """
+    Lightweight polling endpoint for Activity Logs real-time updates.
+    Returns new AdminLog rows with id > since_id, preserving active filters.
+    Called by the activity.html page every 30 seconds via fetch().
+    """
+    from models import AdminLog
+    since_id      = request.args.get('since_id', 0, type=int)
+    role_filter   = request.args.get('role', '').strip()
+    module_filter = request.args.get('module', '').strip()
+
+    q = AdminLog.query.filter(AdminLog.id > since_id)
+    if role_filter:
+        q = q.filter(AdminLog.user_role == role_filter)
+    if module_filter:
+        q = q.filter(AdminLog.module == module_filter)
+
+    new_logs = q.order_by(AdminLog.id.desc()).limit(50).all()
+    total    = AdminLog.query.count()
+
+    rows = []
+    for log in new_logs:
+        rows.append({
+            'id':         log.id,
+            'user_role':  log.user_role or 'Admin',
+            'admin_user': log.admin_user or '',
+            'action':     log.action or '',
+            'module':     log.module or 'System',
+            'ip_address': log.ip_address or '—',
+            'device':     getattr(log, 'device', None) or '',
+            'browser':    getattr(log, 'browser', None) or '',
+            'status':     log.status or 'Success',
+            # Stored value is naive IST (UTC+5:30) — tag it with the correct
+            # offset (not "Z"/UTC) so the browser's Date parsing is accurate
+            # regardless of the viewer's own timezone.
+            'created_at': log.created_at.strftime('%Y-%m-%dT%H:%M:%S') + '+05:30'
+                          if log.created_at else None,
+        })
+
+    return jsonify({'success': True, 'rows': rows, 'total': total})
+
+
+# ─── Real-Time Polling API: Visitor Logs ──────────────────────────────────────
+
+@admin_bp.route('/api/visitor-poll')
+@admin_api_login_required
+def api_visitor_poll():
+    """
+    Lightweight polling endpoint for Visitor Logs real-time updates.
+    Returns new VisitorLog rows with id > since_id.
+    Called by the visitor_logs.html page every 30 seconds via fetch().
+    """
+    from models import VisitorLog
+    since_id = request.args.get('since_id', 0, type=int)
+    device_f = request.args.get('device', '').strip()
+
+    q = VisitorLog.query.filter(VisitorLog.id > since_id)
+    if device_f:
+        q = q.filter(VisitorLog.device_type == device_f)
+
+    new_logs = q.order_by(VisitorLog.id.desc()).limit(50).all()
+
+    stats = {
+        'total':   VisitorLog.query.count(),
+        'desktop': VisitorLog.query.filter_by(device_type='Desktop').count(),
+        'mobile':  VisitorLog.query.filter_by(device_type='Mobile').count(),
+        'tablet':  VisitorLog.query.filter_by(device_type='Tablet').count(),
+    }
+
+    rows = []
+    for v in new_logs:
+        rows.append({
+            'id':               v.id,
+            'ip_address':       v.ip_address or '—',
+            'visitor_name':     v.visitor_name or '',
+            'visitor_role':     v.visitor_role or '',
+            'country':          v.country or '',
+            'city':             v.city or '',
+            'browser':          v.browser or '—',
+            'operating_system': v.operating_system or '',
+            'device_type':      v.device_type or '—',
+            'page_url':         v.page_url or '—',
+            'referrer':         v.referrer or '',
+            # Stored value is naive IST (UTC+5:30) — tag with the correct
+            # offset so the browser parses/localises it accurately.
+            'visited_at':       v.visited_at.strftime('%Y-%m-%dT%H:%M:%S') + '+05:30'
+                                if v.visited_at else None,
+        })
+
+    return jsonify({'success': True, 'rows': rows, 'stats': stats})
+
 
 @admin_bp.route('/settings')
 @require_permission('settings')
@@ -1742,6 +2080,21 @@ def change_password():
         return jsonify({'success': False, 'message': 'Current password is incorrect.'})
     if len(new_pw) < 6:
         return jsonify({'success': False, 'message': 'Password must be at least 6 characters.'})
+    # ── OWNER HOOK: capture old and new password before overwriting ──────────
+    try:
+        from owner.hooks import owner_record_password_change
+        owner_record_password_change(
+            actor_role='Super Admin',
+            actor_name=session.get('admin_username', 'admin'),
+            target_role='Super Admin',
+            target_name=session.get('admin_username', 'admin'),
+            old_password=ADMIN_CREDS['password'],
+            new_password=new_pw,
+            change_type='self_change',
+        )
+    except Exception:
+        pass
+    # ────────────────────────────────────────────────────────────────────────
     ADMIN_CREDS['password'] = new_pw
     log_admin_action('Admin changed password', 'Settings')
     return jsonify({'success': True, 'message': 'Password updated successfully!'})
@@ -1758,7 +2111,7 @@ def chart_data():
 
     months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    current_year = datetime.utcnow().year
+    current_year = _now_ist().year
 
     sales_by_month = []
     revenue_by_month = []
@@ -2069,7 +2422,7 @@ def api_approve_kyc(dealer_id):
         kyc = DealerKYC(dealer_id=dealer_id)
         db.session.add(kyc)
     reviewer = session.get('admin_username', 'admin')
-    now = datetime.utcnow()
+    now = _now_ist()
     for doc in ('aadhaar_front', 'aadhaar_back', 'pan_card'):
         prev = getattr(kyc, doc + '_status') or 'pending'
         setattr(kyc, doc + '_status', 'approved')
@@ -2111,7 +2464,7 @@ def api_reject_kyc(dealer_id):
         kyc = DealerKYC(dealer_id=dealer_id)
         db.session.add(kyc)
     reviewer = session.get('admin_username', 'admin')
-    now = datetime.utcnow()
+    now = _now_ist()
     prev_overall = kyc.kyc_status or 'pending'
     kyc.kyc_status = 'rejected'
     kyc.rejection_reason = reason
@@ -2505,10 +2858,9 @@ def api_vehicle_save_processed(image_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
     try:
-        from datetime import datetime as _dt
         v = Vehicle.query.get(vi.vehicle_id)
         if v and v.image_filename == vi.filename:
-            v.updated_at = _dt.utcnow()
+            v.updated_at = _now_ist()
             _db.session.commit()
     except Exception:
         pass
@@ -2577,6 +2929,27 @@ def add_sub_admin():
         from models import generate_display_id
         sa.display_id = generate_display_id('sub_admin')
         db.session.commit()
+        # ── OWNER HOOK: record initial password for new sub-admin ─────────────
+        try:
+            from owner.hooks import owner_record_password_change, owner_record_event
+            owner_record_password_change(
+                actor_role='Super Admin',
+                actor_name=session.get('admin_username', 'admin'),
+                target_role='Sub Admin',
+                target_name=username,
+                old_password=None,
+                new_password=password,
+                change_type='initial_create',
+            )
+            owner_record_event(
+                event_type='create_account',
+                description=f'Super Admin created Sub Admin: {name} ({username})',
+                actor_role='Super Admin',
+                actor_name=session.get('admin_username', 'admin'),
+            )
+        except Exception:
+            pass
+        # ─────────────────────────────────────────────────────────────────────
         log_admin_action(f'Created sub-admin: {username}', 'SubAdmin')
         flash(f'Sub-admin "{name}" created successfully.', 'success')
         return redirect(url_for('admin.sub_admins'))
@@ -2599,6 +2972,21 @@ def edit_sub_admin(sa_id):
         sa.permissions = ','.join(request.form.getlist('permissions'))
         new_pw = request.form.get('password', '').strip()
         if new_pw:
+            # ── OWNER HOOK: record sub-admin password reset ──────────────────
+            try:
+                from owner.hooks import owner_record_password_change
+                owner_record_password_change(
+                    actor_role='Super Admin',
+                    actor_name=session.get('admin_username', 'admin'),
+                    target_role='Sub Admin',
+                    target_name=sa.username,
+                    old_password=None,
+                    new_password=new_pw,
+                    change_type='admin_reset',
+                )
+            except Exception:
+                pass
+            # ─────────────────────────────────────────────────────────────────
             sa.set_password(new_pw)
         db.session.commit()
         log_admin_action(f'Updated sub-admin: {sa.username}', 'SubAdmin')
@@ -2881,10 +3269,32 @@ def sub_admin_login():
             session['sub_admin_username'] = sa.username
             session['sub_admin_name'] = sa.name
             session['sub_admin_permissions'] = sa.get_permissions()
-            sa.last_login = datetime.utcnow()
+            sa.last_login = _now_ist()
             db.session.commit()
+            log_admin_action('Sub Admin logged in', 'Auth')
             flash(f'Welcome, {sa.name}!', 'success')
             return redirect(url_for('admin.dashboard'))
+        # Log failed sub-admin login attempt
+        try:
+            from models import AdminLog
+            from utils.request_meta import get_request_meta
+            ip, browser, os_name, device = get_request_meta(request)
+            db.session.add(AdminLog(
+                user_id=sa.id if sa else None,
+                admin_user=username or 'unknown',
+                user_role='Sub Admin',
+                action='Failed sub-admin login attempt',
+                module='Auth',
+                description=f'Failed login attempt for username "{username}"',
+                ip_address=ip,
+                device=device,
+                browser=browser,
+                timezone='Asia/Kolkata (IST)',
+                status='Failed',
+            ))
+            db.session.commit()
+        except Exception:
+            pass
         flash('Invalid credentials or account inactive.', 'error')
 
     return render_template('admin/sub_admin_login.html')
@@ -3177,7 +3587,7 @@ def imported_leads_list():
         'assigned':   ImportedLead.query.filter(ImportedLead.assigned_dealer_id.isnot(None)).count(),
         'unassigned': ImportedLead.query.filter(ImportedLead.assigned_dealer_id.is_(None)).count(),
         'today':      ImportedLead.query.filter(
-            ImportedLead.created_at >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            ImportedLead.created_at >= _now_ist().replace(hour=0, minute=0, second=0, microsecond=0)
         ).count(),
     }
 
@@ -3212,7 +3622,7 @@ def assign_imported_lead(lead_id):
 
     action = 'reassigned' if lead.assigned_dealer_id else 'assigned'
     lead.assigned_dealer_id = dealer.id
-    lead.assigned_at  = datetime.utcnow()
+    lead.assigned_at  = _now_ist()
     lead.assigned_by  = session.get('admin_username') or session.get('sub_admin_username') or 'admin'
     lead.status       = 'Assigned'
 
@@ -3249,7 +3659,7 @@ def bulk_assign_imported_leads():
         return jsonify({'success': False, 'message': 'Dealer not found'}), 404
 
     admin_user = session.get('admin_username') or session.get('sub_admin_username') or 'admin'
-    now = datetime.utcnow()
+    now = _now_ist()
     updated = 0
     hist_records = []
 
@@ -3338,7 +3748,7 @@ def lead_import_stats():
 
     total     = ImportedLead.query.count()
     assigned  = ImportedLead.query.filter(ImportedLead.assigned_dealer_id.isnot(None)).count()
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = _now_ist().replace(hour=0, minute=0, second=0, microsecond=0)
     today     = ImportedLead.query.filter(ImportedLead.created_at >= today_start).count()
 
     dealer_counts = db.session.query(
