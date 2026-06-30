@@ -1,0 +1,345 @@
+{% extends 'owner/base_owner.html' %}
+{% block title %}Sub Admins — Supreme Panel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Sub Admins <span class="badge-owner">Owner</span></div>
+    <div class="page-sub">Create, manage, and control permissions for all sub admin accounts</div>
+  </div>
+  <div id="live-time" style="color:var(--muted);font-size:12px"></div>
+</div>
+
+<div class="toolbar">
+  <form method="get" style="display:flex;gap:8px;align-items:center">
+    <input class="search-box" name="q" placeholder="Name, username, email…" value="{{ q }}">
+    <button type="submit" class="btn btn-ghost btn-sm">Search</button>
+    {% if q %}<a href="{{ url_for('owner.sub_admins') }}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+  </form>
+  <button class="btn btn-primary" onclick="openModal('modal-create-sa')">
+    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Create Sub Admin
+  </button>
+  <span class="page-info" style="margin-left:auto;font-size:12px;color:var(--muted)">{{ pagination.total }} sub admin{% if pagination.total!=1 %}s{% endif %}</span>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Name</th><th>Username</th><th>Email</th><th>Status</th><th>Permissions</th><th>Created By</th><th>Joined</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for sa in pagination.items %}
+      <tr>
+        <td class="td-id">{{ sa.display_id or '—' }}</td>
+        <td class="td-name">{{ sa.name }}</td>
+        <td style="font-family:monospace;font-size:12px">{{ sa.username }}</td>
+        <td style="font-size:12px">{{ sa.email }}</td>
+        <td>
+          {% if sa.is_active %}<span class="status-dot"><span class="dot-g"></span>Active</span>
+          {% else %}<span class="status-dot"><span class="dot-r"></span>Disabled</span>{% endif %}
+        </td>
+        <td style="max-width:180px">
+          {% for perm in sa.get_permissions() %}
+          <span class="perm-badge">{{ perm }}</span>
+          {% else %}<span style="color:var(--muted);font-size:11px">None</span>{% endfor %}
+        </td>
+        <td style="font-size:12px">{{ sa.created_by or 'admin' }}</td>
+        <td style="font-size:11px;color:var(--muted)">{{ sa.created_at.strftime('%d %b %Y') if sa.created_at else '—' }}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-ghost btn-sm" onclick='viewSA({{ sa.id }})'>View</button>
+            <button class="btn btn-info btn-sm" onclick='editSA({{ sa.id }},"{{ sa.name|e }}","{{ sa.email|e }}","{{ sa.phone or "" }}")'>Edit</button>
+            <button class="btn btn-accent btn-sm" style="background:rgba(139,92,246,.1);color:#c4b5fd;border:1px solid rgba(139,92,246,.2)" onclick='openPerms({{ sa.id }},"{{ sa.name|e }}")'>Permissions</button>
+            <button class="btn btn-warn btn-sm" onclick='openResetPw({{ sa.id }},"{{ sa.name|e }}")'>Reset PW</button>
+            <button class="btn btn-success btn-sm" onclick='toggleSA({{ sa.id }},{{ "true" if sa.is_active else "false" }})'>
+              {{ 'Disable' if sa.is_active else 'Enable' }}
+            </button>
+            <button class="btn btn-danger btn-sm" onclick='confirmDelete({{ sa.id }},"{{ sa.name|e }}")'>Delete</button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9"><div class="empty">No sub admins found{% if q %} for "{{ q }}"{% endif %}.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if pagination.pages > 1 %}
+<div class="pagination">
+  {% if pagination.has_prev %}<a class="page-link" href="{{ url_for('owner.sub_admins', page=pagination.prev_num, q=q) }}">‹ Prev</a>{% endif %}
+  {% for p in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+    {% if p %}<a class="page-link {% if p==pagination.page %}current{% endif %}" href="{{ url_for('owner.sub_admins', page=p, q=q) }}">{{ p }}</a>
+    {% else %}<span style="color:var(--muted);padding:0 4px">…</span>{% endif %}
+  {% endfor %}
+  {% if pagination.has_next %}<a class="page-link" href="{{ url_for('owner.sub_admins', page=pagination.next_num, q=q) }}">Next ›</a>{% endif %}
+  <span class="page-info">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+</div>
+{% endif %}
+
+<!-- ═══ CREATE SUB ADMIN MODAL ═══ -->
+<div class="modal-overlay" id="modal-create-sa">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">Create Sub Admin</div>
+      <button class="modal-close" onclick="closeModal('modal-create-sa')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Full Name *</label><input class="form-control" id="csa-name" placeholder="Alex Kumar"></div>
+        <div class="form-group"><label class="form-label">Username *</label><input class="form-control" id="csa-username" placeholder="alex_admin"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Email *</label><input class="form-control" id="csa-email" type="email" placeholder="alex@caryanams.com"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-control" id="csa-phone" placeholder="+91 …"></div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="pw-reveal-wrap">
+            <input class="form-control" id="csa-password" type="password" placeholder="Leave blank to auto-generate">
+            <button type="button" class="pw-eye" onclick="togglePw('csa-password')">👁</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:4px">
+        <label class="form-label">Permissions</label>
+        <div class="perm-grid" id="csa-perms">
+          {% for perm in all_permissions %}
+          <div class="perm-item">
+            <input type="checkbox" id="csa-perm-{{ perm }}" value="{{ perm }}">
+            <label for="csa-perm-{{ perm }}">{{ perm }}</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-create-sa')">Cancel</button>
+      <button class="btn btn-primary" onclick="createSA()">Create Sub Admin</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EDIT SUB ADMIN MODAL ═══ -->
+<div class="modal-overlay" id="modal-edit-sa">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="edit-sa-title">Edit Sub Admin</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-sa')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="esa-id">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Full Name</label><input class="form-control" id="esa-name"></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-control" id="esa-email"></div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-control" id="esa-phone"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-sa')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditSA()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PERMISSIONS MODAL ═══ -->
+<div class="modal-overlay" id="modal-perms">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="perms-title">Manage Permissions</div>
+      <button class="modal-close" onclick="closeModal('modal-perms')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="perms-sa-id">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Select permissions for this sub admin. Changes are saved immediately.</p>
+      <div class="perm-grid" id="perms-grid">
+        {% for perm in all_permissions %}
+        <div class="perm-item">
+          <input type="checkbox" id="ep-{{ perm }}" value="{{ perm }}">
+          <label for="ep-{{ perm }}">{{ perm }}</label>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-perms')">Cancel</button>
+      <button class="btn btn-danger btn-sm" onclick="revokeAll()">Revoke All</button>
+      <button class="btn btn-primary" onclick="savePerms()">Save Permissions</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ VIEW SUB ADMIN MODAL ═══ -->
+<div class="modal-overlay" id="modal-view-sa">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">Sub Admin Detail</div><button class="modal-close" onclick="closeModal('modal-view-sa')">✕</button></div>
+    <div class="modal-body" id="view-sa-body"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<!-- Reset PW Modal -->
+<div class="modal-overlay" id="modal-reset-pw">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="reset-pw-title">Reset Password</div>
+      <button class="modal-close" onclick="closeModal('modal-reset-pw')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rpw-id">
+      <div class="form-row single">
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <div class="pw-reveal-wrap">
+            <input class="form-control" id="rpw-password" type="password" placeholder="Leave blank to auto-generate">
+            <button type="button" class="pw-eye" onclick="togglePw('rpw-password')">👁</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-reset-pw')">Cancel</button>
+      <button class="btn btn-warn" onclick="doResetPw()">Reset Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" style="color:var(--red)">⚠ Confirm Delete</div><button class="modal-close" onclick="closeModal('modal-delete')">✕</button></div>
+    <div class="modal-body">
+      <p style="color:var(--sub);font-size:13px;line-height:1.6">Permanently delete sub admin <strong id="del-name" style="color:var(--text)"></strong>?</p>
+      <input type="hidden" id="del-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-delete')">Cancel</button>
+      <button class="btn btn-danger" onclick="doDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+async function createSA(){
+  const name=document.getElementById('csa-name').value.trim();
+  const username=document.getElementById('csa-username').value.trim();
+  const email=document.getElementById('csa-email').value.trim();
+  if(!name||!username||!email){ toast('Name, username and email required','error'); return; }
+  const perms=[...document.querySelectorAll('#csa-perms input:checked')].map(i=>i.value);
+  const fd=new FormData();
+  fd.append('name',name); fd.append('username',username); fd.append('email',email);
+  fd.append('phone',document.getElementById('csa-phone').value.trim());
+  fd.append('password',document.getElementById('csa-password').value.trim());
+  perms.forEach(p=>fd.append('permissions',p));
+  const res=await fetch("{{ url_for('owner.sub_admin_create') }}",{method:'POST',body:fd}).then(r=>r.json());
+  if(res.success){ toast(res.message,'success'); closeModal('modal-create-sa'); setTimeout(()=>location.reload(),1200); }
+  else toast(res.message,'error');
+}
+
+function editSA(id,name,email,phone){
+  document.getElementById('esa-id').value=id;
+  document.getElementById('esa-name').value=name;
+  document.getElementById('esa-email').value=email;
+  document.getElementById('esa-phone').value=phone;
+  document.getElementById('edit-sa-title').textContent='Edit — '+name;
+  openModal('modal-edit-sa');
+}
+async function saveEditSA(){
+  const id=document.getElementById('esa-id').value;
+  const res=await xoFetch(`/xo/sub-admins/${id}/edit`,{
+    name:document.getElementById('esa-name').value.trim(),
+    email:document.getElementById('esa-email').value.trim(),
+    phone:document.getElementById('esa-phone').value.trim(),
+  });
+  if(res.success){ toast(res.message,'success'); closeModal('modal-edit-sa'); setTimeout(()=>location.reload(),1200); }
+  else toast(res.message,'error');
+}
+
+async function viewSA(id){
+  document.getElementById('view-sa-body').innerHTML='<div class="empty">Loading…</div>';
+  openModal('modal-view-sa');
+  const sa=await fetch(`/xo/api/sub-admin/${id}`).then(r=>r.json());
+  const permsHtml=sa.permissions.map(p=>`<span class="perm-badge">${p}</span>`).join('') || '<span style="color:var(--muted);font-size:12px">No permissions</span>';
+  document.getElementById('view-sa-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div><div class="form-label">ID</div><div style="font-family:monospace;color:var(--text)">${sa.display_id||'—'}</div></div>
+      <div><div class="form-label">Status</div>${sa.is_active?'✅ Active':'❌ Disabled'}</div>
+      <div><div class="form-label">Name</div><div style="color:var(--text);font-weight:600">${sa.name}</div></div>
+      <div><div class="form-label">Username</div><div style="font-family:monospace">${sa.username}</div></div>
+      <div><div class="form-label">Email</div><div>${sa.email}</div></div>
+      <div><div class="form-label">Phone</div><div>${sa.phone||'—'}</div></div>
+      <div><div class="form-label">Created By</div><div>${sa.created_by||'admin'}</div></div>
+      <div><div class="form-label">Last Login</div><div style="font-size:12px">${sa.last_login||'Never'}</div></div>
+      <div><div class="form-label">Joined</div><div style="font-size:12px">${sa.created_at||'—'}</div></div>
+    </div>
+    <div class="form-label" style="margin-bottom:8px">Permissions</div>
+    <div>${permsHtml}</div>`;
+}
+
+let _permsId=null;
+async function openPerms(id,name){
+  _permsId=id;
+  document.getElementById('perms-sa-id').value=id;
+  document.getElementById('perms-title').textContent='Permissions — '+name;
+  const sa=await fetch(`/xo/api/sub-admin/${id}`).then(r=>r.json());
+  sa.all_permissions.forEach(p=>{
+    const el=document.getElementById('ep-'+p);
+    if(el) el.checked=sa.permissions.includes(p);
+  });
+  openModal('modal-perms');
+}
+async function savePerms(){
+  const id=document.getElementById('perms-sa-id').value;
+  const perms=[...document.querySelectorAll('#perms-grid input:checked')].map(i=>i.value);
+  const fd=new FormData();
+  fd.append('action','set');
+  perms.forEach(p=>fd.append('permissions',p));
+  const res=await fetch(`/xo/sub-admins/${id}/permissions`,{method:'POST',body:fd}).then(r=>r.json());
+  if(res.success){ toast(res.message,'success'); closeModal('modal-perms'); setTimeout(()=>location.reload(),1200); }
+  else toast(res.message,'error');
+}
+async function revokeAll(){
+  const id=document.getElementById('perms-sa-id').value;
+  document.querySelectorAll('#perms-grid input').forEach(i=>i.checked=false);
+  const fd=new FormData(); fd.append('action','set');
+  const res=await fetch(`/xo/sub-admins/${id}/permissions`,{method:'POST',body:fd}).then(r=>r.json());
+  if(res.success) toast('All permissions revoked','info');
+  else toast(res.message,'error');
+}
+
+async function toggleSA(id, isActive){
+  const res=await xoFetch(`/xo/sub-admins/${id}/toggle`,{});
+  if(res.success){ toast(res.message, res.is_active?'success':'info'); setTimeout(()=>location.reload(),1000); }
+  else toast(res.message,'error');
+}
+
+function openResetPw(id,name){
+  document.getElementById('rpw-id').value=id;
+  document.getElementById('reset-pw-title').textContent='Reset Password — '+name;
+  document.getElementById('rpw-password').value='';
+  openModal('modal-reset-pw');
+}
+async function doResetPw(){
+  const id=document.getElementById('rpw-id').value;
+  const pw=document.getElementById('rpw-password').value.trim();
+  const res=await xoFetch(`/xo/sub-admins/${id}/reset-password`,{new_password:pw});
+  if(res.success){ toast(res.message,'success'); closeModal('modal-reset-pw'); }
+  else toast(res.message,'error');
+}
+
+function confirmDelete(id,name){
+  document.getElementById('del-id').value=id;
+  document.getElementById('del-name').textContent=name;
+  openModal('modal-delete');
+}
+async function doDelete(){
+  const id=document.getElementById('del-id').value;
+  const res=await xoFetch(`/xo/sub-admins/${id}/delete`,{});
+  if(res.success){ toast(res.message,'success'); closeModal('modal-delete'); setTimeout(()=>location.reload(),1200); }
+  else toast(res.message,'error');
+}
+{% endblock %}

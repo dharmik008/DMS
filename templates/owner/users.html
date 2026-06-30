@@ -1,0 +1,376 @@
+{% extends 'owner/base_owner.html' %}
+{% block title %}Users — Supreme Panel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Users <span class="badge-owner">Owner</span></div>
+    <div class="page-sub">Create, edit, delete and manage all user accounts</div>
+  </div>
+  <div id="live-time" style="color:var(--muted);font-size:12px"></div>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <form method="get" style="display:flex;gap:8px;align-items:center">
+    <input class="search-box" name="q" placeholder="Search name, email, phone, city…" value="{{ q }}">
+    <button type="submit" class="btn btn-ghost btn-sm">Search</button>
+    {% if q %}<a href="{{ url_for('owner.users') }}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+  </form>
+  <button class="btn btn-primary" onclick="openModal('modal-create-user')">
+    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Create User
+  </button>
+  <span class="page-info" style="font-size:12px;color:var(--muted);margin-left:auto">
+    {{ pagination.total }} user{% if pagination.total != 1 %}s{% endif %}
+  </span>
+</div>
+
+<!-- Table -->
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>City</th>
+        <th>Status</th><th>Joined</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in pagination.items %}
+      <tr id="row-user-{{ u.id }}">
+        <td class="td-id">{{ u.display_id or '—' }}</td>
+        <td class="td-name">{{ u.name }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.phone or '—' }}</td>
+        <td>{{ u.city or '—' }}</td>
+        <td>
+          {% if u.is_locked %}<span class="status-dot"><span class="dot-y"></span>Locked</span>
+          {% elif u.is_active %}<span class="status-dot"><span class="dot-g"></span>Active</span>
+          {% else %}<span class="status-dot"><span class="dot-r"></span>Inactive</span>{% endif %}
+        </td>
+        <td style="font-size:11px;color:var(--muted)">{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-ghost btn-sm" onclick='viewUser({{ u.id }})'>View</button>
+            <button class="btn btn-info btn-sm" onclick='editUser({{ u.id }},"{{ u.name|e }}","{{ u.email|e }}","{{ u.phone or "" }}","{{ u.city or "" }}")'>Edit</button>
+            <button class="btn btn-warn btn-sm" onclick='openResetPw({{ u.id }},"{{ u.name|e }}","user")'>Reset PW</button>
+            <button class="btn btn-success btn-sm" onclick='toggleUser({{ u.id }},{{ "true" if u.is_active else "false" }})' id="toggle-u-{{ u.id }}">
+              {{ 'Deactivate' if u.is_active else 'Activate' }}
+            </button>
+            {% if u.is_locked %}
+            <button class="btn btn-success btn-sm" onclick='unlockUser({{ u.id }})'>Unlock</button>
+            {% else %}
+            <button class="btn btn-warn btn-sm" onclick='lockUser({{ u.id }})'>Lock</button>
+            {% endif %}
+            <button class="btn btn-danger btn-sm" onclick='confirmDelete({{ u.id }},"{{ u.name|e }}","user")'>Delete</button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8"><div class="empty">No users found{% if q %} for "{{ q }}"{% endif %}.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+{% if pagination.pages > 1 %}
+<div class="pagination">
+  {% if pagination.has_prev %}
+  <a class="page-link" href="{{ url_for('owner.users', page=pagination.prev_num, q=q) }}">‹ Prev</a>
+  {% endif %}
+  {% for p in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+    {% if p %}
+      <a class="page-link {% if p==pagination.page %}current{% endif %}" href="{{ url_for('owner.users', page=p, q=q) }}">{{ p }}</a>
+    {% else %}<span style="color:var(--muted);padding:0 4px">…</span>{% endif %}
+  {% endfor %}
+  {% if pagination.has_next %}
+  <a class="page-link" href="{{ url_for('owner.users', page=pagination.next_num, q=q) }}">Next ›</a>
+  {% endif %}
+  <span class="page-info">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+</div>
+{% endif %}
+
+<!-- ═══ CREATE USER MODAL ═══ -->
+<div class="modal-overlay" id="modal-create-user">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg style="width:16px;height:16px;fill:var(--accent)" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Create User
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-create-user')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input class="form-control" id="cu-name" placeholder="John Doe">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input class="form-control" id="cu-email" type="email" placeholder="john@example.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input class="form-control" id="cu-phone" placeholder="+91 98765 43210">
+        </div>
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <input class="form-control" id="cu-city" placeholder="Mumbai">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="pw-reveal-wrap">
+            <input class="form-control" id="cu-password" type="password" placeholder="Leave blank to auto-generate">
+            <button type="button" class="pw-eye" onclick="togglePw('cu-password')">👁</button>
+          </div>
+          <span class="form-hint">Leave blank to auto-generate a secure password</span>
+        </div>
+      </div>
+      <label class="form-check">
+        <input type="checkbox" id="cu-force"> Force password change on next login
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-create-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="createUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EDIT USER MODAL ═══ -->
+<div class="modal-overlay" id="modal-edit-user">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit User</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-user')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="eu-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input class="form-control" id="eu-name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email (read-only)</label>
+          <input class="form-control" id="eu-email" readonly style="opacity:.5">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input class="form-control" id="eu-phone">
+        </div>
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <input class="form-control" id="eu-city">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditUser()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ VIEW USER MODAL ═══ -->
+<div class="modal-overlay" id="modal-view-user">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">User Detail</div>
+      <button class="modal-close" onclick="closeModal('modal-view-user')">✕</button>
+    </div>
+    <div class="modal-body" id="view-user-body">
+      <div class="empty">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RESET PASSWORD MODAL ═══ -->
+<div class="modal-overlay" id="modal-reset-pw">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="reset-pw-title">Reset Password</div>
+      <button class="modal-close" onclick="closeModal('modal-reset-pw')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rpw-id">
+      <input type="hidden" id="rpw-type">
+      <div class="form-row single">
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <div class="pw-reveal-wrap">
+            <input class="form-control" id="rpw-password" type="password" placeholder="Leave blank to auto-generate">
+            <button type="button" class="pw-eye" onclick="togglePw('rpw-password')">👁</button>
+          </div>
+          <span class="form-hint">Leave blank to auto-generate</span>
+        </div>
+      </div>
+      <label class="form-check" style="margin-top:8px">
+        <input type="checkbox" id="rpw-force"> Force password change on next login
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-reset-pw')">Cancel</button>
+      <button class="btn btn-warn" onclick="doResetPw()">Reset Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DELETE CONFIRM MODAL ═══ -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--red)">⚠ Confirm Delete</div>
+      <button class="modal-close" onclick="closeModal('modal-delete')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--sub);font-size:13px;line-height:1.6">
+        Are you sure you want to permanently delete <strong id="del-name" style="color:var(--text)"></strong>?
+        This action cannot be undone and will remove all associated data.
+      </p>
+      <input type="hidden" id="del-id">
+      <input type="hidden" id="del-type">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-delete')">Cancel</button>
+      <button class="btn btn-danger" onclick="doDelete()">Delete Permanently</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+// ── Create User ──
+async function createUser(){
+  const name  = document.getElementById('cu-name').value.trim();
+  const email = document.getElementById('cu-email').value.trim();
+  const phone = document.getElementById('cu-phone').value.trim();
+  const city  = document.getElementById('cu-city').value.trim();
+  const pw    = document.getElementById('cu-password').value.trim();
+  const force = document.getElementById('cu-force').checked ? '1' : '0';
+  if(!name||!email){ toast('Name and email are required','error'); return; }
+  const res = await xoFetch("{{ url_for('owner.user_create') }}", {name,email,phone,city,password:pw,force_change:force});
+  if(res.success){
+    toast(res.message,'success');
+    closeModal('modal-create-user');
+    setTimeout(()=>location.reload(),1200);
+  } else toast(res.message,'error');
+}
+
+// ── Edit User ──
+function editUser(id, name, email, phone, city){
+  document.getElementById('eu-id').value = id;
+  document.getElementById('eu-name').value = name;
+  document.getElementById('eu-email').value = email;
+  document.getElementById('eu-phone').value = phone;
+  document.getElementById('eu-city').value = city;
+  openModal('modal-edit-user');
+}
+async function saveEditUser(){
+  const id   = document.getElementById('eu-id').value;
+  const name = document.getElementById('eu-name').value.trim();
+  const phone= document.getElementById('eu-phone').value.trim();
+  const city = document.getElementById('eu-city').value.trim();
+  const res  = await xoFetch(`/xo/users/${id}/edit`,{name,phone,city});
+  if(res.success){ toast(res.message,'success'); closeModal('modal-edit-user'); setTimeout(()=>location.reload(),1200); }
+  else toast(res.message,'error');
+}
+
+// ── View User ──
+async function viewUser(id){
+  document.getElementById('view-user-body').innerHTML='<div class="empty">Loading…</div>';
+  openModal('modal-view-user');
+  const u = await fetch(`/xo/api/user/${id}`).then(r=>r.json());
+  let pwHtml = u.password_history.map(p=>`
+    <tr>
+      <td style="font-size:11px;color:var(--muted)">${p.changed_at||'—'}</td>
+      <td><span class="pw-display pw-old">${p.old_password||'—'}</span></td>
+      <td><span class="pw-display pw-new">${p.new_password||'—'}</span></td>
+      <td style="font-size:11px">${p.changed_by||'—'}</td>
+    </tr>`).join('');
+  document.getElementById('view-user-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+      <div><div class="form-label">Display ID</div><div style="color:var(--text);font-family:monospace">${u.display_id||'—'}</div></div>
+      <div><div class="form-label">Role</div><span class="role-tag role-user">User</span></div>
+      <div><div class="form-label">Name</div><div style="color:var(--text);font-weight:600">${u.name}</div></div>
+      <div><div class="form-label">Email</div><div style="color:var(--text)">${u.email}</div></div>
+      <div><div class="form-label">Phone</div><div>${u.phone||'—'}</div></div>
+      <div><div class="form-label">City</div><div>${u.city||'—'}</div></div>
+      <div><div class="form-label">Status</div><div>${u.is_locked?'🔒 Locked':u.is_active?'✅ Active':'❌ Inactive'}</div></div>
+      <div><div class="form-label">Joined</div><div style="font-size:12px">${u.created_at||'—'}</div></div>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Password History</div>
+    <div class="table-wrap" style="margin:0">
+      <table>
+        <thead><tr><th>When</th><th>Old PW</th><th>New PW</th><th>By</th></tr></thead>
+        <tbody>${pwHtml||'<tr><td colspan="4"><div class="empty">No history</div></td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+// ── Toggle active ──
+async function toggleUser(id, isActive){
+  const res = await xoFetch(`/xo/users/${id}/toggle`,{});
+  if(res.success){
+    toast(res.message, res.is_active?'success':'info');
+    setTimeout(()=>location.reload(),1000);
+  } else toast(res.message,'error');
+}
+
+// ── Lock / Unlock ──
+async function lockUser(id){
+  if(!confirm('Lock this account?')) return;
+  const res = await xoFetch(`/xo/users/${id}/lock`,{});
+  if(res.success){ toast(res.message,'info'); setTimeout(()=>location.reload(),1000); }
+  else toast(res.message,'error');
+}
+async function unlockUser(id){
+  const res = await xoFetch(`/xo/users/${id}/unlock`,{});
+  if(res.success){ toast(res.message,'success'); setTimeout(()=>location.reload(),1000); }
+  else toast(res.message,'error');
+}
+
+// ── Reset password ──
+function openResetPw(id, name, type){
+  document.getElementById('rpw-id').value = id;
+  document.getElementById('rpw-type').value = type;
+  document.getElementById('reset-pw-title').textContent = `Reset Password — ${name}`;
+  document.getElementById('rpw-password').value = '';
+  document.getElementById('rpw-force').checked = false;
+  openModal('modal-reset-pw');
+}
+async function doResetPw(){
+  const id    = document.getElementById('rpw-id').value;
+  const type  = document.getElementById('rpw-type').value;
+  const pw    = document.getElementById('rpw-password').value.trim();
+  const force = document.getElementById('rpw-force').checked ? '1' : '0';
+  const url   = type==='user' ? `/xo/users/${id}/reset-password` : `/xo/dealers/${id}/reset-password`;
+  const res   = await xoFetch(url, {new_password:pw, force_change:force});
+  if(res.success){ toast(res.message,'success'); closeModal('modal-reset-pw'); }
+  else toast(res.message,'error');
+}
+
+// ── Delete ──
+function confirmDelete(id, name, type){
+  document.getElementById('del-id').value = id;
+  document.getElementById('del-type').value = type;
+  document.getElementById('del-name').textContent = name;
+  openModal('modal-delete');
+}
+async function doDelete(){
+  const id   = document.getElementById('del-id').value;
+  const type = document.getElementById('del-type').value;
+  const url  = type==='user' ? `/xo/users/${id}/delete` : type==='dealer' ? `/xo/dealers/${id}/delete` : `/xo/sub-admins/${id}/delete`;
+  const res  = await xoFetch(url,{});
+  if(res.success){ toast(res.message,'success'); closeModal('modal-delete'); setTimeout(()=>location.reload(),1200); }
+  else toast(res.message,'error');
+}
+{% endblock %}

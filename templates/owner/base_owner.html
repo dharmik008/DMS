@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Supreme Panel{% endblock %}</title>
+<style>
+:root{
+  --bg:#07080f;--surface:#0e0f1a;--card:#13141f;--border:#1a1b2e;
+  --accent:#6366f1;--accent2:#8b5cf6;--accent3:#06b6d4;
+  --text:#e2e8f0;--muted:#64748b;--sub:#94a3b8;
+  --green:#10b981;--red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:#2a2b40;border-radius:3px}
+
+/* Layout */
+.layout{display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50;overflow-y:auto}
+.main{margin-left:240px;flex:1;padding:24px 28px;min-height:100vh}
+
+/* Sidebar */
+.sb-header{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.sb-logo{display:flex;align-items:center;gap:10px}
+.sb-logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-logo-icon svg{width:18px;height:18px;fill:white}
+.sb-logo-text{font-size:13px;font-weight:700;color:var(--text)}
+.sb-logo-sub{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:1px}
+.sb-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.nav-section{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;font-weight:600;padding:10px 8px 5px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer;color:var(--sub);font-size:13px;font-weight:500;text-decoration:none;transition:all .15s;margin-bottom:2px}
+.nav-item:hover{background:#1a1b2e;color:var(--text)}
+.nav-item.active{background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.1));color:var(--accent);border:1px solid rgba(99,102,241,.2)}
+.nav-item svg{width:15px;height:15px;flex-shrink:0}
+.sb-footer{padding:12px;border-top:1px solid var(--border)}
+.logout-btn{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;cursor:pointer;padding:8px 10px;border-radius:7px;transition:all .15s;text-decoration:none;width:100%}
+.logout-btn:hover{background:rgba(239,68,68,.1);color:var(--red)}
+.logout-btn svg{width:15px;height:15px}
+
+/* Page header */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.page-title{font-size:20px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px}
+.badge-owner{background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.5px;text-transform:uppercase}
+.page-sub{font-size:12px;color:var(--muted);margin-top:3px}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--c,var(--accent))}
+.stat-card.green{--c:var(--green)}.stat-card.blue{--c:var(--blue)}.stat-card.yellow{--c:var(--yellow)}.stat-card.red{--c:var(--red)}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:6px}
+.stat-val{font-size:26px;font-weight:700;color:var(--text)}
+.stat-icon{position:absolute;right:14px;top:14px;opacity:.12}
+.stat-icon svg{width:32px;height:32px;fill:var(--c,var(--accent))}
+
+/* Toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-box{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-size:13px;outline:none;width:240px;transition:border-color .2s}
+.search-box:focus{border-color:var(--accent)}
+.search-box::placeholder{color:var(--muted)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s;text-decoration:none;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:white}
+.btn-primary:hover{opacity:.9}
+.btn-sm{padding:4px 9px;font-size:11px;border-radius:5px}
+.btn-ghost{background:rgba(99,102,241,.1);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)}
+.btn-ghost:hover{background:rgba(99,102,241,.2)}
+.btn-warn{background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.2)}
+.btn-warn:hover{background:rgba(245,158,11,.2)}
+.btn-danger{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.2)}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-success{background:rgba(16,185,129,.1);color:#6ee7b7;border:1px solid rgba(16,185,129,.2)}
+.btn-success:hover{background:rgba(16,185,129,.2)}
+.btn-info{background:rgba(6,182,212,.1);color:#67e8f9;border:1px solid rgba(6,182,212,.2)}
+.btn-info:hover{background:rgba(6,182,212,.2)}
+svg.btn-icon{width:12px;height:12px}
+
+/* Table */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--surface)}
+th{padding:10px 13px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)}
+td{padding:10px 13px;font-size:12px;color:var(--sub);border-bottom:1px solid #111118;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.015);color:var(--text)}
+.td-name{font-weight:600;color:var(--text);font-size:13px}
+.td-id{font-size:11px;color:var(--muted);font-family:monospace}
+
+/* Action cell */
+.actions{display:flex;gap:4px;flex-wrap:wrap}
+
+/* Status badge */
+.status-dot{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500}
+.dot-g{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot-r{width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 6px var(--red)}
+.dot-y{width:6px;height:6px;border-radius:50%;background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+
+/* Role tag */
+.role-tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.role-dealer{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.25)}
+.role-user{background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.25)}
+.role-sub{background:rgba(6,182,212,.12);color:#67e8f9;border:1px solid rgba(6,182,212,.25)}
+.plan-tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase}
+.plan-starter{background:rgba(100,116,139,.12);color:#94a3b8;border:1px solid rgba(100,116,139,.2)}
+.plan-growth{background:rgba(6,182,212,.12);color:#67e8f9;border:1px solid rgba(6,182,212,.2)}
+.plan-pro{background:rgba(99,102,241,.12);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)}
+
+/* Perm badge */
+.perm-badge{display:inline-block;background:rgba(99,102,241,.1);color:#a5b4fc;border:1px solid rgba(99,102,241,.2);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600;margin:1px}
+
+/* Empty state */
+.empty{text-align:center;padding:36px;color:var(--muted);font-size:13px}
+
+/* Pagination */
+.pagination{display:flex;align-items:center;gap:4px;padding:12px 0}
+.page-link{padding:5px 10px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;color:var(--sub);border:1px solid var(--border);background:var(--card);transition:all .15s}
+.page-link:hover{border-color:var(--accent);color:var(--accent)}
+.page-link.current{background:var(--accent);color:white;border-color:var(--accent)}
+.page-info{font-size:12px;color:var(--muted);margin-left:auto}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.modal-lg{max-width:680px}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)}
+.modal-title{font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:5px;line-height:1}
+.modal-close:hover{color:var(--text);background:var(--border)}
+.modal-body{padding:22px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+
+/* Form */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.form-row.single{grid-template-columns:1fr}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-label{font-size:11px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.5px}
+.form-control{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-size:13px;outline:none;transition:border-color .2s;width:100%}
+.form-control:focus{border-color:var(--accent)}
+.form-control::placeholder{color:var(--muted)}
+.form-hint{font-size:11px;color:var(--muted)}
+.form-check{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--sub)}
+.form-check input{accent-color:var(--accent)}
+
+/* Alert / toast */
+.toast-wrap{position:fixed;top:18px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--text);min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.5);pointer-events:all;display:flex;align-items:center;gap:10px;animation:slideIn .2s ease}
+.toast.success{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.08)}
+.toast.error{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08)}
+.toast.info{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.08)}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+.toast-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.toast.success .toast-dot{background:var(--green)}
+.toast.error .toast-dot{background:var(--red)}
+.toast.info .toast-dot{background:var(--accent)}
+
+/* Password reveal */
+.pw-reveal-wrap{position:relative}
+.pw-reveal-wrap .form-control{padding-right:36px}
+.pw-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;padding:2px}
+.pw-eye:hover{color:var(--text)}
+
+/* Tabs inside pages */
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:20px;width:fit-content}
+.tab{padding:7px 16px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s}
+.tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;font-weight:600}
+.tab:hover:not(.active){color:var(--text);background:var(--border)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* Perm checkboxes */
+.perm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.perm-item{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 10px;cursor:pointer;transition:all .15s}
+.perm-item:hover{border-color:var(--accent)}
+.perm-item input{accent-color:var(--accent)}
+.perm-item label{font-size:12px;color:var(--sub);cursor:pointer;text-transform:capitalize}
+.perm-item input:checked ~ label{color:var(--accent)}
+
+/* Monospace password display */
+.pw-display{font-family:'Courier New',monospace;font-size:13px;background:#0d1117;border:1px solid #1e2a3a;border-radius:6px;padding:8px 12px;color:#7dd3fc;letter-spacing:.3px;user-select:all}
+.pw-old{color:#f87171;background:#1a0808;border-color:#3b1010}
+.pw-new{color:#86efac;background:#071a0e;border-color:#103b1e}
+</style>
+</head>
+<body>
+<div id="toast-wrap" class="toast-wrap"></div>
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo">
+        <div class="sb-logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div>
+          <div class="sb-logo-text">Supreme Panel</div>
+          <div class="sb-logo-sub">Owner Access</div>
+        </div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="nav-section">Overview</div>
+      <a href="{{ url_for('owner.dashboard') }}" class="nav-item {% if request.endpoint=='owner.dashboard' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+
+      <div class="nav-section">Management</div>
+      <a href="{{ url_for('owner.users') }}" class="nav-item {% if request.endpoint in ['owner.users'] %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Users
+      </a>
+      <a href="{{ url_for('owner.dealers') }}" class="nav-item {% if request.endpoint in ['owner.dealers'] %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Dealers
+      </a>
+      <a href="{{ url_for('owner.sub_admins') }}" class="nav-item {% if request.endpoint in ['owner.sub_admins'] %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Sub Admins
+      </a>
+
+      <div class="nav-section">Logs</div>
+      <a href="{{ url_for('owner.audit_logs') }}" class="nav-item {% if request.endpoint=='owner.audit_logs' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Audit Logs
+      </a>
+    </nav>
+    <div class="sb-footer">
+      <a href="{{ url_for('owner.logout') }}" class="logout-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<script>
+// ── Toast ──
+function toast(msg, type='info'){
+  const w = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-dot"></span><span>${msg}</span>`;
+  w.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(20px)'; t.style.transition='.3s'; setTimeout(()=>t.remove(),300); }, 3500);
+}
+
+// ── Modal helpers ──
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.addEventListener('click', e=>{
+  if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('open');
+});
+
+// ── API helper ──
+async function xoFetch(url, data){
+  const fd = data instanceof FormData ? data : (() => { const f=new FormData(); Object.entries(data||{}).forEach(([k,v])=>f.append(k,v)); return f; })();
+  const r = await fetch(url, { method:'POST', body:fd });
+  return r.json();
+}
+
+// ── Toggle eye ──
+function togglePw(inputId){
+  const el = document.getElementById(inputId);
+  el.type = el.type==='password' ? 'text' : 'password';
+}
+
+// ── Live clock ──
+function tick(){ const el=document.getElementById('live-time'); if(el) el.textContent=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',hour12:true}); }
+setInterval(tick, 1000); tick();
+
+// ── Tab switcher ──
+function showTab(group, name, el){
+  document.querySelectorAll('[data-tab-group="'+group+'"]').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('[data-tab-btn="'+group+'"]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+group+'-'+name).classList.add('active');
+  el.classList.add('active');
+}
+
+{% block page_scripts %}{% endblock %}
+</script>
+</body>
+</html>

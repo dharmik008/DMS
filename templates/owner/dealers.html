@@ -1,0 +1,309 @@
+{% extends 'owner/base_owner.html' %}
+{% block title %}Dealers — Supreme Panel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Dealers <span class="badge-owner">Owner</span></div>
+    <div class="page-sub">Full dealer account management — create, edit, delete, activate/suspend</div>
+  </div>
+  <div id="live-time" style="color:var(--muted);font-size:12px"></div>
+</div>
+
+<div class="toolbar">
+  <form method="get" style="display:flex;gap:8px;align-items:center">
+    <input class="search-box" name="q" placeholder="Name, email, company, city…" value="{{ q }}">
+    <button type="submit" class="btn btn-ghost btn-sm">Search</button>
+    {% if q %}<a href="{{ url_for('owner.dealers') }}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+  </form>
+  <button class="btn btn-primary" onclick="openModal('modal-create-dealer')">
+    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Create Dealer
+  </button>
+  <span class="page-info" style="margin-left:auto;font-size:12px;color:var(--muted)">{{ pagination.total }} dealer{% if pagination.total!=1 %}s{% endif %}</span>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Name</th><th>Email</th><th>Company</th><th>City</th><th>Plan</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for d in pagination.items %}
+      <tr>
+        <td class="td-id">{{ d.display_id or '—' }}</td>
+        <td class="td-name">{{ d.name }}</td>
+        <td style="font-size:12px">{{ d.email }}</td>
+        <td style="font-size:12px">{{ d.company_name or '—' }}</td>
+        <td style="font-size:12px">{{ d.city or '—' }}</td>
+        <td><span class="plan-tag plan-{{ d.subscription_plan or 'starter' }}">{{ d.subscription_plan or 'starter' }}</span></td>
+        <td>
+          {% if d.is_active %}<span class="status-dot"><span class="dot-g"></span>Active</span>
+          {% else %}<span class="status-dot"><span class="dot-r"></span>Suspended</span>{% endif %}
+        </td>
+        <td style="font-size:11px;color:var(--muted)">{{ d.created_at.strftime('%d %b %Y') if d.created_at else '—' }}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-ghost btn-sm" onclick='viewUser({{ d.id }})'>View</button>
+            <button class="btn btn-info btn-sm" onclick='editDealer({{ d.id }},"{{ d.name|e }}","{{ d.email|e }}","{{ d.phone or "" }}","{{ d.company_name or ""  }}","{{ d.city or "" }}","{{ d.gst_number or "" }}","{{ d.subscription_plan or "starter" }}")'>Edit</button>
+            <button class="btn btn-warn btn-sm" onclick='openResetPw({{ d.id }},"{{ d.name|e }}","dealer")'>Reset PW</button>
+            <button class="btn btn-success btn-sm" onclick='toggleDealer({{ d.id }},{{ "true" if d.is_active else "false" }})'>
+              {{ 'Suspend' if d.is_active else 'Activate' }}
+            </button>
+            <button class="btn btn-danger btn-sm" onclick='confirmDelete({{ d.id }},"{{ d.name|e }}","dealer")'>Delete</button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9"><div class="empty">No dealers found{% if q %} for "{{ q }}"{% endif %}.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if pagination.pages > 1 %}
+<div class="pagination">
+  {% if pagination.has_prev %}<a class="page-link" href="{{ url_for('owner.dealers', page=pagination.prev_num, q=q) }}">‹ Prev</a>{% endif %}
+  {% for p in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+    {% if p %}<a class="page-link {% if p==pagination.page %}current{% endif %}" href="{{ url_for('owner.dealers', page=p, q=q) }}">{{ p }}</a>
+    {% else %}<span style="color:var(--muted);padding:0 4px">…</span>{% endif %}
+  {% endfor %}
+  {% if pagination.has_next %}<a class="page-link" href="{{ url_for('owner.dealers', page=pagination.next_num, q=q) }}">Next ›</a>{% endif %}
+  <span class="page-info">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+</div>
+{% endif %}
+
+<!-- ═══ CREATE DEALER MODAL ═══ -->
+<div class="modal-overlay" id="modal-create-dealer">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Create Dealer</div>
+      <button class="modal-close" onclick="closeModal('modal-create-dealer')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Full Name *</label><input class="form-control" id="cd-name" placeholder="Jane Smith"></div>
+        <div class="form-group"><label class="form-label">Email *</label><input class="form-control" id="cd-email" type="email" placeholder="dealer@company.com"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-control" id="cd-phone" placeholder="+91 …"></div>
+        <div class="form-group"><label class="form-label">Company Name</label><input class="form-control" id="cd-company" placeholder="Motors Pvt Ltd"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">City</label><input class="form-control" id="cd-city" placeholder="Ahmedabad"></div>
+        <div class="form-group">
+          <label class="form-label">Subscription Plan</label>
+          <select class="form-control" id="cd-plan">
+            <option value="starter">Starter</option>
+            <option value="growth">Growth</option>
+            <option value="pro">Pro</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="pw-reveal-wrap">
+            <input class="form-control" id="cd-password" type="password" placeholder="Leave blank to auto-generate">
+            <button type="button" class="pw-eye" onclick="togglePw('cd-password')">👁</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-create-dealer')">Cancel</button>
+      <button class="btn btn-primary" onclick="createDealer()">Create Dealer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EDIT DEALER MODAL ═══ -->
+<div class="modal-overlay" id="modal-edit-dealer">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="edit-dealer-title">Edit Dealer</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-dealer')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ed-id">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Full Name *</label><input class="form-control" id="ed-name"></div>
+        <div class="form-group"><label class="form-label">Email (read-only)</label><input class="form-control" id="ed-email" readonly style="opacity:.5"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-control" id="ed-phone"></div>
+        <div class="form-group"><label class="form-label">Company Name</label><input class="form-control" id="ed-company"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">City</label><input class="form-control" id="ed-city"></div>
+        <div class="form-group"><label class="form-label">GST Number</label><input class="form-control" id="ed-gst"></div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label class="form-label">Subscription Plan</label>
+          <select class="form-control" id="ed-plan">
+            <option value="starter">Starter</option>
+            <option value="growth">Growth</option>
+            <option value="pro">Pro</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-dealer')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditDealer()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shared Reset PW Modal -->
+<div class="modal-overlay" id="modal-reset-pw">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="reset-pw-title">Reset Password</div>
+      <button class="modal-close" onclick="closeModal('modal-reset-pw')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rpw-id"><input type="hidden" id="rpw-type">
+      <div class="form-row single">
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <div class="pw-reveal-wrap">
+            <input class="form-control" id="rpw-password" type="password" placeholder="Leave blank to auto-generate">
+            <button type="button" class="pw-eye" onclick="togglePw('rpw-password')">👁</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-reset-pw')">Cancel</button>
+      <button class="btn btn-warn" onclick="doResetPw()">Reset Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" style="color:var(--red)">⚠ Confirm Delete</div><button class="modal-close" onclick="closeModal('modal-delete')">✕</button></div>
+    <div class="modal-body">
+      <p style="color:var(--sub);font-size:13px;line-height:1.6">Permanently delete <strong id="del-name" style="color:var(--text)"></strong> and all their vehicles, leads, and data?</p>
+      <input type="hidden" id="del-id"><input type="hidden" id="del-type">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-delete')">Cancel</button>
+      <button class="btn btn-danger" onclick="doDelete()">Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
+<!-- View User Modal (shared) -->
+<div class="modal-overlay" id="modal-view-user">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">Dealer Detail</div><button class="modal-close" onclick="closeModal('modal-view-user')">✕</button></div>
+    <div class="modal-body" id="view-user-body"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+async function createDealer(){
+  const name=document.getElementById('cd-name').value.trim();
+  const email=document.getElementById('cd-email').value.trim();
+  if(!name||!email){ toast('Name and email required','error'); return; }
+  const res=await xoFetch("{{ url_for('owner.dealer_create') }}", {
+    name, email,
+    phone: document.getElementById('cd-phone').value.trim(),
+    company_name: document.getElementById('cd-company').value.trim(),
+    city: document.getElementById('cd-city').value.trim(),
+    subscription_plan: document.getElementById('cd-plan').value,
+    password: document.getElementById('cd-password').value.trim(),
+  });
+  if(res.success){ toast(res.message,'success'); closeModal('modal-create-dealer'); setTimeout(()=>location.reload(),1200); }
+  else toast(res.message,'error');
+}
+
+function editDealer(id,name,email,phone,company,city,gst,plan){
+  document.getElementById('ed-id').value=id;
+  document.getElementById('ed-name').value=name;
+  document.getElementById('ed-email').value=email;
+  document.getElementById('ed-phone').value=phone;
+  document.getElementById('ed-company').value=company;
+  document.getElementById('ed-city').value=city;
+  document.getElementById('ed-gst').value=gst;
+  document.getElementById('ed-plan').value=plan;
+  document.getElementById('edit-dealer-title').textContent='Edit — '+name;
+  openModal('modal-edit-dealer');
+}
+async function saveEditDealer(){
+  const id=document.getElementById('ed-id').value;
+  const res=await xoFetch(`/xo/dealers/${id}/edit`,{
+    name:document.getElementById('ed-name').value.trim(),
+    phone:document.getElementById('ed-phone').value.trim(),
+    company_name:document.getElementById('ed-company').value.trim(),
+    city:document.getElementById('ed-city').value.trim(),
+    gst_number:document.getElementById('ed-gst').value.trim(),
+    subscription_plan:document.getElementById('ed-plan').value,
+  });
+  if(res.success){ toast(res.message,'success'); closeModal('modal-edit-dealer'); setTimeout(()=>location.reload(),1200); }
+  else toast(res.message,'error');
+}
+
+async function toggleDealer(id, isActive){
+  const res=await xoFetch(`/xo/dealers/${id}/toggle`,{});
+  if(res.success){ toast(res.message, res.is_active?'success':'info'); setTimeout(()=>location.reload(),1000); }
+  else toast(res.message,'error');
+}
+
+async function viewUser(id){
+  document.getElementById('view-user-body').innerHTML='<div class="empty">Loading…</div>';
+  openModal('modal-view-user');
+  const u=await fetch(`/xo/api/user/${id}`).then(r=>r.json());
+  let pwHtml=u.password_history.map(p=>`<tr><td style="font-size:11px;color:var(--muted)">${p.changed_at||'—'}</td><td><span class="pw-display pw-old">${p.old_password||'—'}</span></td><td><span class="pw-display pw-new">${p.new_password||'—'}</span></td><td>${p.changed_by||'—'}</td></tr>`).join('');
+  document.getElementById('view-user-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div><div class="form-label">ID</div><div style="font-family:monospace;color:var(--text)">${u.display_id||'—'}</div></div>
+      <div><div class="form-label">Plan</div><span class="plan-tag plan-${u.subscription_plan||'starter'}">${u.subscription_plan||'—'}</span></div>
+      <div><div class="form-label">Name</div><div style="color:var(--text);font-weight:600">${u.name}</div></div>
+      <div><div class="form-label">Email</div><div>${u.email}</div></div>
+      <div><div class="form-label">Company</div><div>${u.company_name||'—'}</div></div>
+      <div><div class="form-label">GST</div><div style="font-family:monospace;font-size:12px">${u.gst_number||'—'}</div></div>
+      <div><div class="form-label">Status</div>${u.is_active?'✅ Active':'❌ Suspended'}</div>
+      <div><div class="form-label">Joined</div>${u.created_at||'—'}</div>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Password History</div>
+    <div class="table-wrap" style="margin:0"><table><thead><tr><th>When</th><th>Old</th><th>New</th><th>By</th></tr></thead><tbody>${pwHtml||'<tr><td colspan="4"><div class="empty">No history</div></td></tr>'}</tbody></table></div>`;
+}
+
+function openResetPw(id,name,type){
+  document.getElementById('rpw-id').value=id;
+  document.getElementById('rpw-type').value=type;
+  document.getElementById('reset-pw-title').textContent=`Reset Password — ${name}`;
+  document.getElementById('rpw-password').value='';
+  openModal('modal-reset-pw');
+}
+async function doResetPw(){
+  const id=document.getElementById('rpw-id').value;
+  const type=document.getElementById('rpw-type').value;
+  const pw=document.getElementById('rpw-password').value.trim();
+  const url=type==='dealer'?`/xo/dealers/${id}/reset-password`:`/xo/users/${id}/reset-password`;
+  const res=await xoFetch(url,{new_password:pw});
+  if(res.success){ toast(res.message,'success'); closeModal('modal-reset-pw'); }
+  else toast(res.message,'error');
+}
+
+function confirmDelete(id,name,type){
+  document.getElementById('del-id').value=id;
+  document.getElementById('del-type').value=type;
+  document.getElementById('del-name').textContent=name;
+  openModal('modal-delete');
+}
+async function doDelete(){
+  const id=document.getElementById('del-id').value;
+  const type=document.getElementById('del-type').value;
+  const url=type==='dealer'?`/xo/dealers/${id}/delete`:`/xo/users/${id}/delete`;
+  const res=await xoFetch(url,{});
+  if(res.success){ toast(res.message,'success'); closeModal('modal-delete'); setTimeout(()=>location.reload(),1200); }
+  else toast(res.message,'error');
+}
+{% endblock %}
