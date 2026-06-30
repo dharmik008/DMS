@@ -202,14 +202,14 @@
 
   <nav class="sidebar-nav">
     <div class="nav-label">Overview</div>
-    <a class="nav-item active" href="{{ url_for('minisite.dashboard', website_name=website_name) }}">
+    <a class="nav-item active" href="{{ url_for('minisite.dashboard', dealer_name=dealer.name, website_name=website_name)  }}">
       <i class="fas fa-chart-pie"></i> Dashboard
     </a>
-    <a class="nav-item" href="{{ url_for('minisite.inventory', website_name=website_name) }}">
+    <a class="nav-item" href="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}">
       <i class="fas fa-car"></i> Inventory
       {% if available %}<span class="nav-badge">{{ available }}</span>{% endif %}
     </a>
-    <a class="nav-item" href="{{ url_for('minisite.featured_deals', website_name=website_name) }}">
+    <a class="nav-item" href="{{ url_for('minisite.featured_deals', dealer_name=dealer.name, website_name=website_name)  }}">
       <i class="fas fa-star"></i> Featured Deals
       {% if featured_count %}<span class="nav-badge" style="background:var(--warning)">{{ featured_count }}</span>{% endif %}
     </a>
@@ -225,13 +225,13 @@
     </a>
 
     <div class="nav-label">Public Site</div>
-    <a class="nav-item" href="{{ url_for('minisite.home', website_name=website_name) }}" target="_blank">
+    <a class="nav-item" href="{{ url_for('minisite.home', dealer_name=dealer.name, website_name=website_name)  }}" target="_blank">
       <i class="fas fa-globe"></i> View Mini Site <i class="fas fa-external-link-alt" style="margin-left:auto;font-size:10px;opacity:.5"></i>
     </a>
-    <a class="nav-item" href="{{ url_for('minisite.about', website_name=website_name) }}" target="_blank">
+    <a class="nav-item" href="{{ url_for('minisite.about', dealer_name=dealer.name, website_name=website_name)  }}" target="_blank">
       <i class="fas fa-info-circle"></i> About Page
     </a>
-    <a class="nav-item" href="{{ url_for('minisite.contact', website_name=website_name) }}" target="_blank">
+    <a class="nav-item" href="{{ url_for('minisite.contact', dealer_name=dealer.name, website_name=website_name)  }}" target="_blank">
       <i class="fas fa-envelope"></i> Contact Page
     </a>
   </nav>
@@ -255,10 +255,10 @@
     </button>
     <div class="topbar-title">Dashboard</div>
     <div class="topbar-actions">
-      <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" class="topbar-btn btn-outline">
+      <a href="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}" class="topbar-btn btn-outline">
         <i class="fas fa-list"></i> Inventory
       </a>
-      <a href="{{ url_for('minisite.home', website_name=website_name) }}" target="_blank" class="topbar-btn btn-primary">
+      <a href="{{ url_for('minisite.home', dealer_name=dealer.name, website_name=website_name)  }}" target="_blank" class="topbar-btn btn-primary">
         <i class="fas fa-external-link-alt"></i> View Site
       </a>
     </div>
@@ -405,12 +405,12 @@
     <div class="panel" style="margin-bottom:24px">
       <div class="panel-head">
         <h3><i class="fas fa-car" style="color:var(--primary);margin-right:8px"></i>Recent Inventory</h3>
-        <a href="{{ url_for('minisite.inventory', website_name=website_name) }}">View all →</a>
+        <a href="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}">View all →</a>
       </div>
       {% if recent_vehicles %}
       <div class="inv-grid">
         {% for car in recent_vehicles %}
-        <a href="{{ url_for('minisite.car_detail', website_name=website_name, car_id=car.id) }}" style="color:inherit">
+        <a href="{{ url_for('minisite.car_detail', dealer_name=dealer.name, website_name=website_name, car_id=car.id)  }}" style="color:inherit">
           <div class="inv-card">
             <div class="inv-card-img">
               {% if car.display_image_url %}
