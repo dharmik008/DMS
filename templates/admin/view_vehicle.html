@@ -126,6 +126,32 @@
     </div>
   </div>
 
+  <!-- Condition Details Card -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><span class="card-title">Condition Details</span></div>
+    <div style="padding:16px 20px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
+        {% set cond_items = [
+          ('Accident History',    vehicle.accident_history   or 'NA'),
+          ('Loan / Hypothecation',vehicle.loan_status        or 'NA'),
+          ('RC & Service Records',vehicle.rc_service_records or 'NA'),
+          ('Keys Available',      vehicle.keys_available     or 'NA'),
+          ('Body Panel Status',   vehicle.body_panel_status  or 'NA'),
+        ] %}
+        {% for label, val in cond_items %}
+        <div style="background:var(--bg-2,#f9fafb);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">{{ label }}</div>
+          <div style="font-size:14px;font-weight:600;">{{ val }}</div>
+        </div>
+        {% endfor %}
+        <div style="background:var(--bg-2,#f9fafb);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Major Issues</div>
+          <div style="font-size:14px;font-weight:600;">{{ (vehicle.major_issues or 'None') }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div style="display:flex;flex-direction:column;gap:16px;">
     <div class="card">
       <div class="card-header"><span class="card-title">Leads ({{ leads|length }})</span></div>
