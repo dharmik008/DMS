@@ -11,7 +11,7 @@
 
 <div class="ms-page">
   <div class="breadcrumb">
-    <a href="{{ url_for('minisite.home', website_name=website_name) }}">Home</a>
+    <a href="{{ url_for('minisite.home', dealer_name=dealer.name, website_name=website_name)  }}">Home</a>
     <span>/</span> Featured Deals
   </div>
 
@@ -23,7 +23,7 @@
 
   <div class="car-grid">
     {% for car in featured %}
-    <a href="{{ url_for('minisite.car_detail', website_name=website_name, car_id=car.id) }}" class="car-card">
+    <a href="{{ url_for('minisite.car_detail', dealer_name=dealer.name, website_name=website_name, car_id=car.id)  }}" class="car-card">
       <div class="car-card-img">
         {% if car.display_image_url %}
           <img src="{{ car.display_image_url }}" alt="{{ car.make }} {{ car.model }}" loading="lazy"
@@ -59,7 +59,7 @@
     <i class="fas fa-star" style="font-size:60px;color:#e2e8f0;display:block;margin-bottom:20px"></i>
     <h3 style="font-size:20px;color:#0f172a">No featured deals right now</h3>
     <p style="margin-top:8px">Check back soon or browse our full inventory.</p>
-    <a href="{{ url_for('minisite.inventory', website_name=website_name) }}" class="btn btn-primary" style="margin-top:24px;padding:14px 32px">Browse All Cars</a>
+    <a href="{{ url_for('minisite.inventory', dealer_name=dealer.name, website_name=website_name)  }}" class="btn btn-primary" style="margin-top:24px;padding:14px 32px">Browse All Cars</a>
   </div>
   {% endif %}
 </div>
