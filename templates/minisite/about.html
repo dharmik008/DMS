@@ -8,7 +8,7 @@
 
 <div class="ms-page">
   <div class="breadcrumb">
-    <a href="{{ url_for('minisite.home', website_name=website_name) }}">Home</a>
+    <a href="{{ url_for('minisite.home', dealer_name=dealer.name, website_name=website_name)  }}">Home</a>
     <span>/</span> About Us
   </div>
 
@@ -93,7 +93,7 @@
             <i class="fab fa-whatsapp"></i> WhatsApp
           </a>
           {% endif %}
-          <a href="{{ url_for('minisite.contact', website_name=website_name) }}" class="btn btn-primary" style="flex:1;justify-content:center">
+          <a href="{{ url_for('minisite.contact', dealer_name=dealer.name, website_name=website_name)  }}" class="btn btn-primary" style="flex:1;justify-content:center">
             <i class="fas fa-envelope"></i> Contact
           </a>
         </div>
