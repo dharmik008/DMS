@@ -87,11 +87,19 @@
         <div class="form-grid">
           <div class="form-group">
             <label>Registration Number</label>
-            <input type="text" name="registration_number" placeholder="e.g. MH01AB1234" value="{{ vehicle['registration_number'] if vehicle else '' }}">
+            <input type="text" name="registration_number"
+              id="reg_number_field"
+              placeholder="e.g. GJ 06 AB 1234 or MH 12 ABC 1234"
+              value="{{ vehicle['registration_number'] if vehicle else '' }}"
+              oninput="formatNumberPlate(this)"
+              onblur="formatNumberPlate(this)"
+              autocomplete="off"
+              style="text-transform:uppercase;letter-spacing:2px;font-weight:700;font-family:monospace;font-size:15px;">
+            <small style="font-size:11px;color:var(--text-muted)">Auto-formatted · Standard: GJ 06 AB 1234 · New-series: MH 12 ABC 1234</small>
           </div>
           <div class="form-group">
             <label>VIN / Chassis Number</label>
-            <input type="text" name="vin_number" placeholder="17-char VIN" value="{{ vehicle['vin_number'] if vehicle else '' }}">
+            <input type="text" name="vin_number" placeholder="17-char VIN" value="{{ vehicle['vin_number'] if vehicle else '' }}" style="text-transform:uppercase" oninput="this.value = this.value.toUpperCase()">
           </div>
           <div class="form-group">
             <label>Insurance Valid Till</label>
@@ -174,6 +182,79 @@
                         padding:0 12px;font-size:11px;font-weight:700;
                         color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
     </style>
+
+    <!-- ── Vehicle Condition Details ────────────────────────────────────── -->
+    <div class="card mb-24">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="fas fa-clipboard-check" style="margin-right:8px;color:var(--gold-accent,#f59e0b)"></i>
+          Vehicle Condition Details
+        </div>
+        <span style="font-size:12px;color:var(--text-secondary,#6b7280)">All fields mandatory — select NA if unknown</span>
+      </div>
+      <div class="card-body" style="padding:24px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Accident History <span style="color:#ef4444;">*</span></label>
+            <select class="form-control" name="accident_history" required>
+              <option value="">Select</option>
+              {% for opt in ['No','Minor','Major','NA'] %}
+              <option value="{{ opt }}" {% if vehicle and (vehicle.get('accident_history') or 'NA') == opt %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Loan / Hypothecation <span style="color:#ef4444;">*</span></label>
+            <select class="form-control" name="loan_status" required>
+              <option value="">Select</option>
+              {% for opt in ['Active','Closed','No Loan','NA'] %}
+              <option value="{{ opt }}" {% if vehicle and (vehicle.get('loan_status') or 'NA') == opt %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">RC &amp; Service Records <span style="color:#ef4444;">*</span></label>
+            <select class="form-control" name="rc_service_records" required>
+              <option value="">Select</option>
+              {% for opt in ['Yes','No','Partial','NA'] %}
+              <option value="{{ opt }}" {% if vehicle and (vehicle.get('rc_service_records') or 'NA') == opt %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Keys Available <span style="color:#ef4444;">*</span></label>
+            <select class="form-control" name="keys_available" required>
+              <option value="">Select</option>
+              {% for opt in ['One','Two','Three','NA'] %}
+              <option value="{{ opt }}" {% if vehicle and (vehicle.get('keys_available') or 'NA') == opt %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Body Panel Repainted / Replaced <span style="color:#ef4444;">*</span></label>
+            <select class="form-control" name="body_panel_status" required>
+              <option value="">Select</option>
+              {% for opt in ['No','Repainted','Replaced','NA'] %}
+              <option value="{{ opt }}" {% if vehicle and (vehicle.get('body_panel_status') or 'NA') == opt %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group" style="grid-column:1/-1;">
+            <label class="form-label">Major Issues <span style="color:#ef4444;">*</span></label>
+            {% set saved_issues = (vehicle.get('major_issues','None') if vehicle else 'None').split(',') %}
+            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;" id="dealerMajorIssues">
+              {% for opt in ['Engine','Gearbox','AC','Suspension','None','NA'] %}
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;background:#f3f4f6;padding:8px 14px;border-radius:20px;border:1px solid #e5e7eb;">
+                <input type="checkbox" name="major_issues" value="{{ opt }}" style="width:15px;height:15px;"
+                  {% if opt in saved_issues %}checked{% endif %}>
+                {{ opt }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="card mb-24">
       <div class="card-header">
@@ -414,6 +495,83 @@
 
 {% block extra_js %}
 <script>
+/* ── Number Plate Formatter ─────────────────────────────────────────────────
+   Supports both standard and new-series Indian registration formats:
+     Standard : GJ 06 AB 1234   (2-letter state · 1-2 digit RTO · 2-letter series · 4 digits)
+     New-series: DL 3C CA 1234  (2-letter state · 1-2 digit RTO · 3-letter series · 4 digits)
+   Examples accepted:
+     GJ01AB1234  GJ1AB1234  GJ01ABC1234
+     DL3CCA1234  DL01CCA1234  MH12ABC1234  KA03XYZ5678
+   All chars uppercased. Spaces inserted automatically at the right positions.
+──────────────────────────────────────────────────────────────────────────── */
+function formatNumberPlate(input) {
+  // Strip everything except alphanumeric, then uppercase
+  var raw = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+
+  var parts = [];
+  var pos = 0;
+
+  // Part 1: exactly 2 letters (state code e.g. GJ, MH, DL)
+  if (pos < raw.length) {
+    var p1 = raw.substring(pos, pos + 2).replace(/[^A-Z]/g, '');
+    if (p1) { parts.push(p1); }
+    pos += 2;
+  }
+
+  // Part 2: 1 or 2 digits (RTO/district code e.g. 01, 3, 12)
+  // Peek: take 1 digit; if the char after is also a digit, take 2.
+  if (pos < raw.length) {
+    var districtRaw = raw.substring(pos);
+    var distDigits = districtRaw.match(/^[0-9]{1,2}/);
+    if (distDigits) {
+      var p2 = distDigits[0];
+      parts.push(p2);
+      pos += p2.length;
+    }
+  }
+
+  // Part 3: 2 or 3 letters (series code e.g. AB, ABC, CCA)
+  // Peek ahead: if there are ≥3 alpha chars followed by exactly 4 digits at the
+  // end, consume 3 letters (new series); otherwise consume 2 (standard series).
+  if (pos < raw.length) {
+    var rest = raw.substring(pos);
+    var seriesLen = 2; // default: standard 2-letter series
+    var alphaMatch = rest.match(/^([A-Z]{3})([0-9]{4})$/);   // exactly 3 alpha + 4 digits
+    var alpha3More = rest.match(/^[A-Z]{3,}/);               // 3+ alpha chars with more to follow
+    if (alphaMatch || (alpha3More && rest.length > 3 + 4)) {
+      // Check that there are still 4 digits after 3 letters
+      var after3 = rest.substring(3);
+      var digits4 = after3.match(/^[0-9]{1,4}/);
+      if (digits4 && digits4[0].length > 0) {
+        seriesLen = 3;
+      }
+    }
+    var p3 = rest.substring(0, seriesLen).replace(/[^A-Z]/g, '');
+    if (p3) { parts.push(p3); }
+    pos += seriesLen;
+  }
+
+  // Part 4: 4 digits (vehicle number e.g. 1234)
+  if (pos < raw.length) {
+    var p4 = raw.substring(pos, pos + 4).replace(/[^0-9]/g, '');
+    if (p4) { parts.push(p4); }
+  }
+
+  var formatted = parts.join(' ');
+  // Only update if different to avoid cursor jumping
+  if (input.value !== formatted) {
+    input.value = formatted;
+  }
+}
+
+/* Auto-format existing value on page load */
+document.addEventListener('DOMContentLoaded', function() {
+  var regField = document.getElementById('reg_number_field');
+  if (regField && regField.value) {
+    formatNumberPlate(regField);
+  }
+});
+
 const VEHICLE_ID = {{ vehicle['id'] if vehicle and vehicle.get('id') else 'null' }};
 let vphGalleryFiles = [];
 
