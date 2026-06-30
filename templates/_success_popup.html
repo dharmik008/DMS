@@ -1,0 +1,154 @@
+<!-- ════════════════════════════════════════════════════════════════════
+     REUSABLE SUCCESS CELEBRATION POPUP  (additive — no existing code touched)
+     Include this once near the end of <body> on any page:
+         {%- raw -%}{% include '_success_popup.html' %}{%- endraw -%}
+     Then call from JS anywhere on that page:
+         showSuccessPopup(title, message, detailsHtml, { onContinue: fn, redirect: 'url' })
+═══════════════════════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+<style>
+#successPopupOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 8, 23, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+#successPopupOverlay.sp-open { display: flex; }
+
+.sp-card {
+  width: 100%;
+  max-width: 440px;
+  margin: 16px;
+  background: #fff;
+  border-radius: 22px;
+  padding: 38px 34px 30px;
+  text-align: center;
+  box-shadow: 0 25px 70px rgba(0, 35, 102, 0.35);
+  font-family: 'Inter', sans-serif;
+  animation: sp-show 0.4s cubic-bezier(.2,.9,.3,1.3);
+}
+@keyframes sp-show {
+  from { opacity: 0; transform: scale(.75) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.sp-icon {
+  width: 78px;
+  height: 78px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #002366, #1a3a8f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  box-shadow: 0 10px 28px rgba(0, 35, 102, 0.35);
+}
+
+.sp-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: #002366;
+  margin-bottom: 6px;
+}
+.sp-message {
+  font-size: 14.5px;
+  color: #64748b;
+  margin-bottom: 22px;
+}
+.sp-details {
+  background: #f8faff;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  padding: 18px 20px;
+  text-align: left;
+}
+.sp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13.5px;
+  padding: 7px 0;
+  color: #334155;
+}
+.sp-row + .sp-row { border-top: 1px dashed #e2e8f0; }
+.sp-row .sp-label { color: #64748b; font-weight: 500; }
+.sp-row .sp-value { color: #0f172a; font-weight: 700; }
+
+.sp-btn {
+  width: 100%;
+  margin-top: 26px;
+  padding: 14px;
+  background: #002366;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s, transform .15s;
+}
+.sp-btn:hover { background: #0369a1; transform: translateY(-1px); }
+</style>
+
+<div id="successPopupOverlay" onclick="if(event.target===this){}">
+  <div class="sp-card">
+    <div class="sp-icon" id="spIcon">🎉</div>
+    <div class="sp-title" id="spTitle">Success</div>
+    <div class="sp-message" id="spMessage">Done</div>
+    <div class="sp-details" id="spDetails"></div>
+    <button class="sp-btn" id="spContinueBtn" onclick="_spContinue()">Continue</button>
+  </div>
+</div>
+
+<script>
+/* ── Reusable Success Popup ──────────────────────────────────────────
+   showSuccessPopup(title, message, detailsHtml, options)
+   options = {
+     onContinue: function() {},   // called when user clicks Continue
+     redirect:   'url string'     // optional — navigated to on Continue
+   }
+   detailsHtml: pass rows pre-built, e.g.:
+     buildSpRow('User Name', 'John Doe') + buildSpRow('Status', 'Active')
+──────────────────────────────────────────────────────────────────── */
+function buildSpRow(label, value) {
+  return '<div class="sp-row"><span class="sp-label">' + label + '</span>' +
+         '<span class="sp-value">' + value + '</span></div>';
+}
+
+var _spOptions = {};
+
+function showSuccessPopup(title, message, detailsHtml, options) {
+  _spOptions = options || {};
+  document.getElementById('spTitle').innerHTML = title;
+  document.getElementById('spMessage').innerHTML = message;
+  document.getElementById('spDetails').innerHTML = detailsHtml || '';
+  document.getElementById('successPopupOverlay').classList.add('sp-open');
+  document.body.style.overflow = 'hidden';
+
+  if (typeof confetti === 'function') {
+    confetti({ particleCount: 300, spread: 220, origin: { y: 0.6 } });
+    setTimeout(function () {
+      confetti({ particleCount: 150, spread: 180 });
+    }, 400);
+  }
+}
+
+function _spContinue() {
+  document.getElementById('successPopupOverlay').classList.remove('sp-open');
+  document.body.style.overflow = '';
+  if (_spOptions.onContinue) _spOptions.onContinue();
+  if (_spOptions.redirect) window.location.href = _spOptions.redirect;
+}
+</script>
+<!-- ════════════════════════════════════════════════════════════════════
+     END REUSABLE SUCCESS CELEBRATION POPUP
+═══════════════════════════════════════════════════════════════════════ -->
