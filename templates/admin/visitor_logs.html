@@ -16,14 +16,14 @@
 
 <!-- Stats -->
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">
-  {% for label, val, color in [
-      ('Total Visits', stats.total, 'var(--accent)'),
-      ('Desktop', stats.desktop, '#6366f1'),
-      ('Mobile', stats.mobile, '#22c55e'),
-      ('Tablet', stats.tablet, '#f59e0b'),
+  {% for label, val, color, stat_key in [
+      ('Total Visits', stats.total, 'var(--accent)', 'total'),
+      ('Desktop', stats.desktop, '#6366f1', 'desktop'),
+      ('Mobile', stats.mobile, '#22c55e', 'mobile'),
+      ('Tablet', stats.tablet, '#f59e0b', 'tablet'),
   ] %}
   <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
-    <div style="font-size:26px;font-weight:800;color:{{ color }};">{{ val }}</div>
+    <div data-stat="{{ stat_key }}" style="font-size:26px;font-weight:800;color:{{ color }};">{{ val }}</div>
     <div style="font-size:12px;color:var(--text-2);margin-top:2px;">{{ label }}</div>
   </div>
   {% endfor %}
@@ -31,7 +31,7 @@
 
 <!-- Filters -->
 <form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
-  <input type="text" name="search" value="{{ search }}" placeholder="Search IP, browser, page…"
+  <input type="text" name="search" value="{{ search }}" placeholder="Search name, IP, browser, page…"
     style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;flex:1;min-width:160px;">
   <input type="date" name="date" value="{{ date_f }}"
     style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-1);font-size:13px;">
@@ -59,6 +59,7 @@
         <tr>
           <th>#</th>
           <th>IP Address</th>
+          <th>Visitor</th>
           <th>Browser / OS</th>
           <th>Device</th>
           <th>Page Visited</th>
@@ -68,7 +69,7 @@
       </thead>
       <tbody>
         {% for v in logs %}
-        <tr>
+        <tr data-visitor-id="{{ v.id }}">
           <td style="font-size:12px;color:var(--text-3);">{{ (page_num - 1) * per_page + loop.index }}</td>
           <td>
             <code style="font-size:12px;background:var(--bg-hover,rgba(99,102,241,.08));padding:2px 6px;border-radius:4px;">{{ v.ip_address }}</code>
@@ -76,6 +77,16 @@
             <div style="font-size:11px;color:var(--text-2);margin-top:2px;">
               {{ v.country }}{% if v.city %}, {{ v.city }}{% endif %}
             </div>
+            {% endif %}
+          </td>
+          <td>
+            {% if v.visitor_name %}
+            <div style="font-size:13px;font-weight:600;color:var(--text-1);">{{ v.visitor_name }}</div>
+            <span class="badge" style="font-size:10px;{% if v.visitor_role=='Dealer' %}background:rgba(34,197,94,0.14);color:#22c55e;{% else %}background:rgba(99,102,241,0.14);color:#6366f1;{% endif %}">
+              {{ v.visitor_role or 'User' }}
+            </span>
+            {% else %}
+            <span style="font-size:12px;color:var(--text-3);">Guest</span>
             {% endif %}
           </td>
           <td>
@@ -106,14 +117,17 @@
             <span style="color:var(--text-3);font-size:12px;">Direct</span>
             {% endif %}
           </td>
-          <td style="font-size:12px;color:var(--text-2);white-space:nowrap;">
-            {{ v.visited_at.strftime('%d %b %Y') if v.visited_at else '—' }}<br>
-            <span style="color:var(--text-3);">{{ v.visited_at.strftime('%H:%M:%S') if v.visited_at else '' }}</span>
+          <td>
+            <div class="vl-ts" style="font-size:12px;color:var(--text-2);white-space:nowrap;"
+                 data-utc="{{ v.visited_at.strftime('%Y-%m-%dT%H:%M:%S') }}+05:30">
+              {{ v.visited_at.strftime('%d %b %Y') if v.visited_at else '—' }}<br>
+              <span style="color:var(--text-3);">{{ v.visited_at.strftime('%H:%M:%S') if v.visited_at else '' }}</span>
+            </div>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" style="text-align:center;padding:40px;color:var(--text-2);">
+          <td colspan="8" style="text-align:center;padding:40px;color:var(--text-2);">
             <i class="fas fa-users" style="font-size:32px;margin-bottom:10px;display:block;opacity:.4;"></i>
             No visitor logs found{% if search or date_f or device_f %} matching your filters{% endif %}.
           </td>
@@ -148,4 +162,139 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Local-Timezone Timestamp Rendering ───────────────────────────────────────
+// Server stores naive IST timestamps; data-utc carries an explicit +05:30
+// offset so Date parsing is correct, then this re-renders in the viewer's
+// own local timezone with the proper abbreviation.
+(function () {
+  var _tz    = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  var _dFmt  = new Intl.DateTimeFormat(undefined, { day:'2-digit', month:'short', year:'numeric', timeZone:_tz });
+  var _tFmt  = new Intl.DateTimeFormat(undefined, { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false, timeZone:_tz });
+  var _tzAbbr = (function(){
+    try {
+      var p = new Intl.DateTimeFormat(undefined, { timeZoneName:'short', timeZone:_tz }).formatToParts(new Date());
+      var t = p.find(function(x){ return x.type==='timeZoneName'; });
+      return t ? t.value : '';
+    } catch(e){ return ''; }
+  })();
+
+  function _renderCell(el) {
+    var iso = el.dataset.utc;
+    if (!iso) return;
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return;
+      var dateStr = _dFmt.format(d);
+      var timeStr = _tFmt.format(d) + (_tzAbbr ? ' <span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:8px;font-weight:600;">'+_tzAbbr+'</span>' : '');
+      el.innerHTML = dateStr + '<br><span style="color:var(--text-3);">' + timeStr + '</span>';
+    } catch(e) {}
+  }
+
+  document.querySelectorAll('.vl-ts[data-utc]').forEach(_renderCell);
+
+  // ── Real-Time Visitor Log Polling ─────────────────────────────────────────
+  // Polls /admin/api/visitor-poll every 30 seconds on page 1 (no filters).
+  var pageNum  = {{ page_num | int }};
+  var dateF    = {{ date_f | tojson }};
+  var searchV  = {{ search | tojson }};
+  var deviceF  = {{ device_f | tojson }};
+  if (pageNum !== 1 || dateF || searchV) return;
+
+  var _esc = function(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+
+  var _deviceIcon  = { Desktop:'fa-desktop', Mobile:'fa-mobile-alt', Tablet:'fa-tablet-alt' };
+  var _deviceColor = { Desktop:'#6366f1',    Mobile:'#22c55e',       Tablet:'#f59e0b' };
+
+  function _fmtCell(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      var dateStr = _dFmt.format(d);
+      var timeStr = _tFmt.format(d)+(_tzAbbr?' <span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:8px;font-weight:600;">'+_tzAbbr+'</span>':'');
+      return dateStr+'<br><span style="color:var(--text-3);">'+timeStr+'</span>';
+    } catch(e){ return '—'; }
+  }
+
+  function _buildRow(v, idx) {
+    var icon  = _deviceIcon[v.device_type]  || 'fa-question-circle';
+    var color = _deviceColor[v.device_type] || 'var(--text-2)';
+    var visitorCell = v.visitor_name
+      ? '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+_esc(v.visitor_name)+'</div>'+
+        '<span class="badge" style="font-size:10px;'+(v.visitor_role==='Dealer'?'background:rgba(34,197,94,0.14);color:#22c55e;':'background:rgba(99,102,241,0.14);color:#6366f1;')+'">'+_esc(v.visitor_role||'User')+'</span>'
+      : '<span style="font-size:12px;color:var(--text-3);">Guest</span>';
+    return '<tr data-visitor-id="'+v.id+'">'+
+      '<td style="font-size:12px;color:var(--text-3);">'+_esc(String(idx))+'</td>'+
+      '<td><code style="font-size:12px;background:var(--bg-hover,rgba(99,102,241,.08));padding:2px 6px;border-radius:4px;">'+_esc(v.ip_address)+'</code>'+
+        (v.country ? '<div style="font-size:11px;color:var(--text-2);margin-top:2px;">'+_esc(v.country)+(v.city?', '+_esc(v.city):'')+'</div>' : '')+
+      '</td>'+
+      '<td>'+visitorCell+'</td>'+
+      '<td><div style="font-size:13px;font-weight:500;color:var(--text-1);">'+_esc(v.browser)+'</div>'+
+        '<div style="font-size:11px;color:var(--text-2);">'+_esc(v.operating_system)+'</div></td>'+
+      '<td><span style="font-size:12px;color:'+color+';"><i class="fas '+icon+'"></i> '+_esc(v.device_type)+'</span></td>'+
+      '<td style="max-width:200px;overflow:hidden;"><span title="'+_esc(v.page_url)+'" style="font-size:12px;color:var(--accent);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+_esc(v.page_url)+'</span></td>'+
+      '<td style="max-width:150px;overflow:hidden;">'+(v.referrer
+        ? '<span title="'+_esc(v.referrer)+'" style="font-size:11px;color:var(--text-2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;">'+_esc(v.referrer)+'</span>'
+        : '<span style="color:var(--text-3);font-size:12px;">Direct</span>')+
+      '</td>'+
+      '<td><div class="vl-ts" style="font-size:12px;color:var(--text-2);white-space:nowrap;">'+_fmtCell(v.visited_at)+'</div></td>'+
+    '</tr>';
+  }
+
+  // Seed maxId from page
+  var maxId = 0;
+  document.querySelectorAll('tr[data-visitor-id]').forEach(function(tr){
+    var id = parseInt(tr.dataset.visitorId||0);
+    if (id > maxId) maxId = id;
+  });
+
+  // Stats card elements (Total, Desktop, Mobile, Tablet)
+  var _statEls = document.querySelectorAll('[data-stat]');
+  function _updateStats(stats) {
+    _statEls.forEach(function(el){
+      var key = el.dataset.stat;
+      if (stats[key] !== undefined) el.textContent = stats[key];
+    });
+  }
+
+  function poll() {
+    var url = '/admin/api/visitor-poll?since_id='+maxId;
+    if (deviceF) url += '&device='+encodeURIComponent(deviceF);
+
+    fetch(url, {credentials:'same-origin'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !data.success) return;
+
+        // Always update stats counters
+        if (data.stats) _updateStats(data.stats);
+
+        if (!data.rows.length) return;
+        var tbody = document.querySelector('table tbody');
+        if (!tbody) return;
+
+        // Remove empty-state row if present
+        var empty = tbody.querySelector('tr:not([data-visitor-id])');
+        if (empty) empty.remove();
+
+        var rows = data.rows.slice().reverse();
+        rows.forEach(function(v) {
+          if (v.id <= maxId) return;
+          tbody.insertAdjacentHTML('afterbegin', _buildRow(v, '•'));
+          if (v.id > maxId) maxId = v.id;
+        });
+
+        // Update header count
+        var hdr = document.querySelector('.card-title');
+        if (hdr && data.stats) hdr.textContent = 'Visitor Records ('+data.stats.total+')';
+      })
+      .catch(function(){});
+  }
+
+  setInterval(poll, 30000);
+})();
+</script>
 {% endblock %}
