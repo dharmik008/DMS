@@ -46,6 +46,18 @@
           <input type="text" name="color" class="form-control" value="{{ vehicle.color or '' }}">
         </div>
         <div class="form-group">
+          <label>Registration Number</label>
+          <input type="text" name="reg_number" class="form-control"
+            id="admin_edit_reg_number"
+            placeholder="e.g. GJ 06 AB 1234"
+            oninput="formatNumberPlate(this)"
+            onblur="formatNumberPlate(this)"
+            autocomplete="off"
+            style="text-transform:uppercase;letter-spacing:2px;font-weight:700;font-family:monospace;font-size:15px;"
+            value="{{ vehicle.registration_number or '' }}">
+          <small style="color:#6b7280;font-size:11px;">Auto-formatted: GJ 06 AB 1234</small>
+        </div>
+        <div class="form-group">
           <label>Approval Status</label>
           <select name="approval_status" class="form-control">
             <option value="pending"  {% if vehicle.approval_status == 'pending'  %}selected{% endif %}>⏳ Pending</option>
@@ -57,6 +69,67 @@
       <div class="form-group" style="margin-top:16px;">
         <label>Description</label>
         <textarea name="description" class="form-control" rows="3">{{ vehicle.description or '' }}</textarea>
+      </div>
+
+      <!-- ── Vehicle Condition Details ──────────────────────────── -->
+      <div style="margin-top:24px;margin-bottom:12px;padding-top:20px;border-top:1px solid var(--border);">
+        <strong style="font-size:14px;">Vehicle Condition Details</strong>
+        <p style="color:var(--text-3);font-size:12px;margin:4px 0 0;">Select "NA" if information is unavailable.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="form-group">
+          <label>Accident History</label>
+          <select name="accident_history" class="form-control">
+            {% for opt in ['No','Minor','Major','NA'] %}
+            <option value="{{ opt }}" {% if (vehicle.accident_history or 'NA') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Loan / Hypothecation</label>
+          <select name="loan_status" class="form-control">
+            {% for opt in ['Active','Closed','No Loan','NA'] %}
+            <option value="{{ opt }}" {% if (vehicle.loan_status or 'NA') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>RC &amp; Service Records</label>
+          <select name="rc_service_records" class="form-control">
+            {% for opt in ['Yes','No','Partial','NA'] %}
+            <option value="{{ opt }}" {% if (vehicle.rc_service_records or 'NA') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Keys Available</label>
+          <select name="keys_available" class="form-control">
+            {% for opt in ['One','Two','Three','NA'] %}
+            <option value="{{ opt }}" {% if (vehicle.keys_available or 'NA') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Body Panel Repainted / Replaced</label>
+          <select name="body_panel_status" class="form-control">
+            {% for opt in ['No','Repainted','Replaced','NA'] %}
+            <option value="{{ opt }}" {% if (vehicle.body_panel_status or 'NA') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>Major Issues</label>
+          {% set saved_issues = (vehicle.major_issues or 'None').split(',') %}
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;">
+            {% for opt in ['Engine','Gearbox','AC','Suspension','None','NA'] %}
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;">
+              <input type="checkbox" name="major_issues" value="{{ opt }}" style="width:16px;height:16px;"
+                {% if opt in saved_issues %}checked{% endif %}>
+              {{ opt }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -94,4 +167,28 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function formatNumberPlate(input) {
+  var raw = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  var parts = [];
+  var pos = 0;
+  var p1 = raw.substring(pos, pos + 2).replace(/[^A-Z]/g, '');
+  if (p1) parts.push(p1); pos += 2;
+  var p2 = raw.substring(pos, pos + 2).replace(/[^0-9]/g, '');
+  if (p2) parts.push(p2); pos += 2;
+  var p3 = raw.substring(pos, pos + 3).replace(/[^A-Z]/g, '');
+  if (p3) parts.push(p3); pos += 3;
+  var p4 = raw.substring(pos, pos + 4).replace(/[^0-9]/g, '');
+  if (p4) parts.push(p4);
+  var formatted = parts.join(' ');
+  if (input.value !== formatted) input.value = formatted;
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var rf = document.getElementById('admin_edit_reg_number');
+  if (rf && rf.value) formatNumberPlate(rf);
+});
+</script>
 {% endblock %}
