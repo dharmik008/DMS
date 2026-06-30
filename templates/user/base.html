@@ -49,10 +49,12 @@
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     {% for cat, msg in messages %}
+    {% if not (cat == 'success' and msg == 'Login successful!') %}
     <div class="flash-bar {% if cat == 'error' %}error{% endif %}">
       <i class="fas fa-{% if cat == 'success' %}check-circle{% else %}info-circle{% endif %}"></i>
       {{ msg }}
     </div>
+    {% endif %}
     {% endfor %}
   {% endif %}
 {% endwith %}
@@ -118,5 +120,24 @@ document.addEventListener('click', function(e) {
 });
 </script>
 {% block extra_js %}{% endblock %}
+
+{% include '_success_popup.html' %}
+{% with login_messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in login_messages %}
+    {% if cat == 'success' and msg == 'Login successful!' %}
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        showSuccessPopup(
+          '🎉 Login Successful',
+          'Welcome Back',
+          buildSpRow('User Name', {{ (current_user.get('name') or 'User')|tojson }}) +
+          buildSpRow('Login Time', new Date().toLocaleString()) +
+          buildSpRow('Account Status', 'Active')
+        );
+      });
+    </script>
+    {% endif %}
+  {% endfor %}
+{% endwith %}
 </body>
 </html>
