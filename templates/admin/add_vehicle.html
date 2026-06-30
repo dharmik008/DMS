@@ -91,9 +91,91 @@
           <option value="user">User / Seller</option>
         </select>
       </div>
+      <div class="form-group">
+        <label>Registration Number</label>
+        <input type="text" class="form-control" name="reg_number"
+          id="admin_reg_number"
+          placeholder="e.g. GJ 06 AB 1234"
+          oninput="formatNumberPlate(this)"
+          onblur="formatNumberPlate(this)"
+          autocomplete="off"
+          style="text-transform:uppercase;letter-spacing:2px;font-weight:700;font-family:monospace;font-size:15px;"
+          value="{{ form.get('reg_number','') if form else '' }}">
+        <small style="color:#6b7280;font-size:11px;">Auto-formatted: GJ 06 AB 1234</small>
+      </div>
       <div class="form-group" style="grid-column:1/-1;">
         <label>Description</label>
         <textarea class="form-control" name="description" placeholder="Additional details about the vehicle..."></textarea>
+      </div>
+    </div>
+
+    <!-- ── Vehicle Condition Details ───────────────────────────────── -->
+    <div style="margin-top:32px;margin-bottom:16px;padding-top:24px;border-top:1px solid var(--border);">
+      <div class="card-title" style="margin-bottom:4px;">Vehicle Condition Details</div>
+      <p style="color:var(--text-3);font-size:0.82rem;">All fields are mandatory. Select "NA" if information is unavailable.</p>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Accident History <span style="color:var(--red);">*</span></label>
+        <select class="form-control" name="accident_history" required>
+          <option value="">Select</option>
+          <option value="No">No</option>
+          <option value="Minor">Minor</option>
+          <option value="Major">Major</option>
+          <option value="NA">NA</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Loan / Hypothecation <span style="color:var(--red);">*</span></label>
+        <select class="form-control" name="loan_status" required>
+          <option value="">Select</option>
+          <option value="Active">Active</option>
+          <option value="Closed">Closed</option>
+          <option value="No Loan">No Loan</option>
+          <option value="NA">NA</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>RC &amp; Service Records <span style="color:var(--red);">*</span></label>
+        <select class="form-control" name="rc_service_records" required>
+          <option value="">Select</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+          <option value="Partial">Partial</option>
+          <option value="NA">NA</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Keys Available <span style="color:var(--red);">*</span></label>
+        <select class="form-control" name="keys_available" required>
+          <option value="">Select</option>
+          <option value="One">One</option>
+          <option value="Two">Two</option>
+          <option value="Three">Three</option>
+          <option value="NA">NA</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Body Panel Repainted / Replaced <span style="color:var(--red);">*</span></label>
+        <select class="form-control" name="body_panel_status" required>
+          <option value="">Select</option>
+          <option value="No">No</option>
+          <option value="Repainted">Repainted</option>
+          <option value="Replaced">Replaced</option>
+          <option value="NA">NA</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1;">
+        <label>Major Issues <span style="color:var(--red);">*</span></label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;" id="majorIssuesGroup">
+          {% for opt in ['Engine','Gearbox','AC','Suspension','None','NA'] %}
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;">
+            <input type="checkbox" name="major_issues" value="{{ opt }}" style="width:16px;height:16px;">
+            {{ opt }}
+          </label>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="majorIssuesGuard" name="_major_issues_required">
       </div>
     </div>
 
@@ -232,6 +314,13 @@
   }
 
   form.addEventListener('submit', function(e) {
+    // Validate major_issues checkboxes
+    const checked = document.querySelectorAll('input[name="major_issues"]:checked');
+    if (checked.length === 0) {
+      e.preventDefault();
+      alert('Please select at least one option for Major Issues.');
+      return;
+    }
     const files = Array.from(input.files);
     const invalid = files.filter(f => {
       const ext = f.name.split('.').pop().toLowerCase();
@@ -246,5 +335,33 @@
     }
   });
 })();
+
+/* ── Number Plate Formatter ─────────────────────────────────────────────── */
+function formatNumberPlate(input) {
+  var raw = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  var parts = [];
+  var pos = 0;
+  // Part 1: 2 letters (state code)
+  var p1 = raw.substring(pos, pos + 2).replace(/[^A-Z]/g, '');
+  if (p1) parts.push(p1);
+  pos += 2;
+  // Part 2: 2 digits (district)
+  var p2 = raw.substring(pos, pos + 2).replace(/[^0-9]/g, '');
+  if (p2) parts.push(p2);
+  pos += 2;
+  // Part 3: 1-3 letters (series)
+  var p3 = raw.substring(pos, pos + 3).replace(/[^A-Z]/g, '');
+  if (p3) parts.push(p3);
+  pos += 3;
+  // Part 4: 4 digits
+  var p4 = raw.substring(pos, pos + 4).replace(/[^0-9]/g, '');
+  if (p4) parts.push(p4);
+  var formatted = parts.join(' ');
+  if (input.value !== formatted) input.value = formatted;
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var rf = document.getElementById('admin_reg_number');
+  if (rf && rf.value) formatNumberPlate(rf);
+});
 </script>
 {% endblock %}
