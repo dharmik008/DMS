@@ -76,6 +76,30 @@
       {% if v['registration_number'] %}
       <div style="margin-top:8px;font-size:11px;color:var(--text-muted)"><i class="fas fa-id-card"></i> {{ v['registration_number'] }}</div>
       {% endif %}
+
+      {# ── Vehicle Issue Detection Badge ──────────────────────────────────── #}
+      {% set vi = v.get('vehicle_issues', {}) %}
+      {% set issue_count = vi.get('issueCount', 0) %}
+      {% if issue_count > 0 %}
+      <div class="vehicle-issues-badge" style="margin-top:10px;padding:8px 10px;border-radius:8px;background:{% if issue_count >= 3 %}#fff1f0{% elif issue_count == 2 %}#fffbe6{% else %}#f6ffed{% endif %};border:1px solid {% if issue_count >= 3 %}#ffccc7{% elif issue_count == 2 %}#ffe58f{% else %}#b7eb8f{% endif %}">
+        <div style="font-size:12px;font-weight:600;color:{% if issue_count >= 3 %}#cf1322{% elif issue_count == 2 %}#d46b08{% else %}#389e0d{% endif %};margin-bottom:4px">
+          🚗 Found {{ issue_count }} Issue{{ 's' if issue_count > 1 else '' }}
+        </div>
+        <ul style="margin:0;padding:0 0 0 14px;font-size:11px;color:#555;line-height:1.7">
+          {% for issue in vi.get('issues', []) %}
+          <li>
+            <span style="color:{% if issue.severity == 'High' %}#cf1322{% elif issue.severity == 'Medium' %}#d46b08{% else %}#389e0d{% endif %}">●</span>
+            {{ issue.name }}
+            <span style="font-size:10px;opacity:0.75">({{ issue.severity }})</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% else %}
+      <div style="margin-top:10px;padding:6px 10px;border-radius:8px;background:#f6ffed;border:1px solid #b7eb8f;font-size:11px;color:#389e0d;font-weight:600">
+        ✅ No Issues Detected
+      </div>
+      {% endif %}
     </div>
   </div>
   {% endfor %}
